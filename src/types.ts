@@ -1,0 +1,85 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+export type StudySerie = '9_fundamental' | '1_medio' | '2_medio' | '3_medio' | 'cursinho' | 'outro';
+
+export interface UserProfile {
+  name: string;
+  email: string;
+  serie?: StudySerie;
+  targetScore?: number;
+  hardSubjects?: string[];
+  streak?: number;
+  lastLoginDate?: string; // YYYY-MM-DD
+}
+
+export interface CompetencyScore {
+  id: number;
+  name: string; // Competência 1 a 5
+  description: string;
+  score: number; // 0 a 200
+  feedback: string; // Detalhes e dicas de melhoria específicas para a competência
+}
+
+export interface EssayCorrection {
+  id: string;
+  title: string;
+  text: string;
+  score: number; // 0 - 1000
+  generalFeedback: string;
+  competencies: CompetencyScore[];
+  strengths: string[];
+  weaknesses: string[];
+  date: string;
+}
+
+export interface Question {
+  id: string;
+  area: 'Matemática' | 'Humanas' | 'Natureza' | 'Linguagens';
+  statement: string;
+  options: {
+    letter: 'A' | 'B' | 'C' | 'D' | 'E';
+    text: string;
+  }[];
+  correctAnswer: 'A' | 'B' | 'C' | 'D' | 'E';
+  explanation: string;
+}
+
+export interface SimuladoConfig {
+  subject: 'Matemática' | 'Humanas' | 'Natureza' | 'Linguagens' | 'Geral';
+  questionCount: number;
+}
+
+export interface SimuladoQuestion {
+  id: string;
+  statement: string;
+  options: {
+    letter: 'A' | 'B' | 'C' | 'D' | 'E';
+    text: string;
+  }[];
+  correctAnswer: 'A' | 'B' | 'C' | 'D' | 'E';
+  explanation: string;
+  userAnswer?: 'A' | 'B' | 'C' | 'D' | 'E';
+}
+
+export interface SimuladoState {
+  config: SimuladoConfig;
+  questions: SimuladoQuestion[];
+  currentQuestionIndex: number;
+  timeLeft: number; // em segundos
+  isActive: boolean;
+  scorePercent?: number;
+  averageTimeGasp?: number; // tempo médio por questão em segundos
+  dateStarted?: string;
+}
+
+export interface ActivityLog {
+  id: string;
+  type: 'redacao' | 'pergunta' | 'simulado' | 'onboarding' | 'streak';
+  title: string;
+  description: string;
+  timeAgo: string;
+  date: string;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Plataforma NotaMil",
+  "description": "Plataforma educacional adaptativa de estudos para o ENEM com correção de redações por IA, simulados cronometrados e questões personalizadas.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
