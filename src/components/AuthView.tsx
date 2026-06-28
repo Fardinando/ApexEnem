@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Mail, Lock, Eye, EyeOff, GraduationCap, ArrowRight, User, MapPin, Globe, CheckCircle } from 'lucide-react';
 import type { RegionBR } from '../types';
@@ -17,6 +17,10 @@ const STATES_BY_REGION: Record<RegionBR, string[]> = {
   'Sul': ['Paraná', 'Rio Grande do Sul', 'Santa Catarina'],
 };
 
+declare const hcaptcha: any;
+
+const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY || '';
+
 export default function AuthView({ onSuccess }: AuthViewProps) {
   const [isLoginTab, setIsLoginTab] = useState(true);
   const [step, setStep] = useState<'form' | 'confirm'>('form');
@@ -27,12 +31,34 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
   const [errorMessage, setErrorMessage] = useState('');
   const [succMessage, setSuccMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [captchaToken, setCaptchaToken] = useState('');
 
   const [region, setRegion] = useState<RegionBR>('Sudeste');
   const [state, setState] = useState('');
   const [city, setCity] = useState('');
 
   const states = STATES_BY_REGION[region] || [];
+
+  useEffect(() => {
+    if (!HCAPTCHA_SITE_KEY) return;
+    const url = `https://js.hcaptcha.com/1/api.js?onload=hcaptchaOnLoad&render=explicit`;
+    if (document.querySelector(`script[src="${url}"]`)) return;
+    (window as any).hcaptchaOnLoad = () => {
+      const el = document.getElementById('hcaptcha-container');
+      if (el && el.childElementCount === 0) {
+        hcaptcha.render('hcaptcha-container', {
+          sitekey: HCAPTCHA_SITE_KEY,
+          callback: (token: string) => setCaptchaToken(token),
+          'expired-callback': () => setCaptchaToken(''),
+        });
+      }
+    };
+    const script = document.createElement('script');
+    script.src = url;
+    script.async = true;
+    script.defer = true;
+    document.head.appendChild(script);
+  }, [isLoginTab]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -68,12 +94,17 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
       setErrorMessage('Informe sua cidade.');
       return;
     }
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      setErrorMessage('Resolva o desafio de verificação (hCaptcha) antes de cadastrar.');
+      return;
+    }
     setLoading(true);
     const { error } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: { name, region, state, city },
+        captchaToken: captchaToken || undefined,
       },
     });
     setLoading(false);
@@ -83,6 +114,8 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
       } else {
         setErrorMessage(error.message);
       }
+      if (hcaptcha) hcaptcha.reset();
+      setCaptchaToken('');
       return;
     }
     setStep('confirm');
@@ -232,6 +265,9 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
                     </div>
                   </div>
 
+                  {!isLoginTab && HCAPTCHA_SITE_KEY && (
+                    <div id="hcaptcha-container" className="flex justify-center"></div>
+                  )}
                   <button type="submit" disabled={loading} className="w-full mt-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer">
                     <span>{loading ? 'Aguarde...' : (isLoginTab ? 'Entrar' : 'Criar Conta')}</span>
                     <ArrowRight className="h-4 w-4" />
