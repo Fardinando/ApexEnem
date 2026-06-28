@@ -38,27 +38,32 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
   const [city, setCity] = useState('');
 
   const states = STATES_BY_REGION[region] || [];
+  const [hcaptchaReady, setHcaptchaReady] = useState(false);
 
   useEffect(() => {
     if (!HCAPTCHA_SITE_KEY) return;
     const url = `https://js.hcaptcha.com/1/api.js?onload=hcaptchaOnLoad&render=explicit`;
     if (document.querySelector(`script[src="${url}"]`)) return;
-    (window as any).hcaptchaOnLoad = () => {
-      const el = document.getElementById('hcaptcha-container');
-      if (el && el.childElementCount === 0) {
-        hcaptcha.render('hcaptcha-container', {
-          sitekey: HCAPTCHA_SITE_KEY,
-          callback: (token: string) => setCaptchaToken(token),
-          'expired-callback': () => setCaptchaToken(''),
-        });
-      }
-    };
+    (window as any).hcaptchaOnLoad = () => setHcaptchaReady(true);
     const script = document.createElement('script');
     script.src = url;
     script.async = true;
     script.defer = true;
     document.head.appendChild(script);
-  }, [isLoginTab]);
+  }, []);
+
+  useEffect(() => {
+    if (!HCAPTCHA_SITE_KEY || isLoginTab || !hcaptchaReady) return;
+    const el = document.getElementById('hcaptcha-container');
+    if (!el) return;
+    setCaptchaToken('');
+    el.innerHTML = '';
+    hcaptcha.render('hcaptcha-container', {
+      sitekey: HCAPTCHA_SITE_KEY,
+      callback: (token: string) => setCaptchaToken(token),
+      'expired-callback': () => setCaptchaToken(''),
+    });
+  }, [isLoginTab, hcaptchaReady]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -160,7 +165,7 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
             </div>
             <div className="relative z-10 max-w-md my-auto">
               <h1 className="font-display text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight space-y-4 mb-6 text-white">
-                Alcance a sua <br /><span className="text-[#dad7ff] bg-white/10 px-3 py-1 rounded-lg backdrop-blur-sm shadow-inner">Apex Enem</span><br />no ENEM.
+                Alcance seu ápice no ENEM <br /><span className="text-[#dad7ff] bg-white/10 px-3 py-1 rounded-lg backdrop-blur-sm shadow-inner">com ApexEnem</span>
               </h1>
               <p className="text-white/80 text-lg leading-relaxed mb-10 font-light">Plataforma inteligente com correção de redações por 10 IAs e simulados personalizados.</p>
               <div className="grid grid-cols-2 gap-4">
