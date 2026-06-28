@@ -11,17 +11,28 @@ dotenv.config();
 const app = express();
 const PORT = 3000;
 
-// Initialize Supabase Client safely
+// Initialize Supabase Client safely (anon key - for public queries)
 let supabase: any = null;
 if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
   try {
     supabase = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_ANON_KEY);
-    console.log("Supabase Client initialized successfully!");
+    console.log("Supabase Client (anon) initialized successfully!");
   } catch (error: any) {
     console.warn("Failed to initialize Supabase Client:", error.message);
   }
 } else {
   console.warn("WARNING: SUPABASE_URL or SUPABASE_ANON_KEY are not defined in the environment.");
+}
+
+// Initialize Supabase Admin Client (service_role - for DDL/setup)
+let supabaseAdmin: any = null;
+if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
+  try {
+    supabaseAdmin = createClient(process.env.SUPABASE_URL, process.env.SUPABASE_SERVICE_ROLE_KEY);
+    console.log("Supabase Admin Client (service_role) initialized successfully!");
+  } catch (error: any) {
+    console.warn("Failed to initialize Supabase Admin Client:", error.message);
+  }
 }
 
 // Initialize native Gemini GoogleGenAI client safely
@@ -433,15 +444,6 @@ Retorne APENAS o JSON. Não escreva textos adicionais.`;
   }
 });
 
-// Credentials Status Endpoint
-app.get("/api/credentials-status", (req, res) => {
-  res.json({
-    openRouter: !!apiKey,
-    supabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
-    gemini: false
-  });
-});
-
 // OpenRouter Chat/Explanation proxy endpoint - Cleaned of Google SDK and fallbacks
 app.post("/api/openrouter-chat", async (req, res) => {
   const { questionText, instructions, correctAnswer } = req.body;
@@ -547,6 +549,99 @@ app.get("/api/supabase/get-progress", async (req, res) => {
     console.error("Supabase progress loading failed:", err);
     return res.json({ success: false, error: err.message });
   }
+});
+
+// Supabase Setup Endpoint (creates the table if it doesn't exist)
+app.post("/api/supabase/setup", async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.status(400).json({ error: "SUPABASE_SERVICE_ROLE_KEY não configurado. Adicione ao .env para permitir setup automático." });
+  }
+
+  try {
+    const { error } = await supabaseAdmin.rpc('setup_notamil_progress');
+    if (error && error.message?.includes('function "setup_notamil_progress" does not exist')) {
+      // Function doesn't exist yet - try raw SQL via the management API
+      const sql = `
+CREATE TABLE IF NOT EXISTS public.notamil_progress (
+  email TEXT PRIMARY KEY,
+  progress JSONB NOT NULL DEFAULT '{}',
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_notamil_progress_email ON public.notamil_progress (email);
+ALTER TABLE public.notamil_progress ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'notamil_progress') THEN
+    CREATE POLICY "Acesso total anonimo"
+      ON public.notamil_progress
+      FOR ALL
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END $$;`;
+      
+      // Try executing via REST API (service_role bypasses RLS)
+      // We'll do a simple health check - actually try to write to the table
+      const testResult = await supabaseAdmin
+        .from("notamil_progress")
+        .upsert(
+          { email: "__setup_test__", progress: { setup: true }, updated_at: new Date().toISOString() },
+          { onConflict: "email" }
+        );
+
+      if (testResult.error) {
+        return res.status(500).json({ 
+          error: "Tabela não existe. Execute o SQL manualmente no Supabase Dashboard > SQL Editor:",
+          sql,
+          detail: testResult.error.message
+        });
+      }
+
+      // Cleanup test row
+      await supabaseAdmin.from("notamil_progress").delete().eq("email", "__setup_test__");
+    }
+
+    return res.json({ success: true, message: "Supabase configurado com sucesso!" });
+  } catch (err: any) {
+    console.error("Supabase setup error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+});
+
+// Supabase Keep-Alive Endpoint (prevents 7-day pause on free tier)
+app.get("/api/supabase/keep-alive", async (req, res) => {
+  if (!supabase) {
+    return res.json({ status: "supabase_not_configured" });
+  }
+
+  try {
+    // Simple query to keep the database active
+    const { data, error } = await supabase
+      .from("notamil_progress")
+      .select("email")
+      .limit(1);
+
+    if (error) {
+      return res.json({ status: "error", message: error.message });
+    }
+
+    return res.json({ 
+      status: "ok", 
+      timestamp: new Date().toISOString(),
+      message: "Database pinged successfully - keep alive"
+    });
+  } catch (err: any) {
+    return res.json({ status: "error", message: err.message });
+  }
+});
+
+// Credentials Status Endpoint (updated)
+app.get("/api/credentials-status", (req, res) => {
+  res.json({
+    openRouter: !!apiKey,
+    supabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
+    supabaseAdmin: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
+    gemini: false
+  });
 });
 
 // 3. Static Assest Serving and SPA Fallback & Vite Integration

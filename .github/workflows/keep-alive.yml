@@ -1,0 +1,21 @@
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Executa a cada 3 dias para evitar o pause de 7 dias do free tier
+    - cron: '0 0 */3 * *'
+  workflow_dispatch: # Permite execução manual
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Keep-Alive
+        run: |
+          curl -s "${{ secrets.APP_URL }}/api/supabase/keep-alive" || echo "App URL not configured"
+      
+      - name: Ping Supabase Direct (prevent DB pause)
+        run: |
+          curl -s -X GET "${{ secrets.SUPABASE_URL }}/rest/v1/" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_ANON_KEY }}" || true
