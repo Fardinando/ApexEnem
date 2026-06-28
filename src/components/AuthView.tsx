@@ -53,7 +53,7 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
   }, []);
 
   useEffect(() => {
-    if (!HCAPTCHA_SITE_KEY || isLoginTab || !hcaptchaReady) return;
+    if (!HCAPTCHA_SITE_KEY || !hcaptchaReady) return;
     const el = document.getElementById('hcaptcha-container');
     if (!el) return;
     setCaptchaToken('');
@@ -69,7 +69,18 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
     e.preventDefault();
     setErrorMessage('');
     setLoading(true);
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
+    if (HCAPTCHA_SITE_KEY && !captchaToken) {
+      setErrorMessage('Resolva o desafio de verificação (hCaptcha) antes de entrar.');
+      setLoading(false);
+      return;
+    }
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+      options: { captchaToken: captchaToken || undefined },
+    });
+    if (hcaptcha) hcaptcha.reset();
+    setCaptchaToken('');
     setLoading(false);
     if (error) {
       if (error.message.includes('Invalid login credentials')) {
@@ -270,7 +281,7 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
                     </div>
                   </div>
 
-                  {!isLoginTab && HCAPTCHA_SITE_KEY && (
+                  {HCAPTCHA_SITE_KEY && (
                     <div id="hcaptcha-container" className="flex justify-center"></div>
                   )}
                   <button type="submit" disabled={loading} className="w-full mt-2 py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-semibold rounded-xl text-sm transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer">
