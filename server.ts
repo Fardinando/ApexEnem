@@ -1,12 +1,12 @@
 import express from "express";
 import path from "path";
-import dotenv from "dotenv";
-import { GoogleGenAI, Type } from "@google/genai";
-import { createServer as createViteServer } from "vite";
 import { createClient } from "@supabase/supabase-js";
 
-// Load environment variables
-dotenv.config();
+// Only load dotenv locally (Vercel injects env vars automatically)
+if (!process.env.VERCEL) {
+  const dotenv = await import("dotenv");
+  dotenv.default.config();
+}
 
 const app = express();
 const PORT = 3000;
@@ -33,19 +33,6 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
   } catch (error: any) {
     console.warn("Failed to initialize Supabase Admin Client:", error.message);
   }
-}
-
-// Initialize native Gemini GoogleGenAI client safely
-let aiInstance: any = null;
-if (process.env.GEMINI_API_KEY) {
-  try {
-    aiInstance = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-    console.log("Native Gemini GoogleGenAI Client initialized successfully!");
-  } catch (error: any) {
-    console.warn("Failed to initialize native Gemini SDK:", error.message);
-  }
-} else {
-  console.warn("WARNING: GEMINI_API_KEY is not defined. Standing by for OpenRouter only, or offline fallback.");
 }
 
 app.use(express.json({ limit: "15mb" }));
@@ -124,6 +111,12 @@ function generateFallbackQuestions(area: string) {
 
 // Helper to make a correction call to a specific OpenRouter free model
 async function fetchCorrectionFromModel(modelName: string, prompt: string) {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => {
+    console.warn(`Timeout (9s) for model ${modelName}, aborting...`);
+    controller.abort();
+  }, 9000);
+
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -146,7 +139,8 @@ async function fetchCorrectionFromModel(modelName: string, prompt: string) {
           }
         ],
         temperature: 0.3
-      })
+      }),
+      signal: controller.signal
     });
 
     if (!response.ok) {
@@ -163,6 +157,8 @@ async function fetchCorrectionFromModel(modelName: string, prompt: string) {
   } catch (err: any) {
     console.error(`Error querying model ${modelName}:`, err.message);
     throw err;
+  } finally {
+    clearTimeout(timeoutId);
   }
 }
 
@@ -644,25 +640,31 @@ app.get("/api/credentials-status", (req, res) => {
   });
 });
 
-// 3. Static Assest Serving and SPA Fallback & Vite Integration
-async function startServer() {
-  if (process.env.NODE_ENV !== "production") {
-    const vite = await createViteServer({
-      server: { middlewareMode: true },
-      appType: "spa",
-    });
-    app.use(vite.middlewares);
-  } else {
-    const distPath = path.join(process.cwd(), "dist");
-    app.use(express.static(distPath));
-    app.get("*", (req, res) => {
-      res.sendFile(path.join(distPath, "index.html"));
+// Only start the server locally (Vercel handles this as a serverless function)
+if (!process.env.VERCEL) {
+  async function startServer() {
+    if (process.env.NODE_ENV !== "production") {
+      const { createServer: createViteServer } = await import("vite");
+      const vite = await createViteServer({
+        server: { middlewareMode: true },
+        appType: "spa",
+      });
+      app.use(vite.middlewares);
+    } else {
+      const distPath = path.join(process.cwd(), "dist");
+      app.use(express.static(distPath));
+      app.get("*", (req, res) => {
+        res.sendFile(path.join(distPath, "index.html"));
+      });
+    }
+
+    app.listen(PORT, "0.0.0.0", () => {
+      console.log(`Server running on port ${PORT}`);
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on port ${PORT}`);
-  });
+  startServer();
 }
 
-startServer();
+// Export for Vercel serverless function
+export default app;
