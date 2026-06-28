@@ -130,6 +130,10 @@ export default function App() {
     if (!session?.user) return;
     const updated = await upsertProfile({
       id: session.user.id,
+      name: session.user.user_metadata?.name || 'Estudante',
+      region: session.user.user_metadata?.region,
+      state: session.user.user_metadata?.state,
+      city: session.user.user_metadata?.city,
       serie: data.serie,
       target_score: data.targetScore,
       hard_subjects: data.hardSubjects,
