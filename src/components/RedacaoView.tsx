@@ -101,12 +101,12 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
     // Dynamic encouraging prompts to cycle through
     const steps = [
-      'Digitalizando redação e ajustando foco...',
-      'IA Transcrevendo texto manuscrito via OCR...',
-      'Avaliando adequação à Norma Culta (Competência 1)...',
-      'Analisando coerência e projeto de texto (Competência 2 e 3)...',
-      'Avaliando coesão gramatical e proposta de intervenção (Competência 4 e 5)...',
-      'Compilando o relatório de notas NotaMil final...'
+      'Ativando 10 IAs corretoras em paralelo...',
+      'Consultando LLaMA 3.3, DeepSeek R1, Qwen 2.5...',
+      'Consultando Gemma 3, Mistral Small, DeepSeek Chat...',
+      'Consultando Phi 3.5, Command R7B, Gemma 2, Nemotron...',
+      'Compilando consenso entre modelos de IA...',
+      'Gerando relatório final com média das notas...'
     ];
 
     let stepIdx = 0;
@@ -133,7 +133,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       });
 
       if (!res.ok) {
-        throw new Error('Falha de resposta no servidor NotaMil.');
+        throw new Error('Falha de resposta no servidor ApexEnem.');
       }
 
       const correctionResult = await res.json();
@@ -223,6 +223,9 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
             <h3 className="font-display font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
               <span className="p-1 bg-blue-600 text-white rounded-lg"><FileText className="h-4 w-4" /></span>
               Nova Submissão
+              <span className="ml-auto text-[9px] font-mono bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/30">
+                10 IAs
+              </span>
             </h3>
 
             {/* Essay Title */}
@@ -393,10 +396,10 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
               <div className="space-y-2">
                 <h4 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm md:text-base animate-pulse">
-                  Avaliando sua redação...
+                  Consultando 10 IAs em paralelo...
                 </h4>
                 <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
-                  Isso pode demorar de 5 a 15 segundos. O robô está mapeando os desvios de sua folha.
+                  Isso pode demorar de 8 a 20 segundos. Dez modelos de IA estão analisando seu texto simultaneamente.
                 </p>
               </div>
 

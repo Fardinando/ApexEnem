@@ -5,14 +5,33 @@
 
 export type StudySerie = '9_fundamental' | '1_medio' | '2_medio' | '3_medio' | 'cursinho' | 'outro';
 
+export type RegionBR = 'Norte' | 'Nordeste' | 'Centro-Oeste' | 'Sudeste' | 'Sul';
+
 export interface UserProfile {
   name: string;
   email: string;
+  password?: string; // only stored locally
+  region?: RegionBR;
+  state?: string;
+  city?: string;
+  confirmed?: boolean;
   serie?: StudySerie;
   targetScore?: number;
   hardSubjects?: string[];
   streak?: number;
-  lastLoginDate?: string; // YYYY-MM-DD
+  lastLoginDate?: string;
+  avatar?: string;
+}
+
+export interface PendingUser {
+  name: string;
+  email: string;
+  password: string;
+  region: RegionBR;
+  state: string;
+  city: string;
+  confirmationCode: string;
+  createdAt: string;
 }
 
 export interface CompetencyScore {

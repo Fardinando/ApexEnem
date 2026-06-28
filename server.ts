@@ -1,5 +1,6 @@
 import express from "express";
 import path from "path";
+import crypto from "crypto";
 import { createClient } from "@supabase/supabase-js";
 
 // Only load dotenv locally (Vercel injects env vars automatically)
@@ -35,7 +36,36 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
   }
 }
 
+// HMAC secret for email confirmation tokens
+const HMAC_SECRET = process.env.HMAC_SECRET || process.env.OPENROUTER_API_KEY || "ApexEnem-dev-secret-key-change-in-prod";
+
+function getBaseUrl(): string {
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return `http://localhost:${PORT}`;
+}
+
+function signToken(email: string, code: string): string {
+  return crypto.createHmac("sha256", HMAC_SECRET).update(`${email.toLowerCase()}:${code}`).digest("hex");
+}
+
+function verifyToken(email: string, code: string, token: string): boolean {
+  const expected = signToken(email, code);
+  if (token.length !== expected.length) return false;
+  return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+}
+
 app.use(express.json({ limit: "15mb" }));
+
+// CORS headers for all origins
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
+  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  if (req.method === "OPTIONS") {
+    return res.sendStatus(200);
+  }
+  next();
+});
 
 // Helper to extract JSON from string safely
 function extractJsonFromText(rawText: string): any {
@@ -162,7 +192,7 @@ async function fetchCorrectionFromModel(modelName: string, prompt: string) {
   }
 }
 
-// 1. API - Essay Correction Endpoint using Parallel Consensus (5 IAs)
+// 1. API - Essay Correction Endpoint using Parallel Consensus (10 IAs)
 app.post("/api/correct", async (req, res) => {
   const { title, text, imageBase64 } = req.body;
 
@@ -175,63 +205,111 @@ app.post("/api/correct", async (req, res) => {
     "deepseek/deepseek-r1:free",
     "qwen/qwen-2.5-72b-instruct:free",
     "google/gemma-3-12b-it:free",
-    "mistralai/mistral-small-24b-instruct-2501:free"
+    "mistralai/mistral-small-24b-instruct-2501:free",
+    "deepseek/deepseek-chat:free",
+    "microsoft/phi-3.5-mini-instruct:free",
+    "cohere/command-r7b-12-2025:free",
+    "google/gemma-2-9b-it:free",
+    "nvidia/llama-3.1-nemotron-70b-instruct:free"
   ];
 
   const contentToEvaluate = text || "[O aluno enviou uma imagem contendo o manuscrito de redação para transcrição e correção direta.]";
 
-  const prompt = `Você é um corretor de redação oficial da banca do ENEM (INEP), altamente conceituado pela sua extrema rigidez, imparcialidade e aplicação clínica do manual oficial de correção. Você não é um professor bonzinho ou motivador; você avalia o texto de forma cirúrgica, fria e extremamente técnica. Redações medianas ou com falhas cruciais não devem receber notas infladas; notas próximas de 480 a 600 representam a realidade da média nacional e erros graves devem puxar a nota para baixo de forma dura.
+  const prompt = `Você é um corretor de redação oficial da banca do ENEM (INEP), altamente conceituado pela sua extrema rigidez, imparcialidade e aplicação clínica da Cartilha do Participante ENEM 2025. Você não é um professor bonzinho ou motivador; você avalia o texto de forma cirúrgica, fria e extremamente técnica. Redações medianas ou com falhas cruciais não devem receber notas infladas; notas próximas de 480 a 600 representam a realidade da média nacional e erros graves devem puxar a nota para baixo de forma dura.
 
-O título/tema proposto da redação é: "${title || "Sem título"}"
+O título/tema proposto da redação é: "${title || "Sem título"}
 
 Redação do aluno:
 """
 ${contentToEvaluate}
 """
 
+CRITÉRIOS OFICIAIS DO ENEM 2025 (CARTILHA DO PARTICIPANTE) - Use EXATAMENTE estes níveis:
+
+=== COMPETÊNCIA 1: Domínio da escrita formal ===
+200: "Demonstra excelente domínio da modalidade escrita formal da língua portuguesa e de escolha de registro. Desvios gramaticais ou de convenções da escrita serão aceitos somente como excepcionalidade e quando não caracterizarem reincidência."
+160: "Demonstra bom domínio da modalidade escrita formal da língua portuguesa e de escolha de registro, com poucos desvios gramaticais e de convenções da escrita."
+120: "Demonstra domínio mediano da modalidade escrita formal da língua portuguesa e de escolha de registro, com alguns desvios gramaticais e de convenções da escrita."
+80: "Demonstra domínio insuficiente da modalidade escrita formal da língua portuguesa, com muitos desvios gramaticais, de escolha de registro e de convenções da escrita."
+40: "Demonstra domínio precário da modalidade escrita formal da língua portuguesa, de forma sistemática, com diversificados e frequentes desvios gramaticais, de escolha de registro e de convenções da escrita."
+0: "Demonstra desconhecimento da modalidade escrita formal da língua portuguesa."
+Avalie: convenções da escrita (acentuação, ortografia, hífen, maiúsculas/minúsculas, translineação), aspectos gramaticais (regência, concordância, tempos verbais, pontuação, paralelismos, pronomes, crase), escolha de registro (adequação à escrita formal, ausência de oralidade), escolha vocabular (precisão semântica).
+
+=== COMPETÊNCIA 2: Compreensão do tema e aplicação de conceitos ===
+200: "Desenvolve o tema por meio de argumentação consistente, a partir de um repertório sociocultural produtivo, e apresenta excelente domínio do texto dissertativo-argumentativo."
+160: "Desenvolve o tema por meio de argumentação consistente e apresenta bom domínio do texto dissertativo-argumentativo, com proposição, argumentação e conclusão."
+120: "Desenvolve o tema por meio de argumentação previsível e apresenta domínio mediano do texto dissertativo-argumentativo, com proposição, argumentação e conclusão."
+80: "Desenvolve o tema recorrendo à cópia de trechos dos textos motivadores ou apresenta domínio insuficiente do texto dissertativo-argumentativo, não atendendo à estrutura com proposição, argumentação e conclusão."
+40: "Apresenta o assunto, tangenciando o tema, ou demonstra domínio precário do texto dissertativo-argumentativo, com traços constantes de outros tipos textuais."
+0: "Fuga ao tema/não atendimento à estrutura dissertativo-argumentativa."
+Avalie: compreensão da proposta, desenvolvimento do tema dentro dos limites do texto dissertativo-argumentativo em prosa, presença de repertório sociocultural produtivo (informação, fato, citação ou experiência relacionada ao tema que contribua como argumento). CUIDADO com repertório de bolso (referências prontas e decoradas sem conexão genuína com o tema).
+
+=== COMPETÊNCIA 3: Seleção e organização dos argumentos ===
+200: "Apresenta informações, fatos e opiniões relacionados ao tema proposto, de forma consistente e organizada, configurando autoria, em defesa de um ponto de vista."
+160: "Apresenta informações, fatos e opiniões relacionados ao tema, de forma organizada, com indícios de autoria, em defesa de um ponto de vista."
+120: "Apresenta informações, fatos e opiniões relacionados ao tema, limitados aos argumentos dos textos motivadores e pouco organizados, em defesa de um ponto de vista."
+80: "Apresenta informações, fatos e opiniões relacionados ao tema, mas desorganizados ou contraditórios e limitados aos argumentos dos textos motivadores, em defesa de um ponto de vista."
+40: "Apresenta informações, fatos e opiniões pouco relacionados ao tema ou incoerentes e sem defesa de um ponto de vista."
+0: "Apresenta informações, fatos e opiniões não relacionados ao tema e sem defesa de um ponto de vista."
+Avalie: existência de projeto de texto (planejamento prévio perceptível), seleção e organização estratégica dos argumentos, progressão textual fluente, desenvolvimento dos argumentos (explicitação da relevância das ideias para defesa do ponto de vista).
+
+=== COMPETÊNCIA 4: Coesão e mecanismos linguísticos ===
+200: "Articula bem as partes do texto e apresenta repertório diversificado de recursos coesivos."
+160: "Articula as partes do texto, com poucas inadequações, e apresenta repertório diversificado de recursos coesivos."
+120: "Articula as partes do texto, de forma mediana, com inadequações, e apresenta repertório pouco diversificado de recursos coesivos."
+80: "Articula as partes do texto, de forma insuficiente, com muitas inadequações, e apresenta repertório limitado de recursos coesivos."
+40: "Articula as partes do texto de forma precária."
+0: "Não articula as informações."
+Avalie: estruturação dos parágrafos, estruturação dos períodos (complexidade com orações subordinadas e intercaladas), referenciação (pronomes, advérbios, artigos, sinônimos, expressões resumitivas), uso variado de operadores argumentativos (conjunções, preposições, advérbios) que estabeleçam relações semânticas de causa, consequência, adversidade, conclusão, etc.
+
+=== COMPETÊNCIA 5: Proposta de intervenção ===
+200: "Elabora muito bem proposta de intervenção, detalhada, relacionada ao tema e articulada à discussão desenvolvida no texto."
+160: "Elabora bem proposta de intervenção relacionada ao tema e articulada à discussão desenvolvida no texto."
+120: "Elabora, de forma mediana, proposta de intervenção relacionada ao tema e articulada à discussão desenvolvida no texto."
+80: "Elabora, de forma insuficiente, proposta de intervenção relacionada ao tema, ou não articulada com a discussão desenvolvida no texto."
+40: "Apresenta proposta de intervenção vaga, precária ou relacionada apenas ao assunto."
+0: "Não apresenta proposta de intervenção ou apresenta proposta não relacionada ao tema ou ao assunto."
+Avalie objetivamente cada um dos 5 elementos obrigatórios (Agente, Ação, Meio/Modo, Efeito/Finalidade, Detalhamento) - 40 pts cada. A proposta deve estar relacionada ao tema e integrada ao projeto de texto.
+
 PROCEDIMENTO DE CALIBRAÇÃO DE NOTA E TRAVAS OBRIGATÓRIAS (CAPPING RULES):
-Antes de fechar a nota de cada uma das 5 competências do ENEM, aplique rigorosamente as seguintes travas de nota:
+Aplique rigorosamente as travas abaixo ANTES de definir a nota final de cada competência:
 
-1. TRAVAS PARA A COMPETÊNCIA 1 (Escrita Formal - Máximo 200):
-   - Se houver mais de 2 falhas gramaticais ou ortográficas leves: Nota Máxima = 160 pontos.
-   - Se houver entre 3 e 5 falhas no total (desvios de crase, concordância, regência, acentuação, vírgulas simples ou inadequação lexical): Nota Máxima = 120 pontos.
-   - Se houver mais de 5 desvios, repetições de estruturas incompletas, gírias ou períodos longos sem pontuação adequada (truncados/periodização): Nota Máxima = 80 pontos.
-   - Se houver desestruturação sintática frequente e domínio precário das convenções escritas: Nota Máxima = 40 pontos.
+1. TRAVAS PARA A COMPETÊNCIA 1:
+   - Mais de 2 falhas gramaticais/ortográficas leves → Máx 160
+   - 3 a 5 falhas (crase, concordância, regência, acentuação) → Máx 120
+   - Mais de 5 desvios, gírias, períodos truncados → Máx 80
+   - Desestruturação sintática frequente → Máx 40
 
-2. TRAVAS PARA A COMPETÊNCIA 2 (Compreensão do Tema e Tipo Textual - Máximo 200):
-   - SEM REPERTÓRIO SOCIOCULTURAL EXTERNO: Se o aluno não inseriu nenhum repertório legitimado de fora dos textos de apoio (como alusão histórica específica, dados de institutos oficiais, citações de filósofos/sociólogos com o nome do pensador, livros, filmes, leis ou conceitos das ciências humanas), a competência está travada no Máximo em 120 pontos.
-   - REPERTÓRIO APENAS CITADO, SEM USO PRODUTIVO: Se o aluno citou um repertório externo (ex: "segundo Kant...") mas apenas jogou a informação sem conectá-la diretamente e de forma produtiva com o argumento ou com o tema da redação, a competência está travada no Máximo em 160 pontos.
-   - Se tangenciou o tema (focou apenas superficialmente no assunto geral sem abordar o problema específico proposto): Nota Máxima = 80 pontos.
+2. TRAVAS PARA A COMPETÊNCIA 2:
+   - Sem repertório sociocultural externo → Máx 120
+   - Repertório citado sem uso produtivo → Máx 160
+   - Tangenciamento do tema → Máx 80
 
-3. TRAVAS PARA A COMPETÊNCIA 3 (Projeto de Texto e Argumentação - Máximo 200):
-   - SEM TESE CLARA NA INTRODUÇÃO: Se o aluno não apresentou uma tese explícita contendo duas ideias claras de problemas com o tema desde o primeiro parágrafo (introdução), a competência está travada no Máximo em 120 pontos.
-   - ARGUMENTAÇÃO PURAMENTE EXPOSITIVA: Se o texto apenas lista fatos, informações ou descreve o problema sem fazer uma discussão autoral madura, sem defender ativamente um ponto de vista com argumentos bem encadeados, a competência está travada no Máximo em 120 pontos.
-   - ARGUMENTOS COM LACUNAS OU LEVE SUPERFICIALIDADE: Se o projeto de texto é visível mas contém falhas de encadeamento ou argumentos superficiais/repetitivos em algum desenvolvimento: Nota Máxima = 160 pontos.
+3. TRAVAS PARA A COMPETÊNCIA 3:
+   - Sem tese clara na introdução → Máx 120
+   - Argumentação puramente expositiva → Máx 120
+   - Argumentos com lacunas/superficialidade → Máx 160
 
-4. TRAVAS PARA A COMPETÊNCIA 4 (Mecanismos Coesivos - Máximo 200):
-   - COESÃO INTERPARÁGRAFO INSUFICIENTE: É obrigatório o uso de conectivos formais e variados na introdução de parágrafos (ex: "Ademais,", "Portanto,", "Nesse cenário,", "Outrossim,"). Se não houver pelo menos DOIS conectivos interparágrafos legítimos ligando o início dos parágrafos de desenvolvimento/conclusão, a competência está travada no Máximo em 120 pontos.
-   - COESÃO INTRAPARÁGRAFO FRACA/REPETITIVA: Se dentro dos parágrafos faltarem conjunções, pronomes relativos, ou se o aluno repetir excessivamente palavras comuns (exemplo: repetir "que", "também", "o problema", ou "a população" a todo instante) em vez de usar sinônimos: Nota Máxima no Máximo em 120 ou 160 pontos.
+4. TRAVAS PARA A COMPETÊNCIA 4:
+   - Menos de 2 conectivos interparágrafos legítimos → Máx 120
+   - Coesão intraparágrafo fraca/repetitiva → Máx 120-160
 
-5. TRAVAS PARA A COMPETÊNCIA 5 (Proposta de Intervenção - Máximo 200):
-   - Avalie de forma fria, matemática e objetiva. Dê exatamente 40 pontos para cada elemento abaixo que esteja explícito e claro na proposta. Se algum elemento estiver ausente ou for vago, atribua ZERO pontos a esse elemento específico:
-     * AGENTE (+40 pontos): Quem fará a ação. Deve ser específico (ex: Ministério da Saúde, Poder Legislativo, ONGs). Termos genéricos como "alguém", "nós", "a sociedade" ou "as pessoas" NÃO devem pontuar (0 pontos).
-     * AÇÃO (+40 pontos): O que será feito. Deve ser uma atividade concreta. Expressões vagas como "devemos tomar providências", "mudar a mentalidade" ou "fazer algo" NÃO devem pontuar (0 pontos).
-     * MEIO/MODO (+40 pontos): Como a ação será viabilizada. Deve conter conectivos instrumentais explícitos (ex: "por meio de", "através de", "mediante"). Se não disser claramente como será feito, não pontue (0 pontos).
-     * EFEITO/OBJETIVO (+40 pontos): Para que a ação serve (ex: "com o intuito de conter a proliferação...", "com o fito de garantir o direito..."). Se não estiver claro, não pontue (0 pontos).
-     * DETALHAMENTO (+40 pontos): Informação explicativa ou justificativa adicional sobre um dos elementos acima (exemplo: "o Ministério da Educação, órgão encarregado por gerir as redes federais de ensino,..."). O detalhamento precisa ser nítido e rico em detalhes. Se for genérico, dê 0 pontos.
-   - Se faltar qualquer um desses 5 elementos, a nota máxima recomendada é 160. Se faltarem dois, a nota máxima recomendada é 120, exceto se a proposta inteira for inexistente ou impraticável, recebendo 0 ou 40 pontos.
+5. TRAVAS PARA A COMPETÊNCIA 5:
+   - Avalie matematicamente: 40 pts para cada elemento (Agente, Ação, Meio/Modo, Efeito, Detalhamento)
+   - Termos genéricos como "nós", "a sociedade" NÃO pontuam como agente
+   - Ausência de 1 elemento → Máx 160. Ausência de 2 → Máx 120.
 
-DIRETRIZES FUNDAMENTAIS PARA SINTONIA DA IA:
-- Não balanceie as notas para cima para agradar ou evitar rejeição.
-- Forneça críticas maduras, diretas e pragmáticas, usando o linguajar formal e clínico de uma banca oficial.
-- Se o aluno escreveu uma redação tipicamente escolar que não traz um repertório sociocultural forte articulado em cada desenvolvimento e que possui deslizes gramaticais comuns de vírgula ou concordância, a nota total deve gravitar estritamente entre 480 e 560 pontos. Nunca dê notas superiores a 800 para redações que não tenham estrutura, vocabulário culto, domínio formal impecável e intervenção completa.
+DIRETRIZES FUNDAMENTAIS:
+- Não balanceie as notas para cima para agradar.
+- Forneça críticas maduras, diretas e pragmáticas, com linguajar formal e clínico de banca oficial.
+- Redações tipicamente escolares sem repertório forte e com deslizes comuns devem ter nota entre 480 e 560 pontos. Nunca dê notas superiores a 800 sem estrutura impecável, vocabulário culto, domínio formal completo e intervenção detalhada.
 
 Retorne estritamente um objeto JSON com o seguinte formato:
 {
   "score": 520,
   "generalFeedback": "Análise diagnóstica cirúrgica, extremamente realista, franca e detalhada da redação justificando o exato motivo de deságios e perdas de pontuação sob a perspectiva de um corretor implacável da banca ENEM.",
   "competencies": [
-    { "id": 1, "name": "Competência 1: Domínio da escrita formal", "description": "Demonstrar domínio da modalidade escrita formal da língua portuguesa.", "score": 120, "feedback": "Análise nítida e direta apontando os desvios gramaticais exatos encontrados no texto (desvios de crase, pontuação, ortografia, concordância, coloquialismo), listando-os especificamente se possível, e justificando a pontuação com base nas travas." },
+    { "id": 1, "name": "Competência 1: Domínio da escrita formal", "description": "Demonstrar domínio da modalidade escrita formal da língua portuguesa.", "score": 120, "feedback": "Análise nítida e direta apontando os desvios gramaticais exatos encontrados no texto (desvios de crase, pontuação, ortografia, concordância, coloquialismo), listando-os especificamente se possível, e justificando a pontuação com base nos níveis oficiais e travas." },
     { "id": 2, "name": "Competência 2: Compreensão do tema e desenvolvimento", "description": "Compreender a proposta de redação e aplicar conceitos das várias áreas.", "score": 120, "feedback": "Apontar claramente se o aluno abordou o tema de forma integral ou tangencial, se respeitou o formato dissertativo-argumentativo, e julgar se há repertório legitimado, pertinente e produtivo. Diga explicitamente qual foi o repertório identificado ou a ausência dele." },
     { "id": 3, "name": "Competência 3: Projeto de texto e argumentação", "description": "Selecionar, relacionar, organizar e interpretar informações em defesa de um ponto de vista.", "score": 120, "feedback": "Criticar o encadeamento das ideias. Apontar se há de fato uma tese clara na introdução para guiar o leitor, se os desenvolvimentos a defendem de modo aprofundado ou se caem na superficialidade, senso comum ou mera exposição textual." },
     { "id": 4, "name": "Competência 4: Coesão e coerência", "description": "Demonstrar conhecimento dos mecanismos linguísticos necessários para a construção.", "score": 80, "feedback": "Verificar se existem conectivos interparágrafos legítimos no início das estrofes conectivas, e se há uma coesão intraparágrafo limpa. Apontar repetições exaustivas de termos comuns que empobrecem o texto." },
@@ -322,10 +400,11 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
     // Structure a brilliant multi-model description feedback
     const modelBreakdown = successfulCorrections.map(suc => {
       const mn = suc.model.split('/')[1] || suc.model;
-      return `- **${mn}**: ${suc.data.score || 0} pontos`;
+      const compAvg = suc.data.competencies?.reduce((s: number, c: any) => s + (c.score || 0), 0) || 0;
+      return `- **${mn}**: ${compAvg} pontos`;
     }).join("\n");
 
-    const mergedGeneralFeedback = `### 🌟 Consolidado de Correção por Consenso Multi-IA
+    const mergedGeneralFeedback = `### 🌟 Consenso Multi-IA (${numSuccessful} modelos)
 Sua nota foi construída de forma justa, matemática e transparente avaliando o texto simultaneamente em **${numSuccessful} modelos de Inteligência Artificial diferentes** através do OpenRouter.
 
 **Pontuações atribuídas por ferramenta individual:**
@@ -336,9 +415,9 @@ ${modelBreakdown}
 ### 📝 Diagnóstico Coletivo e Recomendações:
 ${successfulCorrections.map(suc => {
   const mn = suc.model.split('/')[1] || suc.model;
-  return `##### Análise de ${mn}:
+      return `##### Análise de ${mn}:
 ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
-}).slice(0, 3).join("\n\n")}`;
+}).slice(0, 5).join("\n\n")}`;
 
     // Merge strengths & weaknesses removing blanks / duplicates
     const finalStrengths = Array.from(new Set(
@@ -404,7 +483,7 @@ Retorne APENAS o JSON. Não escreva textos adicionais.`;
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": "https://ai.studio/build",
-        "X-Title": "NotaMil ENEM Applet"
+        "X-Title": "ApexEnem ENEM Applet"
       },
       body: JSON.stringify({
         model: "meta-llama/llama-3.3-70b-instruct:free",
@@ -451,7 +530,7 @@ app.post("/api/openrouter-chat", async (req, res) => {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": "https://ai.studio/build",
-        "X-Title": "NotaMil ENEM Applet"
+        "X-Title": "ApexEnem ENEM Applet"
       },
       body: JSON.stringify({
         model: "meta-llama/llama-3.3-70b-instruct:free",
@@ -499,7 +578,7 @@ app.post("/api/supabase/save-progress", async (req, res) => {
 
   try {
     const { data, error } = await supabase
-      .from("notamil_progress")
+      .from("ApexEnem_progress")
       .upsert(
         { email: email.toLowerCase(), progress, updated_at: new Date().toISOString() },
         { onConflict: "email" }
@@ -530,7 +609,7 @@ app.get("/api/supabase/get-progress", async (req, res) => {
 
   try {
     const { data, error } = await supabase
-      .from("notamil_progress")
+      .from("ApexEnem_progress")
       .select("progress")
       .eq("email", email.toLowerCase())
       .maybeSingle();
@@ -554,21 +633,21 @@ app.post("/api/supabase/setup", async (req, res) => {
   }
 
   try {
-    const { error } = await supabaseAdmin.rpc('setup_notamil_progress');
-    if (error && error.message?.includes('function "setup_notamil_progress" does not exist')) {
+    const { error } = await supabaseAdmin.rpc('setup_ApexEnem_progress');
+    if (error && error.message?.includes('function "setup_ApexEnem_progress" does not exist')) {
       // Function doesn't exist yet - try raw SQL via the management API
       const sql = `
-CREATE TABLE IF NOT EXISTS public.notamil_progress (
+CREATE TABLE IF NOT EXISTS public.ApexEnem_progress (
   email TEXT PRIMARY KEY,
   progress JSONB NOT NULL DEFAULT '{}',
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
-CREATE INDEX IF NOT EXISTS idx_notamil_progress_email ON public.notamil_progress (email);
-ALTER TABLE public.notamil_progress ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_ApexEnem_progress_email ON public.ApexEnem_progress (email);
+ALTER TABLE public.ApexEnem_progress ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'notamil_progress') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ApexEnem_progress') THEN
     CREATE POLICY "Acesso total anonimo"
-      ON public.notamil_progress
+      ON public.ApexEnem_progress
       FOR ALL
       USING (true)
       WITH CHECK (true);
@@ -578,7 +657,7 @@ END $$;`;
       // Try executing via REST API (service_role bypasses RLS)
       // We'll do a simple health check - actually try to write to the table
       const testResult = await supabaseAdmin
-        .from("notamil_progress")
+        .from("ApexEnem_progress")
         .upsert(
           { email: "__setup_test__", progress: { setup: true }, updated_at: new Date().toISOString() },
           { onConflict: "email" }
@@ -593,7 +672,7 @@ END $$;`;
       }
 
       // Cleanup test row
-      await supabaseAdmin.from("notamil_progress").delete().eq("email", "__setup_test__");
+      await supabaseAdmin.from("ApexEnem_progress").delete().eq("email", "__setup_test__");
     }
 
     return res.json({ success: true, message: "Supabase configurado com sucesso!" });
@@ -612,7 +691,7 @@ app.get("/api/supabase/keep-alive", async (req, res) => {
   try {
     // Simple query to keep the database active
     const { data, error } = await supabase
-      .from("notamil_progress")
+      .from("ApexEnem_progress")
       .select("email")
       .limit(1);
 
@@ -628,6 +707,169 @@ app.get("/api/supabase/keep-alive", async (req, res) => {
   } catch (err: any) {
     return res.json({ status: "error", message: err.message });
   }
+});
+
+// Email Confirmation — Send code (supports Resend, returns signed token)
+app.post("/api/send-confirmation", async (req, res) => {
+  const { email, code } = req.body;
+  if (!email || !code) {
+    return res.json({ sent: false, error: "Missing email or code" });
+  }
+
+  const token = signToken(email, code);
+  const confirmLink = `${getBaseUrl()}/api/confirm-email?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&token=${encodeURIComponent(token)}`;
+
+  const apiKeyResend = process.env.RESEND_API_KEY;
+  if (apiKeyResend) {
+    try {
+      await fetch("https://api.resend.com/emails", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${apiKeyResend}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          from: process.env.EMAIL_FROM || "ApexEnem <noreply@apexenem.app>",
+          to: email,
+          subject: "Confirme seu e-mail - ApexEnem",
+          html: `
+            <div style="font-family:sans-serif;max-width:480px;margin:40px auto;padding:32px;border-radius:16px;background:#f8f6ff;text-align:center">
+              <h1 style="font-size:24px;color:#1b1574;margin-bottom:8px">ApexEnem</h1>
+              <p style="color:#555;font-size:14px;line-height:1.6">Seu código de verificação é:</p>
+              <div style="font-size:36px;letter-spacing:8px;font-weight:900;color:#2563eb;background:#fff;padding:16px;border-radius:12px;margin:16px 0;border:1px solid #e2e8f0">${code}</div>
+              <p style="color:#555;font-size:14px;line-height:1.6">Ou clique no botão abaixo para confirmar automaticamente:</p>
+              <a href="${confirmLink}" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;margin:8px 0">Confirmar E-mail</a>
+              <p style="color:#999;font-size:12px;margin-top:24px">Se não criou uma conta no ApexEnem, ignore este e-mail.</p>
+            </div>
+          `,
+        }),
+      });
+      console.log(`Confirmation email sent to ${email}`);
+      return res.json({ sent: true, token });
+    } catch (err: any) {
+      console.warn("Resend failed, falling back to simulated send:", err.message);
+    }
+  }
+
+  console.log(`[SIMULATED] Confirmation code for ${email}: ${code}`);
+  res.json({ sent: true, simulated: true, code, token });
+});
+
+// Email Confirmation — verify code (returns HTML for direct link clicks, JSON for API)
+app.get("/api/confirm-email", (req, res) => {
+  const { email, code, token } = req.query;
+
+  if (!email || !code) {
+    return res.status(400).json({ error: "Missing email or code" });
+  }
+
+  const isHtml = req.headers.accept?.includes("text/html");
+
+  if (token && typeof token === "string" && typeof email === "string" && typeof code === "string") {
+    const valid = verifyToken(email, code, token);
+    if (valid && isHtml) {
+      return res.type("html").send(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>E-mail Confirmado - ApexEnem</title>
+        <style>body{font-family:sans-serif;background:#f0eeff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px}
+        .card{background:#fff;padding:48px 32px;border-radius:24px;box-shadow:0 4px 24px rgba(0,0,0,.08);text-align:center;max-width:400px}
+        .check{width:64px;height:64px;background:#22c55e;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;color:#fff}
+        h1{font-size:24px;color:#1b1574;margin:0 0 8px} p{color:#666;font-size:14px;line-height:1.6;margin:0 0 24px}
+        .btn{display:inline-block;padding:12px 28px;background:#2563eb;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px}
+        </style></head>
+        <body><div class="card"><div class="check">✓</div>
+        <h1>E-mail Confirmado!</h1><p>Seu e-mail <strong>${email}</strong> foi verificado com sucesso. Sua conta ApexEnem já está ativa.</p>
+        <a class="btn" href="${getBaseUrl()}">Ir para o ApexEnem</a></div></body></html>
+      `);
+    }
+    if (valid) {
+      return res.json({ confirmed: true, message: `Email ${email} confirmed successfully.` });
+    }
+    if (isHtml) {
+      return res.type("html").send(`
+        <!DOCTYPE html>
+        <html lang="pt-BR">
+        <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Código Inválido - ApexEnem</title>
+        <style>body{font-family:sans-serif;background:#f0eeff;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;padding:16px}
+        .card{background:#fff;padding:48px 32px;border-radius:24px;box-shadow:0 4px 24px rgba(0,0,0,.08);text-align:center;max-width:400px}
+        .x{width:64px;height:64px;background:#ef4444;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 16px;font-size:32px;color:#fff}
+        h1{font-size:24px;color:#1b1574;margin:0 0 8px} p{color:#666;font-size:14px;line-height:1.6;margin:0 0 8px}
+        </style></head>
+        <body><div class="card"><div class="x">✕</div>
+        <h1>Link Inválido</h1><p>Este link de confirmação é inválido ou expirou. Tente copiar o código manualmente no app.</p></div></body></html>
+      `);
+    }
+    return res.status(400).json({ confirmed: false, error: "Invalid or expired token" });
+  }
+
+  res.json({ confirmed: true, message: `Email ${email} confirmed successfully.` });
+});
+
+// ENEM Questions API proxy — fetches real questions from enem.dev
+const SUBJECT_MAP: Record<string, string> = {
+  Matemática: "matematica",
+  Humanas: "ciencias-humanas",
+  Natureza: "ciencias-natureza",
+  Linguagens: "linguagens",
+};
+
+app.get("/api/enem-questions", async (req, res) => {
+  const subject = (req.query.subject as string) || "Geral";
+  const count = parseInt(req.query.count as string) || 10;
+  const usedIds = (req.query.used as string) || "";
+
+  const years = [2023, 2022];
+  const allQuestions: any[] = [];
+
+  for (const year of years) {
+    try {
+      const url = `https://api.enem.dev/v1/exams/${year}/questions?limit=180&offset=0`;
+      const response = await fetch(url);
+      if (!response.ok) continue;
+      const data = await response.json();
+      const questions = data.questions || [];
+
+      const filtered = questions.filter((q: any) => {
+        if (subject !== "Geral" && q.discipline !== SUBJECT_MAP[subject]) return false;
+        const letter = q.correctAlternative;
+        if (!letter || !["A","B","C","D","E"].includes(letter)) return false;
+        const hasText = q.alternatives?.some((a: any) => a.text?.trim());
+        if (!hasText) return false;
+        if (usedIds.includes(`enem-${q.year}-${q.index}`)) return false;
+        return true;
+      });
+
+      allQuestions.push(...filtered.map((q: any) => ({
+        id: `enem-${q.year}-${q.index}`,
+        statement: `(${q.title || `ENEM ${q.year} - Questão ${q.index}`})\n\n${q.context || ""}`,
+        options: q.alternatives?.filter((a: any) => a.text).map((a: any) => ({
+          letter: a.letter,
+          text: a.text || ""
+        })) || [],
+        correctAnswer: q.correctAlternative,
+        explanation: `Alternativa correta: ${q.correctAlternative}. ${q.alternatives?.find((a: any) => a.letter === q.correctAlternative)?.text || ""}`,
+        year: q.year,
+        index: q.index,
+      })));
+    } catch (err: any) {
+      console.warn(`Failed to fetch year ${year}:`, err.message);
+    }
+  }
+
+  // Shuffle and slice
+  for (let i = allQuestions.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [allQuestions[i], allQuestions[j]] = [allQuestions[j], allQuestions[i]];
+  }
+
+  const selected = allQuestions.slice(0, Math.min(count, allQuestions.length));
+
+  if (selected.length === 0) {
+    return res.json({ questions: [], error: "Nenhuma questão encontrada para este filtro." });
+  }
+
+  res.json({ questions: selected });
 });
 
 // Credentials Status Endpoint (updated)

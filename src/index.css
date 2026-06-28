@@ -121,6 +121,18 @@ h1, h2, h3, h4 {
   border: 1px solid rgba(255, 255, 255, 0.08);
 }
 
+/* Safe area for mobile notches/home indicator */
+.safe-area-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+
+/* Mobile padding for tab bar */
+@supports (padding-bottom: env(safe-area-inset-bottom)) {
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 16px);
+  }
+}
+
 /* Custom micro-animations */
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(6px); }

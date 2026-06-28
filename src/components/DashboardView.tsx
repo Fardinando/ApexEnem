@@ -521,7 +521,7 @@ export default function DashboardView({
             <div className="flex items-center gap-2">
               <span className="text-xl">💡</span>
               <h3 className="font-display font-extrabold text-sm text-white">
-                Dica da IA NotaMil
+                Dica da IA ApexEnem
               </h3>
             </div>
             

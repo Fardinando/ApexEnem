@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { 
   User, 
   Settings, 
@@ -14,7 +14,9 @@ import {
   BookOpen, 
   Mail, 
   Sun, 
-  Moon
+  Moon,
+  Camera,
+  X
 } from 'lucide-react';
 import { UserProfile } from '../types';
 
@@ -43,6 +45,26 @@ export default function ConfiguracoesView({
   const [newSerie, setNewSerie] = React.useState(currentUser.serie || '3_medio');
   const [newScore, setNewScore] = React.useState(currentUser.targetScore || 750);
   const [newHardSubjects, setNewHardSubjects] = React.useState<string[]>(currentUser.hardSubjects || []);
+  const [newAvatar, setNewAvatar] = React.useState<string | undefined>(currentUser.avatar);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      alert('Selecione apenas arquivos de imagem (PNG, JPEG, WebP).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      alert('A imagem deve ter no máximo 2 MB.');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = (ev) => setNewAvatar(ev.target?.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveAvatar = () => setNewAvatar(undefined);
 
   // Update local states if currentUser changes underneath (e.g. on account clean or swap)
   React.useEffect(() => {
@@ -50,6 +72,7 @@ export default function ConfiguracoesView({
     setNewSerie(currentUser.serie || '3_medio');
     setNewScore(currentUser.targetScore || 750);
     setNewHardSubjects(currentUser.hardSubjects || []);
+    setNewAvatar(currentUser.avatar);
   }, [currentUser]);
 
   const formatSerie = (code?: string) => {
@@ -83,6 +106,7 @@ export default function ConfiguracoesView({
       serie: newSerie,
       targetScore: Number(newScore),
       hardSubjects: newHardSubjects,
+      avatar: newAvatar,
     });
     setIsEditing(false);
   };
@@ -92,6 +116,7 @@ export default function ConfiguracoesView({
     setNewSerie(currentUser.serie || '3_medio');
     setNewScore(currentUser.targetScore || 750);
     setNewHardSubjects(currentUser.hardSubjects || []);
+    setNewAvatar(currentUser.avatar);
     setIsEditing(false);
   };
 
@@ -131,6 +156,47 @@ export default function ConfiguracoesView({
 
           {isEditing ? (
             <div className="space-y-4 text-xs animate-fade-in" id="edit-profile-form">
+              {/* Avatar upload */}
+              <div className="space-y-2">
+                <label className="text-slate-500 font-semibold block">Foto de Perfil</label>
+                <div className="flex items-center gap-4">
+                  <div className="relative h-16 w-16 rounded-xl bg-slate-100 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 overflow-hidden flex items-center justify-center">
+                    {newAvatar ? (
+                      <img src={newAvatar} alt="Preview" className="w-full h-full object-cover" />
+                    ) : (
+                      <User className="h-6 w-6 text-slate-400" />
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => avatarInputRef.current?.click()}
+                      className="px-3 py-1.5 bg-blue-50 text-blue-700 hover:bg-blue-100 dark:bg-blue-950/20 dark:text-blue-400 dark:hover:bg-blue-950/40 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                    >
+                      <Camera className="h-3.5 w-3.5" />
+                      <span>{newAvatar ? 'Trocar' : 'Upload'}</span>
+                    </button>
+                    {newAvatar && (
+                      <button
+                        type="button"
+                        onClick={handleRemoveAvatar}
+                        className="px-3 py-1.5 bg-red-50 text-red-700 hover:bg-red-100 dark:bg-red-950/20 dark:text-red-400 dark:hover:bg-red-950/40 rounded-lg text-xs font-bold transition flex items-center gap-1 cursor-pointer"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                        <span>Remover</span>
+                      </button>
+                    )}
+                    <input
+                      ref={avatarInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleAvatarChange}
+                    />
+                  </div>
+                </div>
+              </div>
+
               {/* Name input */}
               <div className="space-y-1">
                 <label className="text-slate-500 font-semibold block" htmlFor="edit-name">Nome Completo</label>
@@ -181,7 +247,7 @@ export default function ConfiguracoesView({
                 <div className="flex justify-between text-[10px] text-slate-400">
                   <span>600 pto</span>
                   <span>Meta Ideal</span>
-                  <span>1000 Nota Mil</span>
+                  <span>1000 Apex Enem</span>
                 </div>
               </div>
 
@@ -230,6 +296,19 @@ export default function ConfiguracoesView({
             </div>
           ) : (
             <>
+              <div className="flex items-center gap-4 pb-4 mb-2 border-b border-slate-100 dark:border-slate-800">
+                <div className="h-14 w-14 rounded-xl bg-slate-100 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 overflow-hidden flex items-center justify-center flex-shrink-0">
+                  {currentUser.avatar ? (
+                    <img src={currentUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
+                  ) : (
+                    <User className="h-6 w-6 text-slate-400" />
+                  )}
+                </div>
+                <div>
+                  <span className="font-bold text-sm text-slate-800 dark:text-slate-100 block">{currentUser.name}</span>
+                  <span className="text-[11px] text-slate-400">{currentUser.email}</span>
+                </div>
+              </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 {/* Name */}
                 <div className="space-y-1 p-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl">
@@ -354,7 +433,7 @@ export default function ConfiguracoesView({
               id="btn-settings-logout"
               type="button"
               onClick={() => {
-                if (confirm('Deseja realmente sair da Plataforma NotaMil?')) {
+                if (confirm('Deseja realmente sair da Plataforma ApexEnem?')) {
                   onLogout();
                 }
               }}

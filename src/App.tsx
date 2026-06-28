@@ -1,10 +1,6 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect } from 'react';
-import { UserProfile, EssayCorrection, ActivityLog } from './types';
+import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile } from './lib/supabase';
+import type { EssayCorrection, ActivityLog } from './types';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
 import Sidebar from './components/Sidebar';
@@ -15,7 +11,6 @@ import SimuladosView from './components/SimuladosView';
 import ConfiguracoesView from './components/ConfiguracoesView';
 import AprendizadoView from './components/AprendizadoView';
 
-// Standard Seed Data to motivate students on direct entry
 const DEFAULT_CORRECTIONS_SEED: EssayCorrection[] = [
   {
     id: 'seed-1',
@@ -30,14 +25,8 @@ const DEFAULT_CORRECTIONS_SEED: EssayCorrection[] = [
       { id: 4, name: 'C4 - Coesão e Conectivos', description: 'Demonstrar conhecimento dos mecanismos linguísticos de coesão.', score: 160, feedback: 'Emprego variado de conectivos argumentativos interparágrafos. Evite repetir "pois" de maneira consecutiva.' },
       { id: 5, name: 'C5 - Proposta de Intervenção', description: 'Elaborar proposta respeitando direitos humanos.', score: 160, feedback: 'Apresenta objetivo (conscientização), meio (palestras escolares) e efeito. Detalhe melhor QUEM irá financiar.' }
     ],
-    strengths: [
-      'Alusão histórica e filosófica extremamente pertinente e bem posicionada.',
-      'Excelente divisão de parágrafos mantendo um projeto de texto linear constante.'
-    ],
-    weaknesses: [
-      'Pequena repetição de operadores lógicos de conclusão (pois, portanto).',
-      'Breve negligência no detalhamento fino do órgão executor governamental.'
-    ],
+    strengths: ['Alusão histórica e filosófica extremamente pertinente e bem posicionada.', 'Excelente divisão de parágrafos mantendo um projeto de texto linear constante.'],
+    weaknesses: ['Pequena repetição de operadores lógicos de conclusão (pois, portanto).', 'Breve negligência no detalhamento fino do órgão executor governamental.'],
     date: '15/05/2026'
   },
   {
@@ -53,328 +42,263 @@ const DEFAULT_CORRECTIONS_SEED: EssayCorrection[] = [
       { id: 4, name: 'C4 - Coesão e Conectivos', description: 'Demonstrar conhecimento dos mecanismos linguísticos de coesão.', score: 160, feedback: 'Boa articulação de coesão, sem ambiguidades comprometedoras.' },
       { id: 5, name: 'C5 - Proposta de Intervenção', description: 'Elaborar proposta respeitando direitos humanos.', score: 165, feedback: 'O detalhamento é bom, mas o agente público do Ministério da Cultura ficou ambiguo.' }
     ],
-    strengths: [
-      'Boa incorporação jurídica e histórica remetendo ao Brasil Império.',
-      'Uso assertivo de pronomes demonstrativos mantendo o laço referencial.'
-    ],
-    weaknesses: [
-      'Desvios gramaticais de concordância que tiram tração da competência formativa.',
-      'Faltou um elemento final detalhado justificando a relação causa-efeito na intervenção.'
-    ],
+    strengths: ['Boa incorporação jurídica e histórica remetendo ao Brasil Império.', 'Uso assertivo de pronomes demonstrativos mantendo o laço referencial.'],
+    weaknesses: ['Desvios gramaticais de concordância que tiram tração da competência formativa.', 'Faltou um elemento final detalhado justificando a relação causa-efeito na intervenção.'],
     date: '02/05/2026'
   }
 ];
 
 export default function App() {
-  const [currentUser, setCurrentUser] = useState<UserProfile | null>(null);
+  const [session, setSession] = useState<any>(null);
+  const [profile, setProfile] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
   const [requireOnboarding, setRequireOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(false);
-
-  // States loaded from local persistence
   const [essayCorrections, setEssayCorrections] = useState<EssayCorrection[]>([]);
   const [simuladosHistory, setSimuladosHistory] = useState<{ scorePercent: number; date: string; subject: string }[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
-  // 1. Check active sessions and load previous entries on boot
   useEffect(() => {
-    // One-time automatic deletion of the test account as explicitly requested
-    const cleared = localStorage.getItem('notamil_registered_clear_v2');
-    if (!cleared) {
-      localStorage.removeItem('notamil_current_user');
-      localStorage.setItem('notamil_registered_clear_v2', 'true');
-      
-      const usersRaw = localStorage.getItem('notamil_users');
-      if (usersRaw) {
-        try {
-          const users: UserProfile[] = JSON.parse(usersRaw);
-          const filtered = users.filter((u) => u.email.toLowerCase() !== 'fernandoanderson.sousa@gmail.com');
-          localStorage.setItem('notamil_users', JSON.stringify(filtered));
-        } catch (e) {}
+    supabase.auth.getSession().then(({ data: { session: s } }) => {
+      if (s) setSession(s);
+      setLoading(false);
+    });
+
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+      if (s && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
+        setSession(s);
+      } else if (event === 'SIGNED_OUT') {
+        setSession(null);
       }
-    }
+    });
 
-    const sessionUser = localStorage.getItem('notamil_current_user');
-    if (sessionUser) {
-      const user: UserProfile = JSON.parse(sessionUser);
-      setCurrentUser(user);
-      
-      // Onboarding checker
-      setRequireOnboarding(!user.serie);
-      loadUserData(user.email, !user.serie);
-    }
-
-    // Load persisted theme or fallback to preference
-    const savedTheme = localStorage.getItem('notamil_dark_theme');
-    if (savedTheme !== null) {
-      setIsDarkMode(savedTheme === 'true');
-    } else {
-      const systemPrefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      setIsDarkMode(systemPrefersDark);
-    }
+    return () => subscription.unsubscribe();
   }, []);
 
-  // 2. Class CSS binding when Theme toggles
+  useEffect(() => {
+    if (!session?.user) {
+      setProfile(null);
+      setRequireOnboarding(false);
+      setEssayCorrections([]);
+      setSimuladosHistory([]);
+      setActivityLogs([]);
+      return;
+    }
+
+    (async () => {
+      const p = await getProfile(session.user.id);
+      setProfile(p);
+      setRequireOnboarding(!p?.serie);
+
+      const [essays, sims, logs] = await Promise.all([
+        fetchEssays(session.user.id),
+        fetchSimulados(session.user.id),
+        fetchLogs(session.user.id),
+      ]);
+
+      setEssayCorrections(essays.length > 0 ? essays : DEFAULT_CORRECTIONS_SEED);
+      setSimuladosHistory(sims);
+      setActivityLogs(logs);
+    })();
+  }, [session?.user?.id]);
+
   useEffect(() => {
     if (isDarkMode) {
       document.documentElement.classList.add('dark');
     } else {
       document.documentElement.classList.remove('dark');
     }
-    localStorage.setItem('notamil_dark_theme', String(isDarkMode));
+    localStorage.setItem('ApexEnem_dark_theme', String(isDarkMode));
   }, [isDarkMode]);
 
-  const loadUserData = (email: string, isBrandNew: boolean = false) => {
-    const keyPrefix = email.toLowerCase().replace(/[@.]/g, '_');
-    
-    // Load Essay corrections or seed Default
-    const localCorrections = localStorage.getItem(`notamil_corr_${keyPrefix}`);
-    if (localCorrections) {
-      setEssayCorrections(JSON.parse(localCorrections));
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('ApexEnem_dark_theme');
+    if (savedTheme !== null) {
+      setIsDarkMode(savedTheme === 'true');
     } else {
-      const initialCorr = isBrandNew ? [] : DEFAULT_CORRECTIONS_SEED;
-      setEssayCorrections(initialCorr);
-      localStorage.setItem(`notamil_corr_${keyPrefix}`, JSON.stringify(initialCorr));
+      setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
     }
+  }, []);
 
-    // Load Simulados
-    const localSimHistory = localStorage.getItem(`notamil_sim_${keyPrefix}`);
-    if (localSimHistory) {
-      setSimuladosHistory(JSON.parse(localSimHistory));
-    } else {
-      const initialSims = isBrandNew ? [] : [
-        { scorePercent: 80, date: '14/05/2026', subject: 'Matemática' },
-        { scorePercent: 60, date: '08/05/2026', subject: 'Humanas' }
-      ];
-      setSimuladosHistory(initialSims);
-      localStorage.setItem(`notamil_sim_${keyPrefix}`, JSON.stringify(initialSims));
-    }
-
-    // Load Logs
-    const localLogs = localStorage.getItem(`notamil_logs_${keyPrefix}`);
-    if (localLogs) {
-      setActivityLogs(JSON.parse(localLogs));
-    } else {
-      const initialLogs = isBrandNew ? [] : [
-        { id: 'start-0', type: 'streak', title: 'Estudos Iniciados', description: 'Deu os passos iniciais rumo ao mil!', timeAgo: 'Há 3 dias', date: 'Hoje' },
-        { id: 'start-1', type: 'redacao', title: 'Redação avaliada', description: 'A redação "Doenças Mentais" foi revisada com nota 840.', timeAgo: 'Há 5 dias', date: 'Hoje' }
-      ];
-      setActivityLogs(initialLogs);
-      localStorage.setItem(`notamil_logs_${keyPrefix}`, JSON.stringify(initialLogs));
-    }
+  const handleAuthSuccess = async () => {
+    const { data: { session: s } } = await supabase.auth.getSession();
+    if (s) setSession(s);
   };
 
-  const handleAuthSuccess = (user: UserProfile, requireOnb: boolean) => {
-    setCurrentUser(user);
-    setRequireOnboarding(requireOnb);
-    loadUserData(user.email, requireOnb);
-    setActiveTab('dashboard');
-  };
-
-  const handleOnboardingCompleted = (updatedUser: UserProfile) => {
-    setCurrentUser(updatedUser);
+  const handleOnboardingCompleted = async (data: { serie: string; targetScore: number; hardSubjects: string[] }) => {
+    if (!session?.user) return;
+    const updated = await upsertProfile({
+      id: session.user.id,
+      serie: data.serie,
+      target_score: data.targetScore,
+      hard_subjects: data.hardSubjects,
+    });
+    setProfile(updated || { serie: data.serie, target_score: data.targetScore, hard_subjects: data.hardSubjects });
     setRequireOnboarding(false);
-    
-    // Log onboarding activity event
+
     const newLog: ActivityLog = {
       id: `act-${Date.now()}`,
       type: 'onboarding',
       title: 'Plano Adaptativo Personalizado',
-      description: `Série mapeada: ${updatedUser.serie}. Meta estabelecida: ${updatedUser.targetScore} pontos.`,
+      description: `Série mapeada: ${data.serie}. Meta estabelecida: ${data.targetScore} pontos.`,
       timeAgo: 'Agora mesmo',
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     };
 
-    const keyPrefix = updatedUser.email.toLowerCase().replace(/[@.]/g, '_');
-    const updatedLogs = [newLog, ...activityLogs];
-    setActivityLogs(updatedLogs);
-    localStorage.setItem(`notamil_logs_${keyPrefix}`, JSON.stringify(updatedLogs));
+    await saveLog({ ...newLog, user_id: session.user.id });
+    setActivityLogs(prev => [newLog, ...prev]);
   };
 
-  const handleAddCorrection = (newCorr: EssayCorrection, log: ActivityLog) => {
-    if (!currentUser) return;
+  const handleAddCorrection = async (newCorr: EssayCorrection, log: ActivityLog) => {
+    if (!session?.user) return;
+    await saveEssay({ ...newCorr, user_id: session.user.id });
+    await saveLog({ ...log, user_id: session.user.id });
 
-    const keyPrefix = currentUser.email.toLowerCase().replace(/[@.]/g, '_');
-    const updatedCorr = [newCorr, ...essayCorrections];
-    setEssayCorrections(updatedCorr);
-    localStorage.setItem(`notamil_corr_${keyPrefix}`, JSON.stringify(updatedCorr));
-
-    const updatedLogs = [log, ...activityLogs];
-    setActivityLogs(updatedLogs);
-    localStorage.setItem(`notamil_logs_${keyPrefix}`, JSON.stringify(updatedLogs));
+    setEssayCorrections(prev => [newCorr, ...prev]);
+    setActivityLogs(prev => [log, ...prev]);
   };
 
-  const handleSaveSimuladoResult = (scorePercent: number, subject: string) => {
-    if (!currentUser) return;
+  const handleSaveSimuladoResult = async (scorePercent: number, subject: string) => {
+    if (!session?.user) return;
 
-    const keyPrefix = currentUser.email.toLowerCase().replace(/[@.]/g, '_');
-    
-    // Save history
     const newSim = { scorePercent, date: new Date().toLocaleDateString('pt-BR'), subject };
-    const updatedHistory = [newSim, ...simuladosHistory];
-    setSimuladosHistory(updatedHistory);
-    localStorage.setItem(`notamil_sim_${keyPrefix}`, JSON.stringify(updatedHistory));
+    await saveSimulado({ ...newSim, user_id: session.user.id });
 
-    // Save log
     const log: ActivityLog = {
       id: `act-${Date.now()}`,
       type: 'simulado',
       title: 'Simulado Finalizado',
       description: `Matéria: ${subject}. Acerto: ${scorePercent}%.`,
       timeAgo: 'Agora mesmo',
-      date: new Date().toISOString()
+      date: new Date().toISOString(),
     };
+    await saveLog({ ...log, user_id: session.user.id });
 
-    const updatedLogs = [log, ...activityLogs];
-    setActivityLogs(updatedLogs);
-    localStorage.setItem(`notamil_logs_${keyPrefix}`, JSON.stringify(updatedLogs));
+    setSimuladosHistory(prev => [newSim, ...prev]);
+    setActivityLogs(prev => [log, ...prev]);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem('notamil_current_user');
-    setCurrentUser(null);
-    setRequireOnboarding(false);
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
+
+  const handleUpdateProfile = async (updated: any) => {
+    if (!session?.user) return;
+    await upsertProfile({ id: session.user.id, ...updated });
+    setProfile((prev: any) => ({ ...prev, ...updated }));
+  };
+
+  const handleClearLocalData = async () => {
+    if (!session?.user) return;
+    await supabase.from('essay_corrections').delete().eq('user_id', session.user.id);
+    await supabase.from('simulado_history').delete().eq('user_id', session.user.id);
+    await supabase.from('activity_logs').delete().eq('user_id', session.user.id);
+
     setEssayCorrections([]);
     setSimuladosHistory([]);
     setActivityLogs([]);
-  };
-
-  const handleClearLocalData = () => {
-    if (!currentUser) return;
-    const keyPrefix = currentUser.email.toLowerCase().replace(/[@.]/g, '_');
-    
-    // Clean keys
-    localStorage.removeItem(`notamil_corr_${keyPrefix}`);
-    localStorage.removeItem(`notamil_sim_${keyPrefix}`);
-    localStorage.removeItem(`notamil_logs_${keyPrefix}`);
-    
-    // reset onboarding in current user
-    const resetUser: UserProfile = {
-      name: currentUser.name,
-      email: currentUser.email,
-      streak: 1,
-      lastLoginDate: new Date().toISOString().split('T')[0]
-    };
-
-    localStorage.setItem('notamil_current_user', JSON.stringify(resetUser));
-    setCurrentUser(resetUser);
     setRequireOnboarding(true);
-    setEssayCorrections([]);
-    setSimuladosHistory([]);
-    setActivityLogs([]);
+
+    const p = await getProfile(session.user.id);
+    setProfile(p);
   };
 
-  const handleDeleteAccount = () => {
-    if (!currentUser) return;
-    const emailToDelete = currentUser.email.toLowerCase();
-    const keyPrefix = emailToDelete.replace(/[@.]/g, '_');
+  const handleDeleteAccount = async () => {
+    if (!session?.user || !confirm('Tem certeza? Esta ação é irreversível.')) return;
 
-    // 1. Clear database lists for this user
-    localStorage.removeItem(`notamil_corr_${keyPrefix}`);
-    localStorage.removeItem(`notamil_sim_${keyPrefix}`);
-    localStorage.removeItem(`notamil_logs_${keyPrefix}`);
-
-    // 2. Remove profile from users index
-    const usersRaw = localStorage.getItem('notamil_users');
-    if (usersRaw) {
-      try {
-        const users: UserProfile[] = JSON.parse(usersRaw);
-        const filteredUsers = users.filter((u) => u.email.toLowerCase() !== emailToDelete);
-        localStorage.setItem('notamil_users', JSON.stringify(filteredUsers));
-      } catch (err) {
-        console.error("Error updating user list on deletion:", err);
-      }
-    }
-
-    // 3. Destroy active session
-    localStorage.removeItem('notamil_current_user');
-
-    // 4. Reset component states
-    setCurrentUser(null);
-    setRequireOnboarding(false);
-    setEssayCorrections([]);
-    setSimuladosHistory([]);
-    setActivityLogs([]);
+    await supabase.from('essay_corrections').delete().eq('user_id', session.user.id);
+    await supabase.from('simulado_history').delete().eq('user_id', session.user.id);
+    await supabase.from('activity_logs').delete().eq('user_id', session.user.id);
+    await supabase.from('profiles').delete().eq('id', session.user.id);
+    await supabase.auth.admin.deleteUser(session.user.id);
+    await supabase.auth.signOut();
   };
 
-  const handleUpdateProfile = (updatedUser: UserProfile) => {
-    // Save live session
-    localStorage.setItem('notamil_current_user', JSON.stringify(updatedUser));
-    setCurrentUser(updatedUser);
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-[#fcf8ff] dark:bg-[#0a0814]">
+        <div className="text-center space-y-3">
+          <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto" />
+          <p className="text-sm text-slate-500">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
-    // Save in user database index
-    const usersRaw = localStorage.getItem('notamil_users');
-    if (usersRaw) {
-      try {
-        const users: UserProfile[] = JSON.parse(usersRaw);
-        const updatedUsers = users.map((u) => 
-          u.email.toLowerCase() === updatedUser.email.toLowerCase() ? updatedUser : u
-        );
-        localStorage.setItem('notamil_users', JSON.stringify(updatedUsers));
-      } catch (err) {
-        console.error("Error updating user list:", err);
-      }
-    }
-  };
-
-  // Rendering Gateways
-  if (currentUser === null) {
+  if (!session?.user) {
     return <AuthView onSuccess={handleAuthSuccess} />;
   }
 
   if (requireOnboarding) {
-    return <OnboardingView currentUser={currentUser} onCompleted={handleOnboardingCompleted} />;
+    const userProfile = {
+      name: profile?.name || 'Estudante',
+      email: session.user.email || '',
+      region: profile?.region,
+      state: profile?.state,
+      city: profile?.city,
+      confirmed: true,
+      streak: profile?.streak || 1,
+      lastLoginDate: new Date().toISOString().split('T')[0],
+    };
+    return <OnboardingView currentUser={userProfile as any} onCompleted={handleOnboardingCompleted} />;
   }
 
+  const currentUser = {
+    name: profile?.name || 'Estudante',
+    email: session.user.email || '',
+    region: profile?.region,
+    state: profile?.state,
+    city: profile?.city,
+    avatar: profile?.avatar,
+    serie: profile?.serie,
+    targetScore: profile?.target_score,
+    hardSubjects: profile?.hard_subjects,
+    streak: profile?.streak || 1,
+    lastLoginDate: profile?.last_login_date,
+    confirmed: true,
+  };
+
   return (
-    <div id="app-workspace" className="min-h-screen bg-slate-50 dark:bg-[#0f172a] text-[#1b1b24] dark:text-[#f3effc] flex flex-col lg:flex-row transition-colors duration-300">
-      
-      {/* Dynamic Navigation Sidebar */}
-      <Sidebar 
-        currentUser={currentUser} 
-        activeTab={activeTab} 
-        setActiveTab={setActiveTab} 
+    <div id="app-workspace" className="min-h-screen bg-slate-50 dark:bg-[#0f172a] text-[#1b1b24] dark:text-[#f3effc] flex flex-col lg:flex-row transition-colors duration-300 pb-16 lg:pb-0">
+      <Sidebar
+        currentUser={currentUser as any}
+        activeTab={activeTab}
+        setActiveTab={setActiveTab}
         onLogout={handleLogout}
         isDarkMode={isDarkMode}
         toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
       />
-
-      {/* Main Panel Content Feed */}
       <main id="view-pane" className="flex-grow p-6 md:p-10 lg:p-12 max-w-7xl mx-auto w-full overflow-y-auto">
         {activeTab === 'dashboard' && (
-          <DashboardView 
-            currentUser={currentUser} 
+          <DashboardView
+            currentUser={currentUser as any}
             setActiveTab={setActiveTab}
             essayCorrections={essayCorrections}
             simuladosHistory={simuladosHistory}
             activityLogs={activityLogs}
           />
         )}
-
         {activeTab === 'redacao' && (
-          <RedacaoView 
+          <RedacaoView
             onAddCorrection={handleAddCorrection}
             essayCorrections={essayCorrections}
           />
         )}
-
         {activeTab === 'perguntas' && (
           <PerguntasView />
         )}
-
         {activeTab === 'simulados' && (
-          <SimuladosView 
+          <SimuladosView
             onSaveSimuladoResult={handleSaveSimuladoResult}
           />
         )}
-
         {activeTab === 'aprendizado' && (
           <AprendizadoView />
         )}
-
         {activeTab === 'configuracoes' && (
-          <ConfiguracoesView 
-            currentUser={currentUser}
+          <ConfiguracoesView
+            currentUser={currentUser as any}
             isDarkMode={isDarkMode}
             toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
             onLogout={handleLogout}
@@ -384,7 +308,6 @@ export default function App() {
           />
         )}
       </main>
-
     </div>
   );
 }

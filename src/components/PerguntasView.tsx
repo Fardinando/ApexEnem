@@ -36,7 +36,7 @@ export default function PerguntasView() {
       });
 
       if (!res.ok) {
-        throw new Error('Falha de resposta no servidor NotaMil para as perguntas.');
+        throw new Error('Falha de resposta no servidor ApexEnem para as perguntas.');
       }
 
       const data = await res.json();

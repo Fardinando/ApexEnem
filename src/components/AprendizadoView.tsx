@@ -129,7 +129,7 @@ const EXERCISES_RED_TESE: Exercise[] = [
     id: 'red-tese-ex2',
     type: 'choice',
     instructions: 'Escolha a alternativa correta sobre o posicionamento da Tese.',
-    statement: 'Em um projeto de texto estratégico voltado para a nota mil, a tese de uma redação do ENEM deve aparecer idealmente em qual trecho da escrita?',
+    statement: 'Em um projeto de texto estratégico voltado para a Apex Enem, a tese de uma redação do ENEM deve aparecer idealmente em qual trecho da escrita?',
     options: [
       { letter: 'A', text: 'No primeiro parágrafo, servindo de encerramento da Introdução.' },
       { letter: 'B', text: 'No início do desenvolvimento 1, guiando o corretor.' },
@@ -345,7 +345,7 @@ export default function AprendizadoView() {
   // Load progress initially and check OpenRouter
   useEffect(() => {
     // Look up local user
-    const sessionUser = localStorage.getItem('notamil_current_user');
+    const sessionUser = localStorage.getItem('ApexEnem_current_user');
     if (sessionUser) {
       const user = JSON.parse(sessionUser);
       setStreak(user.streak || 1);
@@ -353,12 +353,12 @@ export default function AprendizadoView() {
       const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
       
       // Load saved learning levels
-      const savedChapters = localStorage.getItem(`notamil_learn_chapters_${keyPrefix}`);
+      const savedChapters = localStorage.getItem(`ApexEnem_learn_chapters_${keyPrefix}`);
       if (savedChapters) {
         setChapters(JSON.parse(savedChapters));
       }
       
-      const savedXP = localStorage.getItem(`notamil_learn_xp_${keyPrefix}`);
+      const savedXP = localStorage.getItem(`ApexEnem_learn_xp_${keyPrefix}`);
       if (savedXP) {
         setXpPoints(parseInt(savedXP, 10));
       }
@@ -388,7 +388,7 @@ export default function AprendizadoView() {
 
   const loadProgressFromSupabase = async () => {
     try {
-      const sessionUser = localStorage.getItem('notamil_current_user');
+      const sessionUser = localStorage.getItem('ApexEnem_current_user');
       if (!sessionUser) return;
       const user = JSON.parse(sessionUser);
       
@@ -399,7 +399,7 @@ export default function AprendizadoView() {
           if (data.progress.chapters) {
             setChapters(data.progress.chapters);
             const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
-            localStorage.setItem(`notamil_learn_chapters_${keyPrefix}`, JSON.stringify(data.progress.chapters));
+            localStorage.setItem(`ApexEnem_learn_chapters_${keyPrefix}`, JSON.stringify(data.progress.chapters));
           }
           if (data.progress.xpPoints) {
             setXpPoints(data.progress.xpPoints);
@@ -413,13 +413,13 @@ export default function AprendizadoView() {
 
   const syncProgressToCloud = async (updatedChapters: LearningChapter[], newXP: number) => {
     try {
-      const sessionUser = localStorage.getItem('notamil_current_user');
+      const sessionUser = localStorage.getItem('ApexEnem_current_user');
       if (!sessionUser) return;
       const user = JSON.parse(sessionUser);
       
       const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
-      localStorage.setItem(`notamil_learn_chapters_${keyPrefix}`, JSON.stringify(updatedChapters));
-      localStorage.setItem(`notamil_learn_xp_${keyPrefix}`, newXP.toString());
+      localStorage.setItem(`ApexEnem_learn_chapters_${keyPrefix}`, JSON.stringify(updatedChapters));
+      localStorage.setItem(`ApexEnem_learn_xp_${keyPrefix}`, newXP.toString());
       
       if (supabaseConfigured) {
         await fetch('/api/supabase/save-progress', {
@@ -659,7 +659,7 @@ export default function AprendizadoView() {
     return [
       "Concentração total! Leia atentamente os enunciados educacionais.",
       "O tempo passa devagar se você exercita sua inteligência!",
-      "A Redação Nota Mil exige vocabulário e argumentação precisa.",
+      "A Redação Apex Enem exige vocabulário e argumentação precisa.",
       "Duolingo do ENEM! Pratique 5 minutos por dia para asas robustas!"
     ][currentExerciseIdx % 4];
   };

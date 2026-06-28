@@ -5,11 +5,11 @@
 
 import React, { useState } from 'react';
 import { BookOpen, Target, Sparkles, CheckCircle2, ChevronRight, ChevronLeft, Award } from 'lucide-react';
-import { UserProfile, StudySerie } from '../types';
+import type { StudySerie } from '../types';
 
 interface OnboardingViewProps {
-  currentUser: UserProfile;
-  onCompleted: (updatedUser: UserProfile) => void;
+  currentUser: { name: string; email: string };
+  onCompleted: (data: { serie: string; targetScore: number; hardSubjects: string[] }) => void;
 }
 
 export default function OnboardingView({ currentUser, onCompleted }: OnboardingViewProps) {
@@ -48,7 +48,7 @@ export default function OnboardingView({ currentUser, onCompleted }: OnboardingV
     if (score < 650) return { label: 'Ampla Oportunidade', color: 'text-indigo-600 dark:text-indigo-400', desc: 'Nota competitiva para Pedagogia, Letras, História nas federais.' };
     if (score < 750) return { label: 'Alto Rendimento', color: 'text-purple-600 dark:text-purple-400', desc: 'Muito competitivo! Ótimo para Direito, Engenharias e Administração.' };
     if (score < 850) return { label: 'Elite ENEM', color: 'text-violet-600 dark:text-violet-400', desc: 'Padrão Federal excelente! Linha de corte para Medicina na maior parte das UFs.' };
-    return { label: 'Gênio Nota Mil', color: 'text-emerald-600 dark:text-emerald-400', desc: 'Raridade acadêmica absoluta! Acesso garantido a qualquer curso e vaga no Brasil.' };
+    return { label: 'Gênio Apex Enem', color: 'text-emerald-600 dark:text-emerald-400', desc: 'Raridade acadêmica absoluta! Acesso garantido a qualquer curso e vaga no Brasil.' };
   };
 
   const handleNext = () => {
@@ -64,29 +64,11 @@ export default function OnboardingView({ currentUser, onCompleted }: OnboardingV
   };
 
   const handleFinish = () => {
-    const updatedUser: UserProfile = {
-      ...currentUser,
+    onCompleted({
       serie: serie || 'outro',
       targetScore,
       hardSubjects,
-      streak: 1, // Start streak on onboarding success
-      lastLoginDate: new Date().toISOString().split('T')[0]
-    };
-
-    // Update in users database
-    const usersRaw = localStorage.getItem('notamil_users');
-    const users: UserProfile[] = usersRaw ? JSON.parse(usersRaw) : [];
-    const index = users.findIndex((u) => u.email.toLowerCase() === currentUser.email.toLowerCase());
-    if (index !== -1) {
-      users[index] = updatedUser;
-    } else {
-      users.push(updatedUser);
-    }
-
-    localStorage.setItem('notamil_users', JSON.stringify(users));
-    localStorage.setItem('notamil_current_user', JSON.stringify(updatedUser));
-    
-    onCompleted(updatedUser);
+    });
   };
 
   const scoreCtx = getScoreContext(targetScore);
