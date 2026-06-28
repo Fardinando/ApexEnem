@@ -1,13 +1,10 @@
 import express from "express";
 import path from "path";
 import crypto from "crypto";
+import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 
-// Only load dotenv locally (Vercel injects env vars automatically)
-if (!process.env.VERCEL) {
-  const dotenv = await import("dotenv");
-  dotenv.default.config();
-}
+if (!process.env.VERCEL) dotenv.config();
 
 const app = express();
 const PORT = 3000;
