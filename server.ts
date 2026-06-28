@@ -562,6 +562,71 @@ Retorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de coru
   }
 });
 
+// Generate AI-powered learning exercises based on user weak areas
+app.post("/api/generate-learning-exercises", async (req, res) => {
+  const { chapterId, chapterTitle, chapterArea, weakAreas, count } = req.body;
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://apexenem.vercel.app",
+        "X-Title": "ApexEnem Learning"
+      },
+      body: JSON.stringify({
+        model: "meta-llama/llama-3.3-70b-instruct:free",
+        messages: [
+          {
+            role: "system",
+            content: `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 5} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
+            Os exercícios DEVEM ser variados entre os tipos: 'choice' (múltipla escolha com 5 opções A-E), 'true-false' (verdadeiro/falso), 'reorder' (ordenar blocos de palavras), 'matching' (associar colunas).
+            
+            IMPORTANTE: 
+            - O JSON deve ser um array de objetos, cada um com: id (string), type (um dos 4 tipos), instructions (string instrutiva), statement (enunciado), options (array de {letter, text} para choice), correctLetter (string para choice), correctBoolean (boolean para true-false), shuffledWords (string[] para reorder), correctSentenceWords (string[] para reorder), matchingPairs (array de {left, right} para matching), explanation (string educativa).
+            - Sempre retorne APENAS o JSON puro, sem markdown, sem explicações extras.
+            - Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque neles.
+            - Os exercícios devem ser de nível ENEM (ensino médio), com linguagem clara e adequada.
+            - Para matching, use 3 pares. Para reorder, use 4-6 palavras.`
+          },
+          {
+            role: "user",
+            content: `Gere ${count || 5} exercícios sobre "${chapterTitle}" para o ENEM, focando nos pontos fracos: ${weakAreas?.join(', ') || 'nenhum específico'}. Retorne apenas o JSON.`
+          }
+        ]
+      })
+    });
+
+    if (!response.ok) {
+      throw new Error(`OpenRouter respondeu com status ${response.status}`);
+    }
+
+    const data = await response.json();
+    const content = data.choices?.[0]?.message?.content || "[]";
+    
+    // Try to parse JSON from the response, cleaning markdown if present
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    let exercises;
+    try {
+      exercises = JSON.parse(cleaned);
+    } catch {
+      // If parsing fails, try to find JSON array in the string
+      const match = cleaned.match(/\[[\s\S]*\]/);
+      if (match) {
+        exercises = JSON.parse(match[0]);
+      } else {
+        throw new Error("Could not parse exercises JSON");
+      }
+    }
+    
+    return res.json({ exercises });
+  } catch (err: any) {
+    console.error("AI exercise generation error:", err);
+    return res.json({ exercises: null, error: err.message });
+  }
+});
+
 // Supabase Save Progress Route
 app.post("/api/supabase/save-progress", async (req, res) => {
   const { email, progress } = req.body;

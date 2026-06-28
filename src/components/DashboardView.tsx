@@ -17,6 +17,7 @@ import {
   Clock
 } from 'lucide-react';
 import { UserProfile, EssayCorrection, ActivityLog } from '../types';
+import AdPlaceholder from './AdPlaceholder';
 
 interface DashboardViewProps {
   currentUser: UserProfile;
@@ -122,6 +123,8 @@ export default function DashboardView({
           </div>
         </div>
       </div>
+
+      <AdPlaceholder slot="dashboard-topo" format="banner" className="my-6" />
 
       {/* Grid Bento Box System layout */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5" id="bento-box-grid">
@@ -515,6 +518,10 @@ export default function DashboardView({
           </div>
         </div>
 
+        <div className="md:col-span-12">
+          <AdPlaceholder slot="dashboard-sidebar" format="rectangle" className="my-4" />
+        </div>
+
         {/* Bento Card 6: Shortcuts & Motivation - Column */}
         <div id="bento-shortcuts" className="md:col-span-6 bg-slate-900 text-white border-none p-6 rounded-3xl bento-card flex flex-col justify-between relative overflow-hidden">
           <div className="space-y-4 relative z-10">
@@ -576,6 +583,8 @@ export default function DashboardView({
         </div>
 
       </div>
+
+      <AdPlaceholder slot="dashboard-rodape" format="banner" className="mt-6" />
 
     </div>
   );

@@ -1,5 +1,5 @@
 {
-  "buildCommand": "vite build",
+  "buildCommand": "vite build && esbuild server.ts --bundle --platform=node --format=esm --packages=external --outfile=dist/server.mjs",
   "outputDirectory": "dist",
   "devCommand": "tsx server.ts",
   "rewrites": [

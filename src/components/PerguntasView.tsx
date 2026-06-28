@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen } from 'lucide-react';
 import { Question } from '../types';
+import AdPlaceholder from './AdPlaceholder';
 
 export default function PerguntasView() {
   const [selectedArea, setSelectedArea] = useState<'Matemática' | 'Humanas' | 'Natureza' | 'Linguagens'>('Matemática');
@@ -100,6 +101,8 @@ export default function PerguntasView() {
         </div>
       </div>
 
+      <AdPlaceholder slot="perguntas-topo" format="banner" className="my-4" />
+
       {/* Primary Action Button (CTA) */}
       <div className="flex justify-start">
         <button
@@ -117,6 +120,8 @@ export default function PerguntasView() {
           <span>{isLoading ? 'Conjurando Questões Sob Medida...' : 'Gerar Questões Mágicas com IA'}</span>
         </button>
       </div>
+
+      <AdPlaceholder slot="perguntas-meio" format="banner" className="my-4" />
 
       {/* RESULTS DISPLAY GRID AND CARDS */}
       <div className="grid grid-cols-1 gap-6 pt-2" id="questions-grid-container">
@@ -254,6 +259,8 @@ export default function PerguntasView() {
         })}
 
       </div>
+
+      <AdPlaceholder slot="perguntas-rodape" format="banner" className="mt-6" />
 
     </div>
   );

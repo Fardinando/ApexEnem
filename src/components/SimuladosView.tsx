@@ -20,6 +20,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { SimuladoConfig, SimuladoQuestion, SimuladoState } from '../types';
+import AdPlaceholder from './AdPlaceholder';
 
 interface SimuladosViewProps {
   onSaveSimuladoResult: (scorePercent: number, subject: string) => void;
@@ -207,6 +208,8 @@ export default function SimuladosView({ onSaveSimuladoResult }: SimuladosViewPro
           Teste sua agilidade mental resolvendo blocos cronometrados de questões oficiais anteriores com gestão ativa de tempo.
         </p>
       </div>
+
+      <AdPlaceholder slot="simulados-topo" format="banner" className="my-4" />
 
       {/* RENDER VIEW ACCORDING TO SIMULATED STAGE */}
       
@@ -618,6 +621,8 @@ export default function SimuladosView({ onSaveSimuladoResult }: SimuladosViewPro
           </div>
         </div>
       )}
+
+      <AdPlaceholder slot="simulados-rodape" format="banner" className="mt-6" />
 
     </div>
   );

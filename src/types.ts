@@ -102,3 +102,39 @@ export interface ActivityLog {
   timeAgo: string;
   date: string;
 }
+
+export interface LearningChapter {
+  id: string;
+  title: string;
+  area: 'Humanas' | 'Linguagens' | 'Redação' | 'Natureza' | 'Matemática';
+  description: string;
+  level: number;
+  maxLevel: number;
+  unlocked: boolean;
+  xpValue: number;
+}
+
+export type ExerciseType = 'choice' | 'true-false' | 'reorder' | 'matching';
+
+export interface Exercise {
+  id: string;
+  type: ExerciseType;
+  instructions: string;
+  statement: string;
+
+  // For 'choice'
+  options?: { letter: string; text: string }[];
+  correctLetter?: string;
+
+  // For 'true-false'
+  correctBoolean?: boolean;
+
+  // For 'reorder'
+  shuffledWords?: string[];
+  correctSentenceWords?: string[];
+
+  // For 'matching'
+  matchingPairs?: { left: string; right: string }[];
+
+  explanation: string;
+}

@@ -11,42 +11,7 @@ import SimuladosView from './components/SimuladosView';
 import ConfiguracoesView from './components/ConfiguracoesView';
 import AprendizadoView from './components/AprendizadoView';
 
-const DEFAULT_CORRECTIONS_SEED: EssayCorrection[] = [
-  {
-    id: 'seed-1',
-    title: 'O Estigma Associado às Doenças Mentais no Brasil',
-    text: 'Na obra Michel Foucault discute a "História da Loucura", mapeando como a sociedade excluiu aqueles em desacordo com a razão padrão. No Brasil contemporâneo, esse panorama persiste sob a forma de estigmas graves contra enfermidades mentais. Configura-se, pois, um cenário de omissão estatal e falta de conscientização coletiva que carece de intervenção célere...',
-    score: 840,
-    generalFeedback: 'Sua redação apresenta excelente estrutura formal e amplo repertório de base filosófica, incorporando Michel Foucault de modo produtivo. Porém, atente-se a vírgulas antes de conjunções adversativas e busque detalhar de forma mais profunda o agente público na proposta final.',
-    competencies: [
-      { id: 1, name: 'C1 - Domínio Escrito Formal', description: 'Demonstrar domínio da norma culta.', score: 160, feedback: 'Excelente vocabulário. Apenas dois desvios leves quanto à regência verbal na linha 14.' },
-      { id: 2, name: 'C2 - Compreensão e Repertório', description: 'Compreender o tema e aplicar conceitos variados.', score: 200, feedback: 'Gabaritou. Integrou perfeitamente a alusão foucaultiana com o problema concreto.' },
-      { id: 3, name: 'C3 - Seleção e Organização', description: 'Selecionar e relacionar argumentos estruturados.', score: 160, feedback: 'Projeto de texto muito evidente. Senti falta de maior aprofundamento do argumento de responsabilidade midiática.' },
-      { id: 4, name: 'C4 - Coesão e Conectivos', description: 'Demonstrar conhecimento dos mecanismos linguísticos de coesão.', score: 160, feedback: 'Emprego variado de conectivos argumentativos interparágrafos. Evite repetir "pois" de maneira consecutiva.' },
-      { id: 5, name: 'C5 - Proposta de Intervenção', description: 'Elaborar proposta respeitando direitos humanos.', score: 160, feedback: 'Apresenta objetivo (conscientização), meio (palestras escolares) e efeito. Detalhe melhor QUEM irá financiar.' }
-    ],
-    strengths: ['Alusão histórica e filosófica extremamente pertinente e bem posicionada.', 'Excelente divisão de parágrafos mantendo um projeto de texto linear constante.'],
-    weaknesses: ['Pequena repetição de operadores lógicos de conclusão (pois, portanto).', 'Breve negligência no detalhamento fino do órgão executor governamental.'],
-    date: '15/05/2026'
-  },
-  {
-    id: 'seed-2',
-    title: 'Caminhos Para Combater a Intolerância Religiosa',
-    text: 'A Constituição Federal de 1988 preconiza o livre exercício dos cultos religiosos de qualquer ordem. Entretanto, a persistência de atos agressivos de matriz africana revela que esse direito sagrado sofre constantes violações mercê de preconceitos históricos herdados do pelourinho...',
-    score: 720,
-    generalFeedback: 'Bom texto argumentativo apresentando sólida tese sobre a herança colonial nos cultos. No entanto, houve tangenciamento parcial nas justificativas lógicas do desenvolvimento e a proposta esquera-se incompleta.',
-    competencies: [
-      { id: 1, name: 'C1 - Domínio Escrito Formal', description: 'Demonstrar domínio da norma culta.', score: 120, feedback: 'Surgiram alguns desvios visíveis de concordância plural e pontuação inadequada.' },
-      { id: 2, name: 'C2 - Compreensão e Repertório', description: 'Compreender o tema e aplicar conceitos variados.', score: 160, feedback: 'Boa apropriação dos dados da Magna Carta de 88.' },
-      { id: 3, name: 'C3 - Seleção e Organização', description: 'Selecionar e relacionar argumentos estruturados.', score: 120, feedback: 'Tese clara, mas a argumentação secundária apoia-se excessivamente em dados implícitos.' },
-      { id: 4, name: 'C4 - Coesão e Conectivos', description: 'Demonstrar conhecimento dos mecanismos linguísticos de coesão.', score: 160, feedback: 'Boa articulação de coesão, sem ambiguidades comprometedoras.' },
-      { id: 5, name: 'C5 - Proposta de Intervenção', description: 'Elaborar proposta respeitando direitos humanos.', score: 165, feedback: 'O detalhamento é bom, mas o agente público do Ministério da Cultura ficou ambiguo.' }
-    ],
-    strengths: ['Boa incorporação jurídica e histórica remetendo ao Brasil Império.', 'Uso assertivo de pronomes demonstrativos mantendo o laço referencial.'],
-    weaknesses: ['Desvios gramaticais de concordância que tiram tração da competência formativa.', 'Faltou um elemento final detalhado justificando a relação causa-efeito na intervenção.'],
-    date: '02/05/2026'
-  }
-];
+
 
 export default function App() {
   const [session, setSession] = useState<any>(null);
@@ -97,7 +62,7 @@ export default function App() {
         fetchLogs(session.user.id),
       ]);
 
-      setEssayCorrections(essays.length > 0 ? essays : DEFAULT_CORRECTIONS_SEED);
+      setEssayCorrections(essays);
       setSimuladosHistory(sims);
       setActivityLogs(logs);
     })();
@@ -298,7 +263,11 @@ export default function App() {
           />
         )}
         {activeTab === 'aprendizado' && (
-          <AprendizadoView />
+          <AprendizadoView
+            essayCorrections={essayCorrections}
+            simuladosHistory={simuladosHistory}
+            currentUser={currentUser as any}
+          />
         )}
         {activeTab === 'configuracoes' && (
           <ConfiguracoesView

@@ -17,6 +17,7 @@ import {
   Target
 } from 'lucide-react';
 import { EssayCorrection, ActivityLog } from '../types';
+import AdPlaceholder from './AdPlaceholder';
 
 interface RedacaoViewProps {
   onAddCorrection: (correction: EssayCorrection, log: ActivityLog) => void;
@@ -212,6 +213,8 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
           </div>
         )}
       </div>
+
+      <AdPlaceholder slot="redacao-topo" format="banner" className="my-4" />
 
       {/* Main Split-View Container */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" id="split-view-columns">
@@ -546,6 +549,8 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
         </div>
 
       </div>
+
+      <AdPlaceholder slot="redacao-rodape" format="banner" className="mt-6" />
 
     </div>
   );
