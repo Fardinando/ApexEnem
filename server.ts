@@ -3,11 +3,30 @@ import path from "path";
 import crypto from "crypto";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
+import rateLimit from "express-rate-limit";
+
+declare global {
+  namespace Express {
+    interface Request {
+      user?: any;
+      userEmail?: string;
+    }
+  }
+}
 
 if (!process.env.VERCEL) dotenv.config();
 
 const app = express();
 const PORT = 3000;
+
+// Rate limiting: protect all /api/* routes
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 30,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas requisições. Tente novamente em 1 minuto." }
+});
 
 // Initialize Supabase Client safely (anon key - for public queries)
 let supabase: any = null;
@@ -33,8 +52,11 @@ if (process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY) {
   }
 }
 
-// HMAC secret for email confirmation tokens
-const HMAC_SECRET = process.env.HMAC_SECRET || process.env.OPENROUTER_API_KEY || "ApexEnem-dev-secret-key-change-in-prod";
+// HMAC secret for email confirmation tokens — must be set in production
+const HMAC_SECRET = process.env.HMAC_SECRET;
+if (!HMAC_SECRET) {
+  console.warn("WARNING: HMAC_SECRET not set — email confirmation tokens will NOT be signed. Set HMAC_SECRET in env.");
+}
 
 function getBaseUrl(): string {
   if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
@@ -53,16 +75,69 @@ function verifyToken(email: string, code: string, token: string): boolean {
 
 app.use(express.json({ limit: "15mb" }));
 
-// CORS headers for all origins
+// Apply rate limiting to all /api/* routes
+app.use("/api/", apiLimiter);
+
+// Security headers middleware
 app.use((req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
+  res.setHeader("X-Content-Type-Options", "nosniff");
+  res.setHeader("X-Frame-Options", "DENY");
+  res.setHeader("X-XSS-Protection", "1; mode=block");
+  res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline'; frame-src https://*.hcaptcha.com; connect-src 'self' https://*.supabase.co https://openrouter.ai https://enem.dev; img-src 'self' data:;");
+  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  next();
+});
+
+// Restricted CORS — only allow known frontend origins
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
+  ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
+  : ["http://localhost:5173", "http://localhost:3000"];
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    res.header("Access-Control-Allow-Origin", origin);
+  }
   res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
   res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
+  res.header("Access-Control-Allow-Credentials", "true");
   if (req.method === "OPTIONS") {
     return res.sendStatus(200);
   }
   next();
 });
+
+// Authentication middleware — verifies Supabase JWT from Authorization header
+const requireAuth = async (req: any, res: any, next: any) => {
+  const publicRoutes = [
+    "/api/confirm-email", "/api/send-confirmation", "/api/credentials-status",
+    "/api/supabase/keep-alive", "/api/supabase/setup"
+  ];
+  if (publicRoutes.includes(req.path)) return next();
+
+  const authHeader = req.headers.authorization;
+  if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    return res.status(401).json({ error: "Autenticação necessária. Envie um token Bearer." });
+  }
+  const token = authHeader.replace("Bearer ", "");
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: "Serviço de autenticação indisponível." });
+  }
+  try {
+    const { data: { user }, error } = await supabaseAdmin.auth.getUser(token);
+    if (error || !user) {
+      return res.status(401).json({ error: "Token inválido ou expirado." });
+    }
+    req.user = user;
+    req.userEmail = user.email?.toLowerCase() || "";
+    next();
+  } catch {
+    return res.status(401).json({ error: "Erro ao verificar token." });
+  }
+};
+
+app.use("/api/", requireAuth);
 
 // Helper to extract JSON from string safely
 function extractJsonFromText(rawText: string): any {
@@ -437,7 +512,7 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
     return res.json(responsePayload);
   } catch (error: any) {
     console.error("OpenRouter correction pipeline failure:", error);
-    res.status(500).json({ error: "Erro crítico na chamada das IAs de correção paralelo do OpenRouter: " + error.message });
+    res.status(500).json({ error: "Erro crítico na correção paralela das IAs. Tente novamente." });
   }
 });
 
@@ -622,47 +697,53 @@ app.post("/api/generate-learning-exercises", async (req, res) => {
     
     return res.json({ exercises });
   } catch (err: any) {
-    console.error("AI exercise generation error:", err);
-    return res.json({ exercises: null, error: err.message });
+    console.error("AI exercise generation error:", err.message);
+    return res.json({ exercises: null });
   }
 });
 
 // Supabase Save Progress Route
 app.post("/api/supabase/save-progress", async (req, res) => {
-  const { email, progress } = req.body;
+  const { progress } = req.body;
+  const email = req.userEmail;
   if (!email || !progress) {
-    return res.status(400).json({ error: "E-mail e progresso são necessários." });
+    return res.status(400).json({ error: "Progresso é necessário." });
   }
 
   if (!supabase) {
     return res.json({ success: false, message: "Supabase não está inicializado." });
   }
 
+  const safeProgress = {
+    chapters: progress?.chapters || [],
+    xpPoints: typeof progress?.xpPoints === "number" ? progress.xpPoints : 0
+  };
+
   try {
     const { data, error } = await supabase
       .from("ApexEnem_progress")
       .upsert(
-        { email: email.toLowerCase(), progress, updated_at: new Date().toISOString() },
+        { email, progress: safeProgress, updated_at: new Date().toISOString() },
         { onConflict: "email" }
       );
 
     if (error) {
-      console.warn("Supabase upsert warning (the table of progress might not exist yet):", error.message);
-      return res.json({ success: false, error: error.message });
+      console.warn("Supabase upsert warning:", error.message);
+      return res.json({ success: false, message: "Erro ao salvar progresso." });
     }
 
     return res.json({ success: true, data });
   } catch (err: any) {
-    console.error("Supabase sync error:", err);
-    return res.json({ success: false, error: err.message });
+    console.error("Supabase sync error:", err.message);
+    return res.json({ success: false, message: "Erro interno ao salvar progresso." });
   }
 });
 
 // Supabase Get Progress Route
 app.get("/api/supabase/get-progress", async (req, res) => {
-  const email = req.query.email as string;
+  const email = req.userEmail;
   if (!email) {
-    return res.status(400).json({ error: "E-mail de estudante é obrigatório." });
+    return res.status(400).json({ error: "Usuário não autenticado." });
   }
 
   if (!supabase) {
@@ -677,14 +758,14 @@ app.get("/api/supabase/get-progress", async (req, res) => {
       .maybeSingle();
 
     if (error) {
-      console.warn("Supabase progress missing/fetch error:", error.message);
-      return res.json({ success: false, error: error.message });
+      console.warn("Supabase progress fetch error:", error.message);
+      return res.json({ success: false, message: "Erro ao buscar progresso." });
     }
 
     return res.json({ success: true, progress: data?.progress || null });
   } catch (err: any) {
-    console.error("Supabase progress loading failed:", err);
-    return res.json({ success: false, error: err.message });
+    console.error("Supabase progress loading failed:", err.message);
+    return res.json({ success: false, message: "Erro interno ao carregar progresso." });
   }
 });
 
@@ -708,11 +789,11 @@ CREATE INDEX IF NOT EXISTS idx_ApexEnem_progress_email ON public.ApexEnem_progre
 ALTER TABLE public.ApexEnem_progress ENABLE ROW LEVEL SECURITY;
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'ApexEnem_progress') THEN
-    CREATE POLICY "Acesso total anonimo"
+    CREATE POLICY "Usuarios podem gerenciar seu proprio progresso"
       ON public.ApexEnem_progress
       FOR ALL
-      USING (true)
-      WITH CHECK (true);
+      USING (auth.jwt() ->> 'email' = email)
+      WITH CHECK (auth.jwt() ->> 'email' = email);
   END IF;
 END $$;`;
       
@@ -726,21 +807,19 @@ END $$;`;
         );
 
       if (testResult.error) {
+        console.warn("Supabase setup test failed:", testResult.error.message);
         return res.status(500).json({ 
-          error: "Tabela não existe. Execute o SQL manualmente no Supabase Dashboard > SQL Editor:",
-          sql,
-          detail: testResult.error.message
+          error: "Erro ao configurar Supabase. Execute o SQL manualmente no Dashboard."
         });
       }
 
-      // Cleanup test row
       await supabaseAdmin.from("ApexEnem_progress").delete().eq("email", "__setup_test__");
     }
 
     return res.json({ success: true, message: "Supabase configurado com sucesso!" });
   } catch (err: any) {
-    console.error("Supabase setup error:", err);
-    return res.status(500).json({ error: err.message });
+    console.error("Supabase setup error:", err.message);
+    return res.status(500).json({ error: "Erro interno ao configurar Supabase." });
   }
 });
 
@@ -751,23 +830,23 @@ app.get("/api/supabase/keep-alive", async (req, res) => {
   }
 
   try {
-    // Simple query to keep the database active
     const { data, error } = await supabase
       .from("ApexEnem_progress")
       .select("email")
       .limit(1);
 
     if (error) {
-      return res.json({ status: "error", message: error.message });
+      console.warn("Supabase keep-alive error:", error.message);
+      return res.json({ status: "error" });
     }
 
     return res.json({ 
       status: "ok", 
-      timestamp: new Date().toISOString(),
-      message: "Database pinged successfully - keep alive"
+      timestamp: new Date().toISOString()
     });
   } catch (err: any) {
-    return res.json({ status: "error", message: err.message });
+    console.error("Supabase keep-alive error:", err.message);
+    return res.json({ status: "error" });
   }
 });
 
@@ -814,8 +893,12 @@ app.post("/api/send-confirmation", async (req, res) => {
   }
 
   console.log(`[SIMULATED] Confirmation code for ${email}: ${code}`);
-  res.json({ sent: true, simulated: true, code, token });
+  res.json({ sent: true, simulated: true, token });
 });
+
+function escapeHtml(str: string): string {
+  return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+}
 
 // Email Confirmation — verify code (returns HTML for direct link clicks, JSON for API)
 app.get("/api/confirm-email", (req, res) => {
@@ -830,6 +913,7 @@ app.get("/api/confirm-email", (req, res) => {
   if (token && typeof token === "string" && typeof email === "string" && typeof code === "string") {
     const valid = verifyToken(email, code, token);
     if (valid && isHtml) {
+      const safeEmail = escapeHtml(email);
       return res.type("html").send(`
         <!DOCTYPE html>
         <html lang="pt-BR">
@@ -841,12 +925,12 @@ app.get("/api/confirm-email", (req, res) => {
         .btn{display:inline-block;padding:12px 28px;background:#2563eb;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px}
         </style></head>
         <body><div class="card"><div class="check">✓</div>
-        <h1>E-mail Confirmado!</h1><p>Seu e-mail <strong>${email}</strong> foi verificado com sucesso. Sua conta ApexEnem já está ativa.</p>
+        <h1>E-mail Confirmado!</h1><p>Seu e-mail <strong>${safeEmail}</strong> foi verificado com sucesso. Sua conta ApexEnem já está ativa.</p>
         <a class="btn" href="${getBaseUrl()}">Ir para o ApexEnem</a></div></body></html>
       `);
     }
     if (valid) {
-      return res.json({ confirmed: true, message: `Email ${email} confirmed successfully.` });
+      return res.json({ confirmed: true });
     }
     if (isHtml) {
       return res.type("html").send(`

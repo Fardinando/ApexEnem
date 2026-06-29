@@ -20,6 +20,7 @@ interface AprendizadoViewProps {
   essayCorrections?: EssayCorrection[];
   simuladosHistory?: { scorePercent: number; date: string; subject: string }[];
   currentUser?: UserProfile;
+  accessToken?: string;
 }
 
 function getWeakAreas(essays?: EssayCorrection[], simHistory?: { scorePercent: number; subject: string }[], hardSubjects?: string[]): string[] {
@@ -39,7 +40,7 @@ function getWeakAreas(essays?: EssayCorrection[], simHistory?: { scorePercent: n
   return weak;
 }
 
-export default function AprendizadoView({ essayCorrections, simuladosHistory, currentUser }: AprendizadoViewProps) {
+export default function AprendizadoView({ essayCorrections, simuladosHistory, currentUser, accessToken }: AprendizadoViewProps) {
   const [chapters, setChapters] = useState<LearningChapter[]>(INITIAL_CHAPTERS);
   const [activeChapter, setActiveChapter] = useState<LearningChapter | null>(null);
 
@@ -79,23 +80,28 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
   );
 
   useEffect(() => {
-    const sessionUser = localStorage.getItem('ApexEnem_current_user');
-    if (sessionUser) {
-      const user = JSON.parse(sessionUser);
-      setStreak(user.streak || 1);
+    try {
+      const sessionUser = localStorage.getItem('ApexEnem_current_user');
+      if (sessionUser) {
+        const user = JSON.parse(sessionUser);
+        setStreak(user.streak || 1);
 
-      const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
+        const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
 
-      const savedChapters = localStorage.getItem(`ApexEnem_learn_chapters_${keyPrefix}`);
-      if (savedChapters) {
-        setChapters(JSON.parse(savedChapters));
+        const savedChapters = localStorage.getItem(`ApexEnem_learn_chapters_${keyPrefix}`);
+        if (savedChapters) {
+          try {
+            setChapters(JSON.parse(savedChapters));
+          } catch { /* corrupted data */ }
+        }
+
+        const savedXP = localStorage.getItem(`ApexEnem_learn_xp_${keyPrefix}`);
+        if (savedXP) {
+          const xp = parseInt(savedXP, 10);
+          if (!isNaN(xp)) setXpPoints(xp);
+        }
       }
-
-      const savedXP = localStorage.getItem(`ApexEnem_learn_xp_${keyPrefix}`);
-      if (savedXP) {
-        setXpPoints(parseInt(savedXP, 10));
-      }
-    }
+    } catch { /* localStorage corrupted */ }
 
     checkCredentials();
   }, []);
@@ -117,20 +123,31 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
     }
   };
 
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+    return headers;
+  };
+
   const loadProgressFromSupabase = async () => {
     try {
-      const sessionUser = localStorage.getItem('ApexEnem_current_user');
-      if (!sessionUser) return;
-      const user = JSON.parse(sessionUser);
-
-      const res = await fetch(`/api/supabase/get-progress?email=${encodeURIComponent(user.email)}`);
+      if (!accessToken) return;
+      const res = await fetch(`/api/supabase/get-progress`, {
+        headers: getAuthHeaders()
+      });
       if (res.ok) {
         const data = await res.json();
         if (data.success && data.progress) {
           if (data.progress.chapters) {
             setChapters(data.progress.chapters);
-            const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
-            localStorage.setItem(`ApexEnem_learn_chapters_${keyPrefix}`, JSON.stringify(data.progress.chapters));
+            try {
+              const sessionUser = localStorage.getItem('ApexEnem_current_user');
+              if (sessionUser) {
+                const user = JSON.parse(sessionUser);
+                const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
+                localStorage.setItem(`ApexEnem_learn_chapters_${keyPrefix}`, JSON.stringify(data.progress.chapters));
+              }
+            } catch { /* localStorage corrupted */ }
           }
           if (data.progress.xpPoints) {
             setXpPoints(data.progress.xpPoints);
@@ -155,9 +172,8 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
       if (supabaseConfigured) {
         await fetch('/api/supabase/save-progress', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: getAuthHeaders(),
           body: JSON.stringify({
-            email: user.email,
             progress: {
               chapters: updatedChapters,
               xpPoints: newXP
@@ -174,7 +190,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
     try {
       const res = await fetch('/api/generate-learning-exercises', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: getAuthHeaders(),
         body: JSON.stringify({
           chapterId: chap.id,
           chapterTitle: chap.title,

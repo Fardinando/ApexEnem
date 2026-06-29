@@ -267,6 +267,7 @@ export default function App() {
             essayCorrections={essayCorrections}
             simuladosHistory={simuladosHistory}
             currentUser={currentUser as any}
+            accessToken={session.access_token}
           />
         )}
         {activeTab === 'configuracoes' && (
