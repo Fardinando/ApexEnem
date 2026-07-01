@@ -210,7 +210,6 @@ export default function SimuladosView({ onSaveSimuladoResult, accessToken }: Sim
 
   const handleToggleGabarito = () => {
     if (!showGabarito) {
-      incrementRewardCounter('gabarito');
       if (shouldShowRewardAd('gabarito', 2)) {
         setShowRewardAd(true);
         return;

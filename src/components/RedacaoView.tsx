@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { EssayCorrection, ActivityLog } from '../types';
 import AdPlaceholder from './AdPlaceholder';
-import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
+import RewardAdOverlay, { shouldShowRewardAd } from './RewardAdOverlay';
 
 interface RedacaoViewProps {
   onAddCorrection: (correction: EssayCorrection, log: ActivityLog) => void;
@@ -41,6 +41,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [showRewardAd, setShowRewardAd] = useState(false);
+  const [pendingCorrection, setPendingCorrection] = useState(false);
 
   // DRAG AND DROP UTILITIES
   const handleDragOver = (e: React.DragEvent) => {
@@ -98,8 +99,8 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       return;
     }
 
-    incrementRewardCounter('correction');
     if (shouldShowRewardAd('correction', 2)) {
+      setPendingCorrection(true);
       setShowRewardAd(true);
       return;
     }
@@ -566,6 +567,21 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       </div>
 
       <AdPlaceholder slot="redacao-rodape" format="banner" className="mt-6" />
+
+      {showRewardAd && (
+        <RewardAdOverlay
+          action="correction"
+          onContinue={() => {
+            setShowRewardAd(false);
+            setPendingCorrection(false);
+            doCorrection();
+          }}
+          onClose={() => {
+            setShowRewardAd(false);
+            setPendingCorrection(false);
+          }}
+        />
+      )}
 
     </div>
   );

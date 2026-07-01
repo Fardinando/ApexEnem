@@ -53,6 +53,7 @@ export default function RewardAdOverlay({ action, onContinue, onClose }: RewardA
 
   const handleContinue = () => {
     document.body.style.overflow = '';
+    incrementRewardCounter(action);
     onContinue();
   };
 

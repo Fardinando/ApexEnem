@@ -229,7 +229,6 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
     setMatchingCompleted({});
     setMatchingStatusText('Escolha uma palavra da de esquerda e depois sua resposta à direita.');
 
-    incrementRewardCounter('ai-exercises');
     if (shouldShowRewardAd('ai-exercises', 3)) {
       setPendingChapter(chap);
       setShowRewardAd(true);

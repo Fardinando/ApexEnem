@@ -1,16 +1,17 @@
 {
-  "framework": null,
+  "version": 2,
   "buildCommand": "vite build",
   "outputDirectory": "dist",
-  "rewrites": [
-    { "source": "/((?!api/).*)", "destination": "/index.html" }
-  ],
-  "functions": {
-    "api/index.ts": {
-      "memory": 256,
-      "maxDuration": 10
+  "builds": [
+    {
+      "src": "api/index.ts",
+      "use": "@vercel/node"
     }
-  },
+  ],
+  "routes": [
+    { "src": "/api/(.*)", "dest": "api/index.ts" },
+    { "src": "/(.*)", "dest": "/index.html" }
+  ],
   "crons": [
     {
       "path": "/api/supabase/keep-alive",
