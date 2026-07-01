@@ -498,7 +498,8 @@ app.post("/api/questions", async (req, res) => {
   const numQuestions = count || 2;
 
   try {
-    const prompt = `Gere ${numQuestions} perguntas de múltipla escolha inéditas no estilo exato do ENEM focadas na área de conhecimento: "${targetArea}".
+    const seed = Date.now() + Math.random();
+    const prompt = `Gere ${numQuestions} perguntas de múltipla escolha INÉDITAS (nunca repetir as mesmas questões de antes) no estilo exato do ENEM focadas na área de conhecimento: "${targetArea}". Use o seed ${seed} para garantir variedade.
 Cada questão deve conter:
 - Um enunciado contextualizado baseado em problemas reais (tipo do INEP/ENEM).
 - Cinco alternativas listadas de A até E de forma equilibrada.
@@ -544,7 +545,7 @@ Retorne APENAS o JSON. Não escreva textos adicionais.`;
             content: prompt
           }
         ],
-        temperature: 0.5
+        temperature: 0.8
       })
     });
 
@@ -592,7 +593,7 @@ Exercício/Pergunta: "${questionText}"
 Tipo do desafio: "${instructions}"
 Gabarito Oficial: "${correctAnswer}"
 
-Retorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de coruja e símbolos de livros.`
+Retorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.`
           }
         ]
       })
@@ -603,11 +604,11 @@ Retorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de coru
     }
 
     const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || "Eis meu conselho do vôo secreto!";
+    const text = data.choices?.[0]?.message?.content || "Eis meu conselho do pasto secreto!";
     return res.json({ text });
   } catch (err: any) {
     console.error("OpenRouter error:", err);
-    return res.json({ text: "🦉 Olá! Encontrei um pequeno atraso de sinal ao voar para buscar a explicação, mas lembre-se: foco nos estudos sempre rende excelentes frutos! 📚" });
+    return res.json({ text: "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
   }
 });
 

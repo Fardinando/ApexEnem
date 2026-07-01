@@ -550,7 +550,7 @@ export default function DashboardView({
                 </div>
               </li>
               <li className="flex items-start gap-2 bg-slate-800/80 text-white p-2.5 rounded-xl border border-slate-700/60">
-                <span className="text-emerald-400">🦉</span>
+                <span className="text-emerald-400">🐐</span>
                 <div>
                   <b className="text-emerald-400">Duolingo do ENEM:</b> Pratique nas trilhas de micro-desafios gamificados da nossa nova Arena de Aprendizado.
                 </div>
@@ -569,7 +569,7 @@ export default function DashboardView({
               onClick={() => setActiveTab('aprendizado')}
               className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
             >
-              <span>🦉 Jogar Arena</span>
+              <span>🐐 Jogar Arena</span>
             </button>
             <button
               onClick={() => setActiveTab('simulados')}

@@ -297,7 +297,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
   const handleAskCabritoIa = async () => {
     if (loadingAiExplanation) return;
     setLoadingAiExplanation(true);
-    setAiSpeechText("Carregando o conhecimento do Cabrito IA com sabedoria de alto nível...");
+    setAiSpeechText("Carregando o conhecimento do Cabrito IA...");
 
     const currentEx = activeExercises[currentExerciseIdx];
 
@@ -316,7 +316,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
         const data = await response.json();
         setAiSpeechText(data.explanation || data.text);
       } else {
-        setAiSpeechText(`Olhou, voou! Devido a limites de internet, eis a dica: ${currentEx.explanation}`);
+        setAiSpeechText(`Puxa, o Cabrito está sem conexão agora! Segue a dica: ${currentEx.explanation}`);
       }
     } catch {
       setAiSpeechText(`Eis a sabedoria do Cabrito: ${currentEx.explanation}`);
@@ -416,14 +416,14 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
   const getCabritoMessage = () => {
     if (hasChecked) {
       return isCorrectAnswer
-        ? ["Excelente! Você voou alto!", "Sensacional, gabarito impecável!", "Você está se aproximando do 1000!"][currentExerciseIdx % 3]
+        ? ["Excelente! Mandou bem!", "Sensacional, gabarito impecável!", "Você está se aproximando do 1000!"][currentExerciseIdx % 3]
         : "Ops! Não chore, o erro pavimenta o caminho da perfeição escolar! Veja a resolução pedagógica.";
     }
     return [
       "Concentração total! Leia atentamente os enunciados educacionais.",
       "O tempo passa devagar se você exercita sua inteligência!",
       "A Redação Apex Enem exige vocabulário e argumentação precisa.",
-      "Duolingo do ENEM! Pratique 5 minutos por dia para asas robustas!"
+      "Cabrito do ENEM! Pratique 5 minutos por dia para chifres robustos!"
     ][currentExerciseIdx % 4];
   };
 
@@ -564,7 +564,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
 
               <div className="flex flex-col items-center">
                 <div className="relative animate-bounce">
-                  <span className="text-5xl">🦉</span>
+                  <span className="text-5xl">🐐</span>
                   <div className="absolute -top-3 -right-3 h-5 w-5 bg-blue-500 dark:bg-blue-400 text-white text-[10px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">
                     IA
                   </div>
@@ -609,7 +609,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                   </div>
                   <h3 className="text-2xl font-black text-slate-800 dark:text-white">Nível Concluído!</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-                    Fantástico! Você demonstrou domínio acadêmico e alcançou mais de 70% de precisão de voo de primeira tentativa! Seu nível foi atualizado e novos desafios foram desbloqueados.
+                    Fantástico! Você demonstrou domínio acadêmico e alcançou mais de 70% de precisão de primeira tentativa! Seu nível foi atualizado e novos desafios foram desbloqueados.
                   </p>
                 </div>
               ) : (
@@ -908,7 +908,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                   <div className="text-center py-8 space-y-5 animate-fade-in">
                     <span className="text-5xl">😭</span>
                     <div className="space-y-2">
-                      <h4 className="font-display font-black text-lg text-red-600">As energias de voo acabaram!</h4>
+                      <h4 className="font-display font-black text-lg text-red-600">As energias do Cabrito acabaram!</h4>
                       <p className="text-xs text-slate-450 leading-relaxed max-w-sm mx-auto">
                         Ops, as 5 vidas do Cabrito foram esgotadas. Estudar exige perseverança e revisar os pontos mais duros!
                       </p>
@@ -991,7 +991,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
             <div className="w-full md:w-64 bg-slate-50 dark:bg-slate-900/40 p-6 flex flex-col justify-start items-center space-y-4">
 
               <div className="text-center space-y-2">
-                <span className="text-5xl animate-bounce duration-1000 block">🦉</span>
+                <span className="text-5xl animate-bounce duration-1000 block">🐐</span>
                 <span className="text-[10px] font-mono uppercase bg-slate-200 dark:bg-slate-800 text-slate-600 dark:text-slate-400 px-2.5 py-0.5 rounded-full font-extrabold max-w-max mx-auto block leading-none">
                   Tutor de Bolso
                 </span>
