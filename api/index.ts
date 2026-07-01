@@ -889,48 +889,52 @@ app.get("/api/enem-questions", async (req, res) => {
 
   const years = [2023, 2022];
   const allQuestions: any[] = [];
+  const BATCH_SIZE = 50;
+  const MAX_BATCHES = 4;
 
   const results = await Promise.allSettled(
-    years.map(async (year) => {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 5000);
-      try {
-        const url = `https://api.enem.dev/v1/exams/${year}/questions?limit=50&offset=0`;
-        const response = await fetch(url, { signal: controller.signal });
-        if (!response.ok) return [];
-        const data = await response.json();
-        const questions = data.questions || [];
+    years.flatMap(year =>
+      Array.from({ length: MAX_BATCHES }, (_, i) => i * BATCH_SIZE).map(async (offset) => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 8000);
+        try {
+          const url = `https://api.enem.dev/v1/exams/${year}/questions?limit=${BATCH_SIZE}&offset=${offset}`;
+          const response = await fetch(url, { signal: controller.signal });
+          if (!response.ok) return [];
+          const data = await response.json();
+          const questions = data.questions || [];
 
-        return (questions || [])
-          .filter((q: any) => q && typeof q === "object")
-          .filter((q: any) => {
-            if (subject !== "Geral" && q.discipline !== SUBJECT_MAP[subject]) return false;
-            const letter = q.correctAlternative;
-            if (!letter || !["A","B","C","D","E"].includes(letter)) return false;
-            const hasText = q.alternatives?.some((a: any) => a.text?.trim());
-            if (!hasText) return false;
-            if (usedIds.includes(`enem-${q.year}-${q.index}`)) return false;
-            return true;
-          })
-          .map((q: any) => ({
-            id: `enem-${q.year}-${q.index}`,
-            statement: `(${q.title || `ENEM ${q.year} - Questão ${q.index}`})\n\n${q.context || ""}`,
-            options: q.alternatives?.filter((a: any) => a.text).map((a: any) => ({
-              letter: a.letter,
-              text: a.text || ""
-            })) || [],
-            correctAnswer: q.correctAlternative,
-            explanation: `Alternativa correta: ${q.correctAlternative}. ${q.alternatives?.find((a: any) => a.letter === q.correctAlternative)?.text || ""}`,
-            year: q.year,
-            index: q.index,
-          }));
-      } catch (err: any) {
-        console.warn(`Failed to fetch year ${year}:`, err.message);
-        return [];
-      } finally {
-        clearTimeout(timeoutId);
-      }
-    })
+          return (questions || [])
+            .filter((q: any) => q && typeof q === "object")
+            .filter((q: any) => {
+              if (subject !== "Geral" && q.discipline !== SUBJECT_MAP[subject]) return false;
+              const letter = q.correctAlternative;
+              if (!letter || !["A","B","C","D","E"].includes(letter)) return false;
+              const hasText = q.alternatives?.some((a: any) => a.text?.trim());
+              if (!hasText) return false;
+              if (usedIds.includes(`enem-${q.year}-${q.index}`)) return false;
+              return true;
+            })
+            .map((q: any) => ({
+              id: `enem-${q.year}-${q.index}`,
+              statement: `(${q.title || `ENEM ${q.year} - Questão ${q.index}`})\n\n${q.context || ""}`,
+              options: q.alternatives?.filter((a: any) => a.text).map((a: any) => ({
+                letter: a.letter,
+                text: a.text || ""
+              })) || [],
+              correctAnswer: q.correctAlternative,
+              explanation: `Alternativa correta: ${q.correctAlternative}. ${q.alternatives?.find((a: any) => a.letter === q.correctAlternative)?.text || ""}`,
+              year: q.year,
+              index: q.index,
+            }));
+        } catch (err: any) {
+          console.warn(`Failed to fetch year ${year} offset ${offset}:`, err.message);
+          return [];
+        } finally {
+          clearTimeout(timeoutId);
+        }
+      })
+    )
   );
 
   for (const result of results) {
