@@ -1,12 +1,11 @@
 {
-  "buildCommand": "vite build && esbuild server.ts --bundle --platform=node --target=node18 --packages=external --format=esm --outfile=api/index.js",
-  "outputDirectory": "dist",
+  "buildCommand": "vite build",
   "devCommand": "tsx server.ts",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "functions": {
-    "api/index.js": {
+    "api/index.ts": {
       "memory": 256,
       "maxDuration": 10
     }
