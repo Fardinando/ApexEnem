@@ -195,7 +195,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
   const activeCorrection = essayCorrections.find(c => c.id === selectedCorrectionId) || essayCorrections[0];
 
   return (
-    <div id="redacao-wrapper" className="space-y-6 animate-fade-in" style={{ contentVisibility: 'auto' }}>
+    <div id="redacao-wrapper" className="space-y-6 animate-fade-in">
       
       {/* Top Section Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">

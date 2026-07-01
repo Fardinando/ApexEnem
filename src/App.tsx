@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile } from './lib/supabase';
+import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress } from './lib/supabase';
 import type { EssayCorrection, ActivityLog, WrongAnswer } from './types';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
@@ -66,16 +66,18 @@ export default function App() {
         setProfile(p);
         setRequireOnboarding(!p?.serie);
 
-        const [essays, sims, logs] = await Promise.all([
+        const [essays, sims, logs, progress] = await Promise.all([
           fetchEssays(session.user.id),
           fetchSimulados(session.user.id),
           fetchLogs(session.user.id),
+          session.user.email ? fetchLearningProgress(session.user.email).catch(() => null) : Promise.resolve(null),
         ]);
 
         if (cancelled) return;
         setEssayCorrections(essays);
         setSimuladosHistory(sims);
         setActivityLogs(logs);
+        if (progress?.wrongAnswers) setWrongAnswers(progress.wrongAnswers);
       } catch (err) {
         console.error("Failed to load user data:", err);
       }
@@ -84,7 +86,11 @@ export default function App() {
   }, [session?.user?.id]);
 
   const handleWrongAnswer = (subject: string, source: 'simulado' | 'pergunta-ia') => {
-    setWrongAnswers(prev => [{ subject, source, timestamp: Date.now() }, ...prev].slice(0, 100));
+    const updated = [{ subject, source, timestamp: Date.now() }, ...wrongAnswers].slice(0, 100);
+    setWrongAnswers(updated);
+    if (session?.user?.email) {
+      saveLearningProgress(session.user.email, { wrongAnswers: updated }).catch(() => {});
+    }
   };
 
   useEffect(() => {

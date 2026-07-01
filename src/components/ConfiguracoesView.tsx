@@ -122,7 +122,7 @@ export default function ConfiguracoesView({
   };
 
   return (
-    <div id="configuracoes-container" className="space-y-6 max-w-2xl mx-auto animate-fade-in" style={{ contentVisibility: 'auto' }}>
+    <div id="configuracoes-container" className="space-y-6 max-w-2xl mx-auto animate-fade-in">
       
       {/* Top Banner */}
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5">

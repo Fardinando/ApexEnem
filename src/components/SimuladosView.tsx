@@ -57,6 +57,8 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
+  const [timerExpired, setTimerExpired] = useState(false);
+
   // COUNTDOWN CHRONOMETER ENGINE
   useEffect(() => {
     if (simulado && simulado.isActive && simulado.timeLeft > 0) {
@@ -65,6 +67,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
           if (!prev) return null;
           if (prev.timeLeft <= 1) {
             clearInterval(timerRef.current!);
+            setTimerExpired(true);
             return {
               ...prev,
               timeLeft: 0,
@@ -84,6 +87,20 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
       if (timerRef.current) clearInterval(timerRef.current);
     };
   }, [simulado?.isActive]);
+
+  useEffect(() => {
+    if (timerExpired && simulado && !simulado.isActive && simulado.scorePercent !== undefined) {
+      setTimerExpired(false);
+      onSaveSimuladoResult(simulado.scorePercent, simulado.config.subject);
+      if (onWrongAnswer && simulado.config.subject !== 'Geral') {
+        simulado.questions.forEach(q => {
+          if (q.userAnswer && q.userAnswer !== q.correctAnswer) {
+            onWrongAnswer(simulado.config.subject, 'simulado');
+          }
+        });
+      }
+    }
+  }, [timerExpired]);
 
   const handleStartSimulado = async () => {
     setLoadingQuestions(true);
@@ -229,7 +246,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
 
   return (
     <>
-    <div id="simulados-wrapper" className="space-y-6 animate-fade-in" style={{ contentVisibility: 'auto' }}>
+    <div id="simulados-wrapper" className="space-y-6 animate-fade-in">
       
       {/* HUD Header */}
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5">

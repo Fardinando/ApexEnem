@@ -100,7 +100,7 @@ export default function DashboardView({
   };
 
   return (
-    <div id="dashboard-container" className="space-y-8 pb-12 animate-fade-in" style={{ contentVisibility: 'auto' }}>
+    <div id="dashboard-container" className="space-y-8 pb-12 animate-fade-in">
       
       {/* Top Welcome Title */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">

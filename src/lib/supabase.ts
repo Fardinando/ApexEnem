@@ -76,3 +76,23 @@ export async function saveLog(log: any) {
     .upsert(log, { onConflict: 'id' });
   if (error) throw error;
 }
+
+export async function saveLearningProgress(email: string, progress: { chapters?: any[]; xpPoints?: number; wrongAnswers?: any[] }) {
+  const { error } = await supabase
+    .from('ApexEnem_progress')
+    .upsert(
+      { email: email.toLowerCase(), progress, updated_at: new Date().toISOString() },
+      { onConflict: 'email' }
+    );
+  if (error) throw error;
+}
+
+export async function fetchLearningProgress(email: string) {
+  const { data, error } = await supabase
+    .from('ApexEnem_progress')
+    .select('progress')
+    .eq('email', email.toLowerCase())
+    .maybeSingle();
+  if (error) throw error;
+  return data?.progress || null;
+}

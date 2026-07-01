@@ -70,7 +70,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
   };
 
   return (
-    <div id="perguntas-container" className="space-y-6 animate-fade-in" style={{ contentVisibility: 'auto' }}>
+    <div id="perguntas-container" className="space-y-6 animate-fade-in">
       
       {/* Top Title Section */}
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5">

@@ -14,6 +14,7 @@ import {
 import { motion, AnimatePresence } from 'motion/react';
 import type { LearningChapter, Exercise, EssayCorrection, UserProfile, WrongAnswer } from '../types';
 import { INITIAL_CHAPTERS, CHAPTER_EXERCISES } from '../data/learning-exercises';
+import { saveLearningProgress, fetchLearningProgress } from '../lib/supabase';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
 
@@ -97,29 +98,14 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
   );
 
   useEffect(() => {
-    try {
-      const sessionUser = localStorage.getItem('ApexEnem_current_user');
-      if (sessionUser) {
-        const user = JSON.parse(sessionUser);
-        setStreak(user.streak || 1);
-
-        const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
-
-        const savedChapters = localStorage.getItem(`ApexEnem_learn_chapters_${keyPrefix}`);
-        if (savedChapters) {
-          try {
-            setChapters(JSON.parse(savedChapters));
-          } catch { /* corrupted data */ }
+    if (currentUser?.email) {
+      fetchLearningProgress(currentUser.email).then(progress => {
+        if (progress) {
+          if (progress.chapters) setChapters(progress.chapters);
+          if (typeof progress.xpPoints === 'number') setXpPoints(progress.xpPoints);
         }
-
-        const savedXP = localStorage.getItem(`ApexEnem_learn_xp_${keyPrefix}`);
-        if (savedXP) {
-          const xp = parseInt(savedXP, 10);
-          if (!isNaN(xp)) setXpPoints(xp);
-        }
-      }
-    } catch { /* localStorage corrupted */ }
-
+      }).catch(() => {});
+    }
     checkCredentials();
   }, []);
 
@@ -130,74 +116,20 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
         const data = await res.json();
         setOpenRouterConfigured(data.openRouter);
         setSupabaseConfigured(data.supabase);
-        if (data.supabase) {
-          setSyncStatus('Nuvem');
-          loadProgressFromSupabase();
-        }
+        if (data.supabase) setSyncStatus('Nuvem');
       }
     } catch {
       // safe fallback
     }
   };
 
-  const getAuthHeaders = () => {
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' };
-    if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
-    return headers;
-  };
-
-  const loadProgressFromSupabase = async () => {
-    try {
-      if (!accessToken) return;
-      const res = await fetch(`/api/supabase/get-progress`, {
-        headers: getAuthHeaders()
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && data.progress) {
-          if (data.progress.chapters) {
-            setChapters(data.progress.chapters);
-            try {
-              const sessionUser = localStorage.getItem('ApexEnem_current_user');
-              if (sessionUser) {
-                const user = JSON.parse(sessionUser);
-                const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
-                localStorage.setItem(`ApexEnem_learn_chapters_${keyPrefix}`, JSON.stringify(data.progress.chapters));
-              }
-            } catch { /* localStorage corrupted */ }
-          }
-          if (data.progress.xpPoints) {
-            setXpPoints(data.progress.xpPoints);
-          }
-        }
-      }
-    } catch (e) {
-      console.warn("Supabase load error: ", e);
-    }
-  };
-
   const syncProgressToCloud = async (updatedChapters: LearningChapter[], newXP: number) => {
+    if (!currentUser?.email) return;
     try {
-      const sessionUser = localStorage.getItem('ApexEnem_current_user');
-      if (!sessionUser) return;
-      const user = JSON.parse(sessionUser);
-
-      const keyPrefix = user.email.toLowerCase().replace(/[@.]/g, '_');
-      localStorage.setItem(`ApexEnem_learn_chapters_${keyPrefix}`, JSON.stringify(updatedChapters));
-      localStorage.setItem(`ApexEnem_learn_xp_${keyPrefix}`, newXP.toString());
-
-      if (supabaseConfigured) {
-        await fetch('/api/supabase/save-progress', {
-          method: 'POST',
-          headers: getAuthHeaders(),
-          body: JSON.stringify({
-            progress: {
-              chapters: updatedChapters,
-              xpPoints: newXP
-            }
-          })
-        });
-      }
+      await saveLearningProgress(currentUser.email, {
+        chapters: updatedChapters,
+        xpPoints: newXP
+      });
     } catch (e) {
       console.warn("Supabase save error:", e);
     }
@@ -207,7 +139,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
     try {
       const res = await fetch('/api/generate-learning-exercises', {
         method: 'POST',
-        headers: getAuthHeaders(),
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           chapterId: chap.id,
           chapterTitle: chap.title,
@@ -497,83 +429,95 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
               <div className="flex flex-col items-center justify-center space-y-12 relative py-8" id="duolingo-path-curve">
                 <div className="absolute top-12 bottom-12 w-1.5 bg-dashed border-l border-blue-300 dark:border-slate-700 pointer-events-none z-0"></div>
 
-                {chapters.map((chap, idx) => {
-                  const nodeOffsets = [
-                    'translate-x-0',
-                    'translate-x-12 sm:translate-x-20',
-                    '-translate-x-12 sm:-translate-x-20',
-                    'translate-x-0',
-                    '-translate-x-12 sm:-translate-x-20',
-                    'translate-x-12 sm:translate-x-20'
-                  ];
+                {(() => {
+                  const wrongCounts: Record<string, number> = {};
+                  (wrongAnswers || []).forEach(w => {
+                    wrongCounts[w.subject] = (wrongCounts[w.subject] || 0) + 1;
+                  });
 
-                  const positionClass = nodeOffsets[idx % nodeOffsets.length];
-                  const finishedFully = chap.level === chap.maxLevel;
-                  const percent = Math.round((chap.level / chap.maxLevel) * 100);
+                  return chapters.map((chap, idx) => {
+                    const nodeOffsets = [
+                      'translate-x-0',
+                      'translate-x-12 sm:translate-x-20',
+                      '-translate-x-12 sm:-translate-x-20',
+                      'translate-x-0',
+                      '-translate-x-12 sm:-translate-x-20',
+                      'translate-x-12 sm:translate-x-20'
+                    ];
 
-                  return (
-                    <div
-                      key={chap.id}
-                      className={`flex flex-col sm:flex-row items-center gap-4 z-10 p-2 text-center sm:text-left ${positionClass} animate-fade-in relative`}
-                    >
-                      <button
-                        id={`chapter-${chap.id}`}
-                        type="button"
-                        disabled={!chap.unlocked}
-                        onClick={() => handleStartLesson(chap)}
-                        className={`h-20 w-20 rounded-full flex flex-col items-center justify-center border-4 relative shadow-lg cursor-pointer transition transform duration-200 hover:scale-110 active:scale-95 ${
-                          chap.unlocked
-                            ? finishedFully
-                              ? 'bg-emerald-500 border-emerald-300 text-white hover:bg-emerald-600'
-                              : 'bg-blue-600 border-blue-400 text-white hover:bg-blue-700'
-                            : 'bg-slate-200 border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed'
-                        }`}
+                    const positionClass = nodeOffsets[idx % nodeOffsets.length];
+                    const finishedFully = chap.level === chap.maxLevel;
+                    const percent = Math.round((chap.level / chap.maxLevel) * 100);
+                    const hasRequiredWrongs = (wrongCounts[chap.area] || 0) >= 2;
+                    const canAttempt = chap.unlocked && (idx < 2 || hasRequiredWrongs);
+
+                    return (
+                      <div
+                        key={chap.id}
+                        className={`flex flex-col sm:flex-row items-center gap-4 z-10 p-2 text-center sm:text-left ${positionClass} animate-fade-in relative`}
                       >
-                        {!chap.unlocked ? (
-                          <Lock className="h-7 w-7" />
-                        ) : (
-                          <div className="flex flex-col items-center text-center">
-                            <span className="font-display font-black text-xl tracking-tight uppercase leading-none">Nível</span>
-                            <span className="text-sm font-bold font-mono">{chap.level}</span>
-                          </div>
-                        )}
+                        <button
+                          id={`chapter-${chap.id}`}
+                          type="button"
+                          disabled={!canAttempt}
+                          onClick={() => handleStartLesson(chap)}
+                          className={`h-20 w-20 rounded-full flex flex-col items-center justify-center border-4 relative shadow-lg cursor-pointer transition transform duration-200 hover:scale-110 active:scale-95 ${
+                            canAttempt
+                              ? finishedFully
+                                ? 'bg-emerald-500 border-emerald-300 text-white hover:bg-emerald-600'
+                                : 'bg-blue-600 border-blue-400 text-white hover:bg-blue-700'
+                              : 'bg-slate-200 border-slate-300 dark:bg-slate-800 dark:border-slate-700 text-slate-400 dark:text-slate-600 cursor-not-allowed'
+                          }`}
+                        >
+                          {!canAttempt ? (
+                            <Lock className="h-7 w-7" />
+                          ) : (
+                            <div className="flex flex-col items-center text-center">
+                              <span className="font-display font-black text-xl tracking-tight uppercase leading-none">Nível</span>
+                              <span className="text-sm font-bold font-mono">{chap.level}</span>
+                            </div>
+                          )}
 
-                        {chap.unlocked && (
-                          <div className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 bg-[#0f172a] text-[9px] text-[#f8fafc] dark:bg-blue-500 dark:text-[#f8fafc] rounded-full font-mono font-black border border-slate-300 dark:border-blue-300">
-                            {percent}%
-                          </div>
-                        )}
-                      </button>
+                          {canAttempt && (
+                            <div className="absolute -top-2.5 -right-2.5 px-1.5 py-0.5 bg-[#0f172a] text-[9px] text-[#f8fafc] dark:bg-blue-500 dark:text-[#f8fafc] rounded-full font-mono font-black border border-slate-300 dark:border-blue-300">
+                              {percent}%
+                            </div>
+                          )}
+                        </button>
 
-                      <div className="max-w-[200px] sm:max-w-xs space-y-1">
-                        <div className="flex items-center justify-center sm:justify-start gap-1.5 text-[10px] font-mono leading-none tracking-wider font-extrabold uppercase">
-                          <span className={`px-2 py-0.5 rounded-md text-white font-bold ${
-                            chap.area === 'Redação' ? 'bg-indigo-500' :
-                            chap.area === 'Humanas' ? 'bg-amber-600' :
-                            chap.area === 'Linguagens' ? 'bg-purple-500' :
-                            chap.area === 'Natureza' ? 'bg-emerald-500' : 'bg-rose-500'
-                          }`}>
-                            {chap.area}
-                          </span>
-                          {!chap.unlocked && <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-0.5">● BLOQUEADO</span>}
+                        <div className="max-w-[200px] sm:max-w-xs space-y-1">
+                          <div className="flex items-center justify-center sm:justify-start gap-1.5 text-[10px] font-mono leading-none tracking-wider font-extrabold uppercase">
+                            <span className={`px-2 py-0.5 rounded-md text-white font-bold ${
+                              chap.area === 'Redação' ? 'bg-indigo-500' :
+                              chap.area === 'Humanas' ? 'bg-amber-600' :
+                              chap.area === 'Linguagens' ? 'bg-purple-500' :
+                              chap.area === 'Natureza' ? 'bg-emerald-500' : 'bg-rose-500'
+                            }`}>
+                              {chap.area}
+                            </span>
+                            {!canAttempt && chap.unlocked && <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-0.5">● ERRE 2+</span>}
+                            {!canAttempt && !chap.unlocked && <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-0.5">● BLOQUEADO</span>}
+                          </div>
+                          <h4 className={`font-display font-black text-sm block ${canAttempt ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400'}`}>
+                            {chap.title}
+                          </h4>
+                          <p className="text-[11px] text-slate-450 leading-snug truncate sm:whitespace-normal">
+                            {!canAttempt && chap.unlocked
+                              ? `Responda ${2 - (wrongCounts[chap.area] || 0)} questão(ões) de ${chap.area} incorretamente para desbloquear`
+                              : chap.description}
+                          </p>
                         </div>
-                        <h4 className={`font-display font-black text-sm block ${chap.unlocked ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400'}`}>
-                          {chap.title}
-                        </h4>
-                        <p className="text-[11px] text-slate-450 leading-snug truncate sm:whitespace-normal">
-                          {chap.description}
-                        </p>
-                      </div>
 
-                    </div>
-                  );
-                })}
+                      </div>
+                    );
+                  });
+                })()}
               </div>
 
             </div>
           </div>
 
-          <div className="lg:col-span-4 space-y-5">
+          <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-24 lg:self-start">
             <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm text-center space-y-4">
 
               <div className="flex flex-col items-center">
