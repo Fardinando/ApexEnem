@@ -16,7 +16,8 @@ export function pushAd(): void {
 }
 
 export function isAdsenseConfigured(): boolean {
-  return !!ADSENSE_PUBLISHER_ID;
+  const envId = typeof import.meta.env !== 'undefined' ? (import.meta.env as any).VITE_ADSENSE_PUBLISHER_ID : undefined;
+  return !!(envId || ADSENSE_PUBLISHER_ID);
 }
 
 const STORAGE_KEY = 'ApexEnem_house_ad_seen';

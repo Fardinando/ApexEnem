@@ -119,4 +119,5 @@ export const AD_SLOTS: Record<string, string> = {
      data-full-width-responsive="true"></ins>`,
 };
 
-export const ADSENSE_PUBLISHER_ID = "3858534603619694";
+const envId = typeof import.meta.env !== 'undefined' ? (import.meta.env as any).VITE_ADSENSE_PUBLISHER_ID : undefined;
+export const ADSENSE_PUBLISHER_ID = envId || "3858534603619694";
