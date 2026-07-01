@@ -534,7 +534,7 @@ Retorne APENAS o JSON. Não escreva textos adicionais.`;
         "X-Title": "ApexEnem ENEM Applet"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "openrouter/auto",
         messages: [
           {
             role: "system",
@@ -580,7 +580,7 @@ app.post("/api/openrouter-chat", async (req, res) => {
         "X-Title": "ApexEnem ENEM Applet"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "openrouter/auto",
         messages: [
           {
             role: "system",
@@ -625,11 +625,11 @@ app.post("/api/generate-learning-exercises", async (req, res) => {
         "X-Title": "ApexEnem Learning"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "openrouter/auto",
         messages: [
           {
             role: "system",
-            content: `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 5} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
+            content: `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
             Os exercícios DEVEM ser variados entre os tipos: 'choice' (múltipla escolha com 5 opções A-E), 'true-false' (verdadeiro/falso), 'reorder' (ordenar blocos de palavras), 'matching' (associar colunas).
             
             IMPORTANTE: 
@@ -641,7 +641,7 @@ app.post("/api/generate-learning-exercises", async (req, res) => {
           },
           {
             role: "user",
-            content: `Gere ${count || 5} exercícios sobre "${chapterTitle}" para o ENEM, focando nos pontos fracos: ${weakAreas?.join(', ') || 'nenhum específico'}. Retorne apenas o JSON.`
+            content: `Gere ${count || 3} exercícios sobre "${chapterTitle}" para o ENEM, focando nos pontos fracos: ${weakAreas?.join(', ') || 'nenhum específico'}. Retorne apenas o JSON.`
           }
         ]
       })
