@@ -104,7 +104,8 @@ const requireAuth = async (req: any, res: any, next: any) => {
   const publicRoutes = [
     "/confirm-email", "/send-confirmation", "/credentials-status",
     "/supabase/keep-alive", "/supabase/setup",
-    "/enem-questions"
+    "/enem-questions", "/questions", "/correct",
+    "/openrouter-chat", "/generate-learning-exercises"
   ];
   if (publicRoutes.includes(req.path)) return next();
 
