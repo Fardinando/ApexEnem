@@ -3,8 +3,7 @@
   "buildCommand": "vite build",
   "outputDirectory": "dist",
   "routes": [
-    { "src": "/api/(.*)", "dest": "api/index.ts" },
-    { "src": "/(.*)", "dest": "/index.html" }
+    { "src": "/api/(.*)", "dest": "/api" }
   ],
   "crons": [
     {
