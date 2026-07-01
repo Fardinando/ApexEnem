@@ -67,50 +67,61 @@ ALTER TABLE public.simulado_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
 
 -- Políticas: cada usuário só vê/altera os próprios dados
-DROP POLICY IF EXISTS "Usuarios podem ler seu perfil" ON public.profiles;
-CREATE POLICY "Usuarios podem ler seu perfil"
-  ON public.profiles FOR SELECT
-  USING (auth.uid() = id);
+-- Nota: PostgreSQL NÃO suporta CREATE POLICY IF NOT EXISTS.
+-- Usamos pg_policies para verificar antes de criar.
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='Usuarios podem ler seu perfil') THEN
+    CREATE POLICY "Usuarios podem ler seu perfil" ON public.profiles FOR SELECT USING (auth.uid() = id);
+  END IF;
+END $$;
 
-DROP POLICY IF EXISTS "Usuarios podem inserir seu perfil" ON public.profiles;
-CREATE POLICY "Usuarios podem inserir seu perfil"
-  ON public.profiles FOR INSERT
-  WITH CHECK (auth.uid() = id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='Usuarios podem inserir seu perfil') THEN
+    CREATE POLICY "Usuarios podem inserir seu perfil" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+  END IF;
+END $$;
 
-DROP POLICY IF EXISTS "Usuarios podem atualizar seu perfil" ON public.profiles;
-CREATE POLICY "Usuarios podem atualizar seu perfil"
-  ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='Usuarios podem atualizar seu perfil') THEN
+    CREATE POLICY "Usuarios podem atualizar seu perfil" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+  END IF;
+END $$;
 
-DROP POLICY IF EXISTS "Usuarios podem ler suas correcoes" ON public.essay_corrections;
-CREATE POLICY "Usuarios podem ler suas correcoes"
-  ON public.essay_corrections FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='essay_corrections' AND policyname='Usuarios podem ler suas correcoes') THEN
+    CREATE POLICY "Usuarios podem ler suas correcoes" ON public.essay_corrections FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-DROP POLICY IF EXISTS "Usuarios podem inserir correcoes" ON public.essay_corrections;
-CREATE POLICY "Usuarios podem inserir correcoes"
-  ON public.essay_corrections FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='essay_corrections' AND policyname='Usuarios podem inserir correcoes') THEN
+    CREATE POLICY "Usuarios podem inserir correcoes" ON public.essay_corrections FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-DROP POLICY IF EXISTS "Usuarios podem ler seus simulados" ON public.simulado_history;
-CREATE POLICY "Usuarios podem ler seus simulados"
-  ON public.simulado_history FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='simulado_history' AND policyname='Usuarios podem ler seus simulados') THEN
+    CREATE POLICY "Usuarios podem ler seus simulados" ON public.simulado_history FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-DROP POLICY IF EXISTS "Usuarios podem inserir simulados" ON public.simulado_history;
-CREATE POLICY "Usuarios podem inserir simulados"
-  ON public.simulado_history FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='simulado_history' AND policyname='Usuarios podem inserir simulados') THEN
+    CREATE POLICY "Usuarios podem inserir simulados" ON public.simulado_history FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
-DROP POLICY IF EXISTS "Usuarios podem ler seus logs" ON public.activity_logs;
-CREATE POLICY "Usuarios podem ler seus logs"
-  ON public.activity_logs FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='activity_logs' AND policyname='Usuarios podem ler seus logs') THEN
+    CREATE POLICY "Usuarios podem ler seus logs" ON public.activity_logs FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+END $$;
 
-DROP POLICY IF EXISTS "Usuarios podem inserir logs" ON public.activity_logs;
-CREATE POLICY "Usuarios podem inserir logs"
-  ON public.activity_logs FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='activity_logs' AND policyname='Usuarios podem inserir logs') THEN
+    CREATE POLICY "Usuarios podem inserir logs" ON public.activity_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;
 
 -- Trigger: criar perfil automaticamente ao cadastrar
 CREATE OR REPLACE FUNCTION public.handle_new_user()
