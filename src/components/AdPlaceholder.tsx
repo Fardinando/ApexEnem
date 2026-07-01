@@ -12,32 +12,40 @@ interface AdPlaceholderProps {
 }
 
 const FORMAT_CLASSES: Record<string, string> = {
-  banner: 'w-full min-h-[90px]',
-  rectangle: 'w-full max-w-sm min-h-[250px]',
-  skyscraper: 'w-40 min-h-[600px]'
+  banner: 'w-full',
+  rectangle: 'w-full max-w-sm',
+  skyscraper: 'w-40'
 };
 
 export default function AdPlaceholder({ slot, format = 'banner', className = '', user, setActiveTab }: AdPlaceholderProps) {
   const pushedRef = useRef(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   const adsenseEnabled = isAdsenseConfigured();
   const adCode = AD_SLOTS[slot];
 
   useEffect(() => {
     if (!adsenseEnabled || !adCode) return;
+    // Wait for DOM insertion then push ad
     const timer = setTimeout(() => {
       if (!pushedRef.current) {
         pushAd();
         pushedRef.current = true;
       }
-    }, 200);
+    }, 500);
     return () => clearTimeout(timer);
   }, [slot, adsenseEnabled, adCode]);
+
+  // Repush on slot change
+  useEffect(() => {
+    pushedRef.current = false;
+  }, [slot]);
 
   // AdSense mode — render the <ins> code from config
   if (adsenseEnabled && adCode) {
     return (
       <div
-        className={`relative ${FORMAT_CLASSES[format]} ${className}`}
+        ref={containerRef}
+        className={`relative flex justify-center items-start overflow-hidden ${FORMAT_CLASSES[format]} ${className}`}
         dangerouslySetInnerHTML={{ __html: adCode }}
       />
     );

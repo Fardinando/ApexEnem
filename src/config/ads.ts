@@ -2,274 +2,121 @@
 //  CONFIGURAÇÃO DE ANÚNCIOS — AdSense
 // ═══════════════════════════════════════════════════════════════════
 //
-// COMO USAR:
-// 1. Crie cada unidade de anúncio no Google AdSense
-// 2. Copie o código <ins>...</ins> que o AdSense gerar
-// 3. Cole no slot correspondente abaixo, DENTRO das crases ``
+// IMPORTANTE: cole apenas a tag <ins> que o AdSense gerar.
+// NÃO cole as tags <script> — o app já carrega o script no <head>
+// e já chama (adsbygoogle.push) automaticamente.
 //
-// Não precisa colar o <script> nem o push — o app já faz isso.
-// Basta o <ins> com data-ad-slot correto.
-//
-// Exemplo do que colar:
+// Exemplo correto:
 //   `<ins class="adsbygoogle"
-//      style="display:block"
+//      style="display:inline-block;width:728px;height:90px"
 //      data-ad-client="ca-pub-3858534603619694"
-//      data-ad-slot="1234567890"
-//      data-ad-format="auto"
-//      data-full-width-responsive="true"></ins>`
+//      data-ad-slot="1234567890"></ins>`
 //
-// Deixe a string VAZIA "" nos slots que ainda não criou.
+// Deixe VAZIO "" nos slots que ainda não criou.
 // ═══════════════════════════════════════════════════════════════════
-
 
 export const AD_SLOTS: Record<string, string> = {
 
-
-    // ── DASHBOARD ─────────────────────────────────────────────────
-    'dashboard-topo': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- DashboardTopo -->
-<ins class="adsbygoogle"
+  // ── DASHBOARD ─────────────────────────────────────────────────
+  'dashboard-topo': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="2848592983"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>`,
+     data-ad-slot="2848592983"></ins>`,
 
-
-    'dashboard-sidebar': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- DashboardSidebar -->
-<ins class="adsbygoogle"
+  'dashboard-sidebar': `<ins class="adsbygoogle"
      style="display:inline-block;width:300px;height:250px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="7909347973"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>`,
+     data-ad-slot="7909347973"></ins>`,
 
-
-    'dashboard-rodape': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- DashboardRodape -->
-<ins class="adsbygoogle"
+  'dashboard-rodape': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="9492680932"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>`,
+     data-ad-slot="9492680932"></ins>`,
 
-
-    // ── REDAÇÃO ───────────────────────────────────────────────────
-    'redacao-topo': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- RedacaoTopo -->
-<ins class="adsbygoogle"
+  // ── REDAÇÃO ───────────────────────────────────────────────────
+  'redacao-topo': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="8136578681"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="8136578681"></ins>`,
 
-
-    'redacao-rodape': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- RedacaoRodape -->
-<ins class="adsbygoogle"
+  'redacao-rodape': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="4197333675"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="4197333675"></ins>`,
 
-
-    // ── PERGUNTAS ─────────────────────────────────────────────────
-    'perguntas-topo': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- PerguntasTopo -->
-<ins class="adsbygoogle"
+  // ── PERGUNTAS ─────────────────────────────────────────────────
+  'perguntas-topo': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="3944840784"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="3944840784"></ins>`,
 
-
-    'perguntas-meio': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- PerguntasMeio -->
-<ins class="adsbygoogle"
+  'perguntas-meio': `<ins class="adsbygoogle"
      style="display:inline-block;width:468px;height:60px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="9258088660"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="9258088660"></ins>`,
 
-
-    'perguntas-rodape': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- PerguntasRodape -->
-<ins class="adsbygoogle"
+  'perguntas-rodape': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="9005595771"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="9005595771"></ins>`,
 
-
-    // ── SIMULADOS ─────────────────────────────────────────────────
-    'simulados-topo': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- SimuladosTopo -->
-<ins class="adsbygoogle"
+  // ── SIMULADOS ─────────────────────────────────────────────────
+  'simulados-topo': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="7945006993"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="7945006993"></ins>`,
 
-
-    'simulados-rodape': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- SimuladosRodape -->
-<ins class="adsbygoogle"
+  'simulados-rodape': `<ins class="adsbygoogle"
      style="display:block"
      data-ad-client="ca-pub-3858534603619694"
      data-ad-slot="8698052557"
      data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-full-width-responsive="true"></ins>`,
 
-
-    // ── APRENDIZADO ───────────────────────────────────────────────
-    'aprendizado-topo': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- AprendizadoTopo -->
-<ins class="adsbygoogle"
+  // ── APRENDIZADO ───────────────────────────────────────────────
+  'aprendizado-topo': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="1989595433"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="1989595433"></ins>`,
 
-
-    'aprendizado-sidebar': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- AprendizadoSidebar -->
-<ins class="adsbygoogle"
+  'aprendizado-sidebar': `<ins class="adsbygoogle"
      style="display:inline-block;width:300px;height:250px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="6866517593"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="6866517593"></ins>`,
 
-
-    'aprendizado-lesson-sidebar': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- AprendizadoLessonSidebar -->
-<ins class="adsbygoogle"
+  'aprendizado-lesson-sidebar': `<ins class="adsbygoogle"
      style="display:inline-block;width:160px;height:600px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="8363432093"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="8363432093"></ins>`,
 
-
-    'aprendizado-rodape': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- AprendizadoRodape -->
-<ins class="adsbygoogle"
+  'aprendizado-rodape': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="5737268757"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="5737268757"></ins>`,
 
-
-    // ── CONFIGURAÇÕES ───
-    'configuracoes-topo': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- ConfiguracoesTopo -->
-<ins class="adsbygoogle"
+  // ── CONFIGURAÇÕES ─────────────────────────────────────────────
+  'configuracoes-topo': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="4424187088"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="4424187088"></ins>`,
 
-
-    'configuracoes-meio': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- ConfiguracoesMeio -->
-<ins class="adsbygoogle"
+  'configuracoes-meio': `<ins class="adsbygoogle"
      style="display:inline-block;width:300px;height:250px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="3111105414"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="3111105414"></ins>`,
 
-
-    'configuracoes-rodape': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- ConfiguracoesRodape -->
-<ins class="adsbygoogle"
+  'configuracoes-rodape': `<ins class="adsbygoogle"
      style="display:inline-block;width:728px;height:90px"
      data-ad-client="ca-pub-3858534603619694"
-     data-ad-slot="1798023746"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-ad-slot="1798023746"></ins>`,
 
-
-    // ── REWARDED (anúncio dentro do overlay) ──────────────────────
-    'rewarded': `<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-3858534603619694"
-     crossorigin="anonymous"></script>
-<!-- RewardedOverlay -->
-<ins class="adsbygoogle"
+  // ── REWARDED (overlay) ──────────────────────────────────────
+  'rewarded': `<ins class="adsbygoogle"
      style="display:block"
      data-ad-client="ca-pub-3858534603619694"
      data-ad-slot="5709348592"
      data-ad-format="auto"
-     data-full-width-responsive="true"></ins>
-<script>
-     (adsbygoogle = window.adsbygoogle || []).push({});
-</script>
-`,
+     data-full-width-responsive="true"></ins>`,
 };
 
-
-// publisher ID (sem "ca-pub-")
 export const ADSENSE_PUBLISHER_ID = "3858534603619694";
-
-
-

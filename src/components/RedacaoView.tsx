@@ -282,15 +282,17 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                 <button
                   id="tab-mode-foto"
                   type="button"
-                  className={`py-2 text-center text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition cursor-pointer ${
+                  className={`py-2 text-center text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition cursor-not-allowed opacity-60 ${
                     activeTab === 'upload'
                       ? 'bg-white text-blue-600 shadow-sm dark:bg-[#1e293b] dark:text-white font-bold'
                       : 'text-slate-500 dark:text-slate-400'
                   }`}
-                  onClick={() => setActiveTab('upload')}
+                  onClick={() => alert('📸 OCR para fotos estará disponível em breve! Por enquanto, digite sua redação manualmente.')}
+                  title="Em breve: correção por foto"
                 >
                   <Upload className="h-4 w-4" />
                   <span>Mandar Foto</span>
+                  <span className="text-[9px] font-bold text-amber-500 bg-amber-50 dark:bg-amber-950/40 px-1.5 py-0.5 rounded-full">EM BREVE</span>
                 </button>
               </div>
             </div>
