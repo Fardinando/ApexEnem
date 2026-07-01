@@ -453,7 +453,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
       </div>
 
       {/* Ad banner after header */}
-      <AdPlaceholder slot="aprendizado-topo" format="banner" />
+      <AdPlaceholder slot="aprendizado-topo" format="banner" user={currentUser} />
 
       {!lessonActive ? (
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -575,7 +575,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
               )}
 
               {/* Ad inside sidebar */}
-              <AdPlaceholder slot="aprendizado-sidebar" format="rectangle" />
+              <AdPlaceholder slot="aprendizado-sidebar" format="rectangle" user={currentUser} />
 
             </div>
           </div>
@@ -988,7 +988,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
               </div>
 
               {/* Ad inside lesson sidebar */}
-              <AdPlaceholder slot="aprendizado-lesson-sidebar" format="skyscraper" />
+              <AdPlaceholder slot="aprendizado-lesson-sidebar" format="skyscraper" user={currentUser} />
 
               <AnimatePresence>
                 {aiSpeechText && (
@@ -1029,7 +1029,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
       )}
 
       {/* Ad banner at bottom */}
-      <AdPlaceholder slot="aprendizado-rodape" format="banner" />
+      <AdPlaceholder slot="aprendizado-rodape" format="banner" user={currentUser} />
 
     </div>
   );

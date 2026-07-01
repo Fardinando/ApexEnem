@@ -466,7 +466,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                 <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 font-mono">Competências do ENEM</h4>
                 
                 <div className="space-y-2" id="competencies-accordion">
-                  {activeCorrection.competencies.map((comp, idx) => {
+                  {(activeCorrection.competencies || []).map((comp, idx) => {
                     const isOpen = selectedIndex === idx;
                     return (
                       <div 
@@ -516,7 +516,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                     Pontos Fortes
                   </h4>
                   <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 pl-1">
-                    {activeCorrection.strengths.map((s, i) => (
+                    {(activeCorrection.strengths || []).map((s, i) => (
                       <li key={i} className="flex gap-1.5 items-start">
                         <span className="text-green-500">▶</span>
                         <span className="leading-relaxed">{s}</span>
@@ -532,7 +532,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                     Plano de Ação (Ajustes)
                   </h4>
                   <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 pl-1">
-                    {activeCorrection.weaknesses.map((w, i) => (
+                    {(activeCorrection.weaknesses || []).map((w, i) => (
                       <li key={i} className="flex gap-1.5 items-start">
                         <span className="text-amber-500">⚠</span>
                         <span className="leading-relaxed">{w}</span>

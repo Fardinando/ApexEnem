@@ -64,6 +64,8 @@ function getBaseUrl(): string {
 }
 
 function signToken(email: string, code: string): string {
+  if (!HMAC_SECRET) throw new Error("HMAC_SECRET não configurado");
+  if (typeof email !== "string" || typeof code !== "string") throw new Error("Email e código devem ser strings");
   return crypto.createHmac("sha256", HMAC_SECRET).update(`${email.toLowerCase()}:${code}`).digest("hex");
 }
 
@@ -112,7 +114,8 @@ app.use((req, res, next) => {
 const requireAuth = async (req: any, res: any, next: any) => {
   const publicRoutes = [
     "/api/confirm-email", "/api/send-confirmation", "/api/credentials-status",
-    "/api/supabase/keep-alive", "/api/supabase/setup"
+    "/api/supabase/keep-alive", "/api/supabase/setup",
+    "/api/enem-questions"
   ];
   if (publicRoutes.includes(req.path)) return next();
 
@@ -472,7 +475,7 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
     // Structure a brilliant multi-model description feedback
     const modelBreakdown = successfulCorrections.map(suc => {
       const mn = suc.model.split('/')[1] || suc.model;
-      const compAvg = suc.data.competencies?.reduce((s: number, c: any) => s + (c.score || 0), 0) || 0;
+      const compAvg = (suc.data.competencies || []).filter(Boolean).reduce((s: number, c: any) => s + (c.score || 0), 0);
       return `- **${mn}**: ${compAvg} pontos`;
     }).join("\n");
 
@@ -850,50 +853,25 @@ app.get("/api/supabase/keep-alive", async (req, res) => {
   }
 });
 
-// Email Confirmation — Send code (supports Resend, returns signed token)
+// Email Confirmation — Send code (returns signed token for custom confirmation)
 app.post("/api/send-confirmation", async (req, res) => {
   const { email, code } = req.body;
   if (!email || !code) {
-    return res.json({ sent: false, error: "Missing email or code" });
+    return res.status(400).json({ error: "Email e código são obrigatórios" });
   }
 
-  const token = signToken(email, code);
+  let token: string;
+  try {
+    token = signToken(email, code);
+  } catch (err: any) {
+    console.warn("Failed to sign token:", err.message);
+    return res.status(500).json({ error: "Erro ao gerar token de confirmação" });
+  }
+
   const confirmLink = `${getBaseUrl()}/api/confirm-email?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&token=${encodeURIComponent(token)}`;
 
-  const apiKeyResend = process.env.RESEND_API_KEY;
-  if (apiKeyResend) {
-    try {
-      await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${apiKeyResend}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          from: process.env.EMAIL_FROM || "ApexEnem <noreply@apexenem.app>",
-          to: email,
-          subject: "Confirme seu e-mail - ApexEnem",
-          html: `
-            <div style="font-family:sans-serif;max-width:480px;margin:40px auto;padding:32px;border-radius:16px;background:#f8f6ff;text-align:center">
-              <h1 style="font-size:24px;color:#1b1574;margin-bottom:8px">ApexEnem</h1>
-              <p style="color:#555;font-size:14px;line-height:1.6">Seu código de verificação é:</p>
-              <div style="font-size:36px;letter-spacing:8px;font-weight:900;color:#2563eb;background:#fff;padding:16px;border-radius:12px;margin:16px 0;border:1px solid #e2e8f0">${code}</div>
-              <p style="color:#555;font-size:14px;line-height:1.6">Ou clique no botão abaixo para confirmar automaticamente:</p>
-              <a href="${confirmLink}" style="display:inline-block;padding:14px 32px;background:#2563eb;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px;margin:8px 0">Confirmar E-mail</a>
-              <p style="color:#999;font-size:12px;margin-top:24px">Se não criou uma conta no ApexEnem, ignore este e-mail.</p>
-            </div>
-          `,
-        }),
-      });
-      console.log(`Confirmation email sent to ${email}`);
-      return res.json({ sent: true, token });
-    } catch (err: any) {
-      console.warn("Resend failed, falling back to simulated send:", err.message);
-    }
-  }
-
   console.log(`[SIMULATED] Confirmation code for ${email}: ${code}`);
-  res.json({ sent: true, simulated: true, token });
+  res.json({ sent: true, simulated: true, token, confirmLink });
 });
 
 function escapeHtml(str: string): string {
@@ -904,14 +882,19 @@ function escapeHtml(str: string): string {
 app.get("/api/confirm-email", (req, res) => {
   const { email, code, token } = req.query;
 
-  if (!email || !code) {
-    return res.status(400).json({ error: "Missing email or code" });
+  if (typeof email !== "string" || typeof code !== "string") {
+    return res.status(400).json({ error: "Email e código são obrigatórios" });
   }
 
   const isHtml = req.headers.accept?.includes("text/html");
 
-  if (token && typeof token === "string" && typeof email === "string" && typeof code === "string") {
-    const valid = verifyToken(email, code, token);
+  if (token && typeof token === "string") {
+    let valid = false;
+    try {
+      valid = verifyToken(email, code, token);
+    } catch {
+      valid = false;
+    }
     if (valid && isHtml) {
       const safeEmail = escapeHtml(email);
       return res.type("html").send(`
@@ -946,10 +929,10 @@ app.get("/api/confirm-email", (req, res) => {
         <h1>Link Inválido</h1><p>Este link de confirmação é inválido ou expirou. Tente copiar o código manualmente no app.</p></div></body></html>
       `);
     }
-    return res.status(400).json({ confirmed: false, error: "Invalid or expired token" });
+    return res.status(400).json({ error: "Token inválido ou expirado" });
   }
 
-  res.json({ confirmed: true, message: `Email ${email} confirmed successfully.` });
+  return res.status(400).json({ error: "Token de confirmação não enviado" });
 });
 
 // ENEM Questions API proxy — fetches real questions from enem.dev
@@ -962,44 +945,58 @@ const SUBJECT_MAP: Record<string, string> = {
 
 app.get("/api/enem-questions", async (req, res) => {
   const subject = (req.query.subject as string) || "Geral";
-  const count = parseInt(req.query.count as string) || 10;
+  const count = Math.max(1, Math.min(50, parseInt(req.query.count as string) || 10));
   const usedIds = (req.query.used as string) || "";
 
   const years = [2023, 2022];
   const allQuestions: any[] = [];
 
-  for (const year of years) {
-    try {
-      const url = `https://api.enem.dev/v1/exams/${year}/questions?limit=180&offset=0`;
-      const response = await fetch(url);
-      if (!response.ok) continue;
-      const data = await response.json();
-      const questions = data.questions || [];
+  const results = await Promise.allSettled(
+    years.map(async (year) => {
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      try {
+        const url = `https://api.enem.dev/v1/exams/${year}/questions?limit=180&offset=0`;
+        const response = await fetch(url, { signal: controller.signal });
+        if (!response.ok) return [];
+        const data = await response.json();
+        const questions = data.questions || [];
 
-      const filtered = questions.filter((q: any) => {
-        if (subject !== "Geral" && q.discipline !== SUBJECT_MAP[subject]) return false;
-        const letter = q.correctAlternative;
-        if (!letter || !["A","B","C","D","E"].includes(letter)) return false;
-        const hasText = q.alternatives?.some((a: any) => a.text?.trim());
-        if (!hasText) return false;
-        if (usedIds.includes(`enem-${q.year}-${q.index}`)) return false;
-        return true;
-      });
+        return (questions || [])
+          .filter((q: any) => q && typeof q === "object")
+          .filter((q: any) => {
+            if (subject !== "Geral" && q.discipline !== SUBJECT_MAP[subject]) return false;
+            const letter = q.correctAlternative;
+            if (!letter || !["A","B","C","D","E"].includes(letter)) return false;
+            const hasText = q.alternatives?.some((a: any) => a.text?.trim());
+            if (!hasText) return false;
+            if (usedIds.includes(`enem-${q.year}-${q.index}`)) return false;
+            return true;
+          })
+          .map((q: any) => ({
+            id: `enem-${q.year}-${q.index}`,
+            statement: `(${q.title || `ENEM ${q.year} - Questão ${q.index}`})\n\n${q.context || ""}`,
+            options: q.alternatives?.filter((a: any) => a.text).map((a: any) => ({
+              letter: a.letter,
+              text: a.text || ""
+            })) || [],
+            correctAnswer: q.correctAlternative,
+            explanation: `Alternativa correta: ${q.correctAlternative}. ${q.alternatives?.find((a: any) => a.letter === q.correctAlternative)?.text || ""}`,
+            year: q.year,
+            index: q.index,
+          }));
+      } catch (err: any) {
+        console.warn(`Failed to fetch year ${year}:`, err.message);
+        return [];
+      } finally {
+        clearTimeout(timeoutId);
+      }
+    })
+  );
 
-      allQuestions.push(...filtered.map((q: any) => ({
-        id: `enem-${q.year}-${q.index}`,
-        statement: `(${q.title || `ENEM ${q.year} - Questão ${q.index}`})\n\n${q.context || ""}`,
-        options: q.alternatives?.filter((a: any) => a.text).map((a: any) => ({
-          letter: a.letter,
-          text: a.text || ""
-        })) || [],
-        correctAnswer: q.correctAlternative,
-        explanation: `Alternativa correta: ${q.correctAlternative}. ${q.alternatives?.find((a: any) => a.letter === q.correctAlternative)?.text || ""}`,
-        year: q.year,
-        index: q.index,
-      })));
-    } catch (err: any) {
-      console.warn(`Failed to fetch year ${year}:`, err.message);
+  for (const result of results) {
+    if (result.status === 'fulfilled') {
+      allQuestions.push(...result.value);
     }
   }
 
@@ -1028,6 +1025,11 @@ app.get("/api/credentials-status", (req, res) => {
   });
 });
 
+// AdSense publisher ID — exposed to check if ads are configured
+app.get("/api/adsense-status", (_req, res) => {
+  res.json({ configured: !!process.env.VITE_ADSENSE_PUBLISHER_ID });
+});
+
 // Only start the server locally (Vercel handles this as a serverless function)
 if (!process.env.VERCEL) {
   async function startServer() {
@@ -1051,8 +1053,17 @@ if (!process.env.VERCEL) {
     });
   }
 
-  startServer();
+  startServer().catch((err) => {
+    console.error("Failed to start server:", err?.message || err);
+    process.exit(1);
+  });
 }
+
+// Global error handler — always return JSON
+app.use((err: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
+  console.error("Unhandled error:", err?.message || err);
+  res.status(500).json({ error: "Erro interno do servidor" });
+});
 
 // Export for Vercel serverless function
 export default app;

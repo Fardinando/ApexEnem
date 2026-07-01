@@ -58,7 +58,7 @@ export default function DashboardView({
     ? [1, 2, 3, 4, 5].map(id => {
         let sum = 0;
         essayCorrections.forEach(e => {
-          const comp = e.competencies.find(c => c.id === id);
+          const comp = (e.competencies || []).find(c => c.id === id);
           sum += comp ? comp.score : 0;
         });
         return Math.round(sum / essayCorrections.length);
@@ -124,7 +124,7 @@ export default function DashboardView({
         </div>
       </div>
 
-      <AdPlaceholder slot="dashboard-topo" format="banner" className="my-6" />
+      <AdPlaceholder slot="dashboard-topo" format="banner" className="my-6" user={currentUser} setActiveTab={setActiveTab} />
 
       {/* Grid Bento Box System layout */}
       <div className="grid grid-cols-1 md:grid-cols-12 gap-5" id="bento-box-grid">
@@ -519,7 +519,7 @@ export default function DashboardView({
         </div>
 
         <div className="md:col-span-12">
-          <AdPlaceholder slot="dashboard-sidebar" format="rectangle" className="my-4" />
+          <AdPlaceholder slot="dashboard-sidebar" format="rectangle" className="my-4" user={currentUser} />
         </div>
 
         {/* Bento Card 6: Shortcuts & Motivation - Column */}
@@ -584,7 +584,7 @@ export default function DashboardView({
 
       </div>
 
-      <AdPlaceholder slot="dashboard-rodape" format="banner" className="mt-6" />
+      <AdPlaceholder slot="dashboard-rodape" format="banner" className="mt-6" user={currentUser} />
 
     </div>
   );

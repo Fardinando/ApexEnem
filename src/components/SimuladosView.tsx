@@ -24,6 +24,7 @@ import AdPlaceholder from './AdPlaceholder';
 
 interface SimuladosViewProps {
   onSaveSimuladoResult: (scorePercent: number, subject: string) => void;
+  accessToken?: string;
 }
 
 // Durable Fisher-Yates array shuffling implementation
@@ -38,7 +39,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return copy;
 };
 
-export default function SimuladosView({ onSaveSimuladoResult }: SimuladosViewProps) {
+export default function SimuladosView({ onSaveSimuladoResult, accessToken }: SimuladosViewProps) {
   const [config, setConfig] = useState<SimuladoConfig>({
     subject: 'Matemática',
     questionCount: 3
@@ -84,7 +85,16 @@ export default function SimuladosView({ onSaveSimuladoResult }: SimuladosViewPro
   const handleStartSimulado = async () => {
     setLoadingQuestions(true);
     try {
-      const res = await fetch(`/api/enem-questions?subject=${encodeURIComponent(config.subject)}&count=${config.questionCount}`);
+      const headers: Record<string, string> = {};
+      if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
+
+      const res = await fetch(`/api/enem-questions?subject=${encodeURIComponent(config.subject)}&count=${config.questionCount}`, { headers });
+
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        throw new Error(errData.error || `Erro HTTP ${res.status}`);
+      }
+
       const data = await res.json();
       const questions: SimuladoQuestion[] = (data.questions || []).map((q: any) => ({ ...q, userAnswer: undefined }));
 

@@ -134,7 +134,7 @@ export default function ConfiguracoesView({
         </p>
       </div>
 
-      <AdPlaceholder slot="configuracoes-topo" format="banner" className="my-4" />
+      <AdPlaceholder slot="configuracoes-topo" format="banner" className="my-4" user={currentUser} />
 
       <div className="space-y-6" id="settings-blocks-stack">
         
@@ -358,7 +358,7 @@ export default function ConfiguracoesView({
 
         </div>
 
-        <AdPlaceholder slot="configuracoes-meio" format="rectangle" className="my-4" />
+        <AdPlaceholder slot="configuracoes-meio" format="rectangle" className="my-4" user={currentUser} />
 
         {/* Block 2: Dark Mode Options */}
         <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
@@ -400,7 +400,7 @@ export default function ConfiguracoesView({
 
         </div>
 
-        <AdPlaceholder slot="configuracoes-rodape" format="banner" className="my-4" />
+        <AdPlaceholder slot="configuracoes-rodape" format="banner" className="my-4" user={currentUser} />
 
         {/* Block 3: Danger Zone */}
         <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-red-105 dark:border-red-950/40 shadow-sm space-y-5">

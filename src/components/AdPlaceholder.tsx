@@ -1,39 +1,99 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
+import { pushAd, isAdsenseConfigured, getHouseAdContent, markHouseAdSeen, shouldShowHouseAd } from '../lib/ads';
+import type { UserProfile } from '../types';
 
 interface AdPlaceholderProps {
   slot: string;
   format?: 'banner' | 'rectangle' | 'skyscraper';
   className?: string;
+  user?: Partial<UserProfile>;
+  setActiveTab?: (tab: string) => void;
 }
 
-const FORMAT_CLASSES = {
-  banner: 'w-full h-20',
-  rectangle: 'w-full max-w-sm h-64',
-  skyscraper: 'w-40 h-96'
+const FORMAT_CLASSES: Record<string, string> = {
+  banner: 'w-full min-h-[90px]',
+  rectangle: 'w-full max-w-sm min-h-[250px]',
+  skyscraper: 'w-40 min-h-[600px]'
 };
 
-const FORMAT_LABELS = {
-  banner: 'Banner 728x90',
-  rectangle: 'Retângulo 336x280',
-  skyscraper: 'Arranha-céu 160x600'
+const AD_SLOT_IDS: Record<string, string> = {
+  'dashboard-topo': import.meta.env.VITE_ADSENSE_SLOT_DASHBOARD_TOP || '',
+  'dashboard-sidebar': import.meta.env.VITE_ADSENSE_SLOT_DASHBOARD_SIDEBAR || '',
+  'dashboard-rodape': import.meta.env.VITE_ADSENSE_SLOT_DASHBOARD_BOTTOM || '',
+  'aprendizado-topo': import.meta.env.VITE_ADSENSE_SLOT_APRENDIZADO_TOP || '',
+  'aprendizado-sidebar': import.meta.env.VITE_ADSENSE_SLOT_APRENDIZADO_SIDEBAR || '',
+  'aprendizado-rodape': import.meta.env.VITE_ADSENSE_SLOT_APRENDIZADO_BOTTOM || '',
+  'aprendizado-lesson-sidebar': import.meta.env.VITE_ADSENSE_SLOT_APRENDIZADO_LESSON || '',
+  'redacao-topo': import.meta.env.VITE_ADSENSE_SLOT_REDACAO_TOP || '',
+  'redacao-rodape': import.meta.env.VITE_ADSENSE_SLOT_REDACAO_BOTTOM || '',
+  'perguntas-topo': import.meta.env.VITE_ADSENSE_SLOT_PERGUNTAS_TOP || '',
+  'perguntas-meio': import.meta.env.VITE_ADSENSE_SLOT_PERGUNTAS_MIDDLE || '',
+  'perguntas-rodape': import.meta.env.VITE_ADSENSE_SLOT_PERGUNTAS_BOTTOM || '',
+  'simulados-topo': import.meta.env.VITE_ADSENSE_SLOT_SIMULADOS_TOP || '',
+  'simulados-rodape': import.meta.env.VITE_ADSENSE_SLOT_SIMULADOS_BOTTOM || '',
+  'configuracoes-topo': import.meta.env.VITE_ADSENSE_SLOT_CONFIG_TOP || '',
+  'configuracoes-meio': import.meta.env.VITE_ADSENSE_SLOT_CONFIG_MIDDLE || '',
+  'configuracoes-rodape': import.meta.env.VITE_ADSENSE_SLOT_CONFIG_BOTTOM || '',
 };
 
-export default function AdPlaceholder({ slot, format = 'banner', className = '' }: AdPlaceholderProps) {
+export default function AdPlaceholder({ slot, format = 'banner', className = '', user, setActiveTab }: AdPlaceholderProps) {
+  const insRef = useRef<HTMLModElement>(null);
+  const pushedRef = useRef(false);
+  const adsenseEnabled = isAdsenseConfigured();
+  const adSlotId = AD_SLOT_IDS[slot];
+
+  useEffect(() => {
+    if (!adsenseEnabled || !adSlotId) return;
+    const timer = setTimeout(() => {
+      if (!pushedRef.current) {
+        pushAd();
+        pushedRef.current = true;
+      }
+    }, 200);
+    return () => clearTimeout(timer);
+  }, [slot, adsenseEnabled, adSlotId]);
+
+  // AdSense mode
+  if (adsenseEnabled && adSlotId) {
+    return (
+      <div className={`relative ${FORMAT_CLASSES[format]} ${className}`}>
+        <ins
+          ref={insRef}
+          className="adsbygoogle"
+          style={{ display: 'block' }}
+          data-ad-client={`ca-pub-${import.meta.env.VITE_ADSENSE_PUBLISHER_ID}`}
+          data-ad-slot={adSlotId}
+          data-ad-format={format === 'rectangle' ? 'rectangle' : 'auto'}
+          data-full-width-responsive="true"
+        />
+      </div>
+    );
+  }
+
+  // Fallback: personalized house ads
+  if (!shouldShowHouseAd()) return null;
+  markHouseAdSeen();
+
+  const ad = getHouseAdContent(user);
+  if (!ad) return null;
+
+  const handleClick = () => {
+    if (setActiveTab && ad.action) {
+      setActiveTab(ad.action);
+    }
+  };
+
+  const containerClass = `relative flex items-center gap-3 p-3 sm:p-4 bg-gradient-to-br from-indigo-50 to-blue-50 dark:from-indigo-950/40 dark:to-blue-950/40 border border-indigo-200/50 dark:border-indigo-800/30 rounded-xl overflow-hidden select-none ${FORMAT_CLASSES[format]} ${className} ${setActiveTab && ad.action ? 'cursor-pointer hover:from-indigo-100 hover:to-blue-100 dark:hover:from-indigo-900/50 dark:hover:to-blue-900/50 transition-all duration-200' : ''}`;
+
   return (
-    <div
-      id={`ad-${slot}`}
-      className={`relative flex items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-900 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-xl overflow-hidden select-none ${FORMAT_CLASSES[format]} ${className}`}
-    >
-      <div className="text-center px-4 py-2">
-        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-slate-400 dark:text-slate-500 block">
-          Anúncio
-        </span>
-        <span className="text-[11px] text-slate-400 dark:text-slate-500 mt-1 block">
-          {FORMAT_LABELS[format]} — {slot}
-        </span>
-        <span className="text-[9px] text-slate-300 dark:text-slate-600 mt-0.5 block">
-          Espaço reservado para publicidade personalizada
-        </span>
+    <div className={containerClass} onClick={handleClick} role={setActiveTab && ad.action ? 'button' : undefined} tabIndex={setActiveTab && ad.action ? 0 : undefined} onKeyDown={e => { if (e.key === 'Enter' && setActiveTab && ad.action) { handleClick(); } }}>
+      <div className="text-2xl sm:text-3xl flex-shrink-0">{ad.emoji}</div>
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-bold text-indigo-700 dark:text-indigo-300 uppercase tracking-wider">{ad.title}</p>
+        <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5 leading-tight">{ad.text}</p>
+        {setActiveTab && ad.action && (
+          <span className="inline-block mt-1.5 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 hover:underline">{ad.cta} →</span>
+        )}
       </div>
     </div>
   );

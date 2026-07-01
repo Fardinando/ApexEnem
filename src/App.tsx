@@ -25,12 +25,14 @@ export default function App() {
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
 
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session: s } }) => {
-      if (s) setSession(s);
-      setLoading(false);
-    });
+    supabase.auth.getSession()
+      .then(({ data: { session: s } }) => {
+        if (s) setSession(s);
+      })
+      .catch(() => { /* session fetch failed */ })
+      .finally(() => setLoading(false));
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, s) => {
+    const sub = supabase.auth.onAuthStateChange((event, s) => {
       if (s && (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED')) {
         setSession(s);
       } else if (event === 'SIGNED_OUT') {
@@ -38,7 +40,7 @@ export default function App() {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => sub.data.subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -51,21 +53,29 @@ export default function App() {
       return;
     }
 
+    let cancelled = false;
     (async () => {
-      const p = await getProfile(session.user.id);
-      setProfile(p);
-      setRequireOnboarding(!p?.serie);
+      try {
+        const p = await getProfile(session.user.id);
+        if (cancelled) return;
+        setProfile(p);
+        setRequireOnboarding(!p?.serie);
 
-      const [essays, sims, logs] = await Promise.all([
-        fetchEssays(session.user.id),
-        fetchSimulados(session.user.id),
-        fetchLogs(session.user.id),
-      ]);
+        const [essays, sims, logs] = await Promise.all([
+          fetchEssays(session.user.id),
+          fetchSimulados(session.user.id),
+          fetchLogs(session.user.id),
+        ]);
 
-      setEssayCorrections(essays);
-      setSimuladosHistory(sims);
-      setActivityLogs(logs);
+        if (cancelled) return;
+        setEssayCorrections(essays);
+        setSimuladosHistory(sims);
+        setActivityLogs(logs);
+      } catch (err) {
+        console.error("Failed to load user data:", err);
+      }
     })();
+    return () => { cancelled = true; };
   }, [session?.user?.id]);
 
   useEffect(() => {
@@ -93,47 +103,52 @@ export default function App() {
 
   const handleOnboardingCompleted = async (data: { serie: string; targetScore: number; hardSubjects: string[] }) => {
     if (!session?.user) return;
-    const updated = await upsertProfile({
-      id: session.user.id,
-      name: session.user.user_metadata?.name || 'Estudante',
-      region: session.user.user_metadata?.region,
-      state: session.user.user_metadata?.state,
-      city: session.user.user_metadata?.city,
-      serie: data.serie,
-      target_score: data.targetScore,
-      hard_subjects: data.hardSubjects,
-    });
-    setProfile(updated || { serie: data.serie, target_score: data.targetScore, hard_subjects: data.hardSubjects });
-    setRequireOnboarding(false);
+    try {
+      const updated = await upsertProfile({
+        id: session.user.id,
+        name: session.user.user_metadata?.name || 'Estudante',
+        region: session.user.user_metadata?.region,
+        state: session.user.user_metadata?.state,
+        city: session.user.user_metadata?.city,
+        serie: data.serie,
+        target_score: data.targetScore,
+        hard_subjects: data.hardSubjects,
+      });
+      setProfile(updated || { serie: data.serie, target_score: data.targetScore, hard_subjects: data.hardSubjects });
+      setRequireOnboarding(false);
 
-    const newLog: ActivityLog = {
-      id: `act-${Date.now()}`,
-      type: 'onboarding',
-      title: 'Plano Adaptativo Personalizado',
-      description: `Série mapeada: ${data.serie}. Meta estabelecida: ${data.targetScore} pontos.`,
-      timeAgo: 'Agora mesmo',
-      date: new Date().toISOString(),
-    };
+      const newLog: ActivityLog = {
+        id: `act-${Date.now()}`,
+        type: 'onboarding',
+        title: 'Plano Adaptativo Personalizado',
+        description: `Série mapeada: ${data.serie}. Meta estabelecida: ${data.targetScore} pontos.`,
+        timeAgo: 'Agora mesmo',
+        date: new Date().toISOString(),
+      };
 
-    await saveLog({ ...newLog, user_id: session.user.id });
-    setActivityLogs(prev => [newLog, ...prev]);
+      await saveLog({ ...newLog, user_id: session.user.id });
+      setActivityLogs(prev => [newLog, ...prev]);
+    } catch (err) {
+      console.error("Failed to save onboarding:", err);
+    }
   };
 
   const handleAddCorrection = async (newCorr: EssayCorrection, log: ActivityLog) => {
     if (!session?.user) return;
-    await saveEssay({ ...newCorr, user_id: session.user.id });
-    await saveLog({ ...log, user_id: session.user.id });
-
-    setEssayCorrections(prev => [newCorr, ...prev]);
-    setActivityLogs(prev => [log, ...prev]);
+    try {
+      await saveEssay({ ...newCorr, user_id: session.user.id });
+      await saveLog({ ...log, user_id: session.user.id });
+      setEssayCorrections(prev => [newCorr, ...prev]);
+      setActivityLogs(prev => [log, ...prev]);
+    } catch (err) {
+      console.error("Failed to save correction:", err);
+    }
   };
 
   const handleSaveSimuladoResult = async (scorePercent: number, subject: string) => {
     if (!session?.user) return;
 
     const newSim = { scorePercent, date: new Date().toLocaleDateString('pt-BR'), subject };
-    await saveSimulado({ ...newSim, user_id: session.user.id });
-
     const log: ActivityLog = {
       id: `act-${Date.now()}`,
       type: 'simulado',
@@ -142,46 +157,67 @@ export default function App() {
       timeAgo: 'Agora mesmo',
       date: new Date().toISOString(),
     };
-    await saveLog({ ...log, user_id: session.user.id });
 
-    setSimuladosHistory(prev => [newSim, ...prev]);
-    setActivityLogs(prev => [log, ...prev]);
+    try {
+      await saveSimulado({ ...newSim, user_id: session.user.id });
+      await saveLog({ ...log, user_id: session.user.id });
+      setSimuladosHistory(prev => [newSim, ...prev]);
+      setActivityLogs(prev => [log, ...prev]);
+    } catch (err) {
+      console.error("Failed to save simulado result:", err);
+    }
   };
 
   const handleLogout = async () => {
-    await supabase.auth.signOut();
+    try {
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
   };
 
   const handleUpdateProfile = async (updated: any) => {
     if (!session?.user) return;
-    await upsertProfile({ id: session.user.id, ...updated });
-    setProfile((prev: any) => ({ ...prev, ...updated }));
+    try {
+      await upsertProfile({ id: session.user.id, ...updated });
+      setProfile((prev: any) => ({ ...prev, ...updated }));
+    } catch (err) {
+      console.error("Failed to update profile:", err);
+    }
   };
 
   const handleClearLocalData = async () => {
     if (!session?.user) return;
-    await supabase.from('essay_corrections').delete().eq('user_id', session.user.id);
-    await supabase.from('simulado_history').delete().eq('user_id', session.user.id);
-    await supabase.from('activity_logs').delete().eq('user_id', session.user.id);
+    try {
+      await supabase.from('essay_corrections').delete().eq('user_id', session.user.id);
+      await supabase.from('simulado_history').delete().eq('user_id', session.user.id);
+      await supabase.from('activity_logs').delete().eq('user_id', session.user.id);
 
-    setEssayCorrections([]);
-    setSimuladosHistory([]);
-    setActivityLogs([]);
-    setRequireOnboarding(true);
+      setEssayCorrections([]);
+      setSimuladosHistory([]);
+      setActivityLogs([]);
+      setRequireOnboarding(true);
 
-    const p = await getProfile(session.user.id);
-    setProfile(p);
+      const p = await getProfile(session.user.id);
+      setProfile(p);
+    } catch (err) {
+      console.error("Failed to clear data:", err);
+    }
   };
 
   const handleDeleteAccount = async () => {
     if (!session?.user || !confirm('Tem certeza? Esta ação é irreversível.')) return;
 
-    await supabase.from('essay_corrections').delete().eq('user_id', session.user.id);
-    await supabase.from('simulado_history').delete().eq('user_id', session.user.id);
-    await supabase.from('activity_logs').delete().eq('user_id', session.user.id);
-    await supabase.from('profiles').delete().eq('id', session.user.id);
-    await supabase.auth.admin.deleteUser(session.user.id);
-    await supabase.auth.signOut();
+    try {
+      await supabase.from('essay_corrections').delete().eq('user_id', session.user.id);
+      await supabase.from('simulado_history').delete().eq('user_id', session.user.id);
+      await supabase.from('activity_logs').delete().eq('user_id', session.user.id);
+      await supabase.from('profiles').delete().eq('id', session.user.id);
+      await supabase.auth.admin.deleteUser(session.user.id);
+      await supabase.auth.signOut();
+    } catch (err) {
+      console.error("Failed to delete account:", err);
+    }
   };
 
   if (loading) {
@@ -260,6 +296,7 @@ export default function App() {
         {activeTab === 'simulados' && (
           <SimuladosView
             onSaveSimuladoResult={handleSaveSimuladoResult}
+            accessToken={session.access_token}
           />
         )}
         {activeTab === 'aprendizado' && (
