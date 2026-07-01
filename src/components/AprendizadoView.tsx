@@ -15,6 +15,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import type { LearningChapter, Exercise, EssayCorrection, UserProfile } from '../types';
 import { INITIAL_CHAPTERS, CHAPTER_EXERCISES } from '../data/learning-exercises';
 import AdPlaceholder from './AdPlaceholder';
+import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
 
 interface AprendizadoViewProps {
   essayCorrections?: EssayCorrection[];
@@ -72,6 +73,8 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
   const [lessonCompleted, setLessonCompleted] = useState(false);
   const [lessonPassed, setLessonPassed] = useState(false);
   const [lessonScore, setLessonScore] = useState(0);
+  const [showRewardAd, setShowRewardAd] = useState(false);
+  const [pendingChapter, setPendingChapter] = useState<LearningChapter | null>(null);
 
   const weakAreas = getWeakAreas(
     essayCorrections,
@@ -225,6 +228,18 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
     setMatchingSelections({ left: null, right: null });
     setMatchingCompleted({});
     setMatchingStatusText('Escolha uma palavra da de esquerda e depois sua resposta à direita.');
+
+    incrementRewardCounter('ai-exercises');
+    if (shouldShowRewardAd('ai-exercises', 3)) {
+      setPendingChapter(chap);
+      setShowRewardAd(true);
+      return;
+    }
+
+    await doStartLesson(chap);
+  };
+
+  const doStartLesson = async (chap: LearningChapter) => {
 
     let pool: Exercise[] = [];
 
@@ -414,6 +429,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
   };
 
   return (
+    <>
     <div id="aprendizado-view" className="space-y-6 animate-fade-in" style={{ contentVisibility: 'auto' }}>
 
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -1032,5 +1048,22 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
       <AdPlaceholder slot="aprendizado-rodape" format="banner" user={currentUser} />
 
     </div>
+
+    {showRewardAd && pendingChapter && (
+      <RewardAdOverlay
+        action="ai-exercises"
+        onContinue={() => {
+          setShowRewardAd(false);
+          const chap = pendingChapter;
+          setPendingChapter(null);
+          doStartLesson(chap);
+        }}
+        onClose={() => {
+          setShowRewardAd(false);
+          setPendingChapter(null);
+        }}
+      />
+    )}
+    </>
   );
 }

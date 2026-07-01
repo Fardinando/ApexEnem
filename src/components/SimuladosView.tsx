@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { SimuladoConfig, SimuladoQuestion, SimuladoState } from '../types';
 import AdPlaceholder from './AdPlaceholder';
+import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
 
 interface SimuladosViewProps {
   onSaveSimuladoResult: (scorePercent: number, subject: string) => void;
@@ -50,6 +51,7 @@ export default function SimuladosView({ onSaveSimuladoResult, accessToken }: Sim
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [showRewardAd, setShowRewardAd] = useState(false);
 
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -206,7 +208,19 @@ export default function SimuladosView({ onSaveSimuladoResult, accessToken }: Sim
 
   const activeQuestion = simulado?.questions[simulado.currentQuestionIndex];
 
+  const handleToggleGabarito = () => {
+    if (!showGabarito) {
+      incrementRewardCounter('gabarito');
+      if (shouldShowRewardAd('gabarito', 2)) {
+        setShowRewardAd(true);
+        return;
+      }
+    }
+    setShowGabarito(!showGabarito);
+  };
+
   return (
+    <>
     <div id="simulados-wrapper" className="space-y-6 animate-fade-in" style={{ contentVisibility: 'auto' }}>
       
       {/* HUD Header */}
@@ -497,7 +511,7 @@ export default function SimuladosView({ onSaveSimuladoResult, accessToken }: Sim
               <button
                 id="btn-toggle-review-gabarito"
                 type="button"
-                onClick={() => setShowGabarito(!showGabarito)}
+                onClick={handleToggleGabarito}
                 className="px-4 py-2 border border-slate-200 dark:border-slate-800 rounded-xl text-xs font-bold text-blue-600 dark:text-blue-400 hover:bg-slate-50 dark:hover:bg-[#0f172a] transition cursor-pointer"
               >
                 {showGabarito ? 'Esconder Gabarito' : 'Ver Gabarito Detalhado'}
@@ -635,5 +649,17 @@ export default function SimuladosView({ onSaveSimuladoResult, accessToken }: Sim
       <AdPlaceholder slot="simulados-rodape" format="banner" className="mt-6" />
 
     </div>
+
+    {showRewardAd && (
+      <RewardAdOverlay
+        action="gabarito"
+        onContinue={() => {
+          setShowRewardAd(false);
+          setShowGabarito(true);
+        }}
+        onClose={() => setShowRewardAd(false)}
+      />
+    )}
+    </>
   );
 }

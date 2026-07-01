@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { pushAd, isAdsenseConfigured, getHouseAdContent, markHouseAdSeen, shouldShowHouseAd } from '../lib/ads';
+import { AD_SLOTS } from '../config/ads';
 import type { UserProfile } from '../types';
 
 interface AdPlaceholderProps {
@@ -16,34 +17,13 @@ const FORMAT_CLASSES: Record<string, string> = {
   skyscraper: 'w-40 min-h-[600px]'
 };
 
-const AD_SLOT_IDS: Record<string, string> = {
-  'dashboard-topo': import.meta.env.VITE_ADSENSE_SLOT_DASHBOARD_TOP || '',
-  'dashboard-sidebar': import.meta.env.VITE_ADSENSE_SLOT_DASHBOARD_SIDEBAR || '',
-  'dashboard-rodape': import.meta.env.VITE_ADSENSE_SLOT_DASHBOARD_BOTTOM || '',
-  'aprendizado-topo': import.meta.env.VITE_ADSENSE_SLOT_APRENDIZADO_TOP || '',
-  'aprendizado-sidebar': import.meta.env.VITE_ADSENSE_SLOT_APRENDIZADO_SIDEBAR || '',
-  'aprendizado-rodape': import.meta.env.VITE_ADSENSE_SLOT_APRENDIZADO_BOTTOM || '',
-  'aprendizado-lesson-sidebar': import.meta.env.VITE_ADSENSE_SLOT_APRENDIZADO_LESSON || '',
-  'redacao-topo': import.meta.env.VITE_ADSENSE_SLOT_REDACAO_TOP || '',
-  'redacao-rodape': import.meta.env.VITE_ADSENSE_SLOT_REDACAO_BOTTOM || '',
-  'perguntas-topo': import.meta.env.VITE_ADSENSE_SLOT_PERGUNTAS_TOP || '',
-  'perguntas-meio': import.meta.env.VITE_ADSENSE_SLOT_PERGUNTAS_MIDDLE || '',
-  'perguntas-rodape': import.meta.env.VITE_ADSENSE_SLOT_PERGUNTAS_BOTTOM || '',
-  'simulados-topo': import.meta.env.VITE_ADSENSE_SLOT_SIMULADOS_TOP || '',
-  'simulados-rodape': import.meta.env.VITE_ADSENSE_SLOT_SIMULADOS_BOTTOM || '',
-  'configuracoes-topo': import.meta.env.VITE_ADSENSE_SLOT_CONFIG_TOP || '',
-  'configuracoes-meio': import.meta.env.VITE_ADSENSE_SLOT_CONFIG_MIDDLE || '',
-  'configuracoes-rodape': import.meta.env.VITE_ADSENSE_SLOT_CONFIG_BOTTOM || '',
-};
-
 export default function AdPlaceholder({ slot, format = 'banner', className = '', user, setActiveTab }: AdPlaceholderProps) {
-  const insRef = useRef<HTMLModElement>(null);
   const pushedRef = useRef(false);
   const adsenseEnabled = isAdsenseConfigured();
-  const adSlotId = AD_SLOT_IDS[slot];
+  const adCode = AD_SLOTS[slot];
 
   useEffect(() => {
-    if (!adsenseEnabled || !adSlotId) return;
+    if (!adsenseEnabled || !adCode) return;
     const timer = setTimeout(() => {
       if (!pushedRef.current) {
         pushAd();
@@ -51,22 +31,15 @@ export default function AdPlaceholder({ slot, format = 'banner', className = '',
       }
     }, 200);
     return () => clearTimeout(timer);
-  }, [slot, adsenseEnabled, adSlotId]);
+  }, [slot, adsenseEnabled, adCode]);
 
-  // AdSense mode
-  if (adsenseEnabled && adSlotId) {
+  // AdSense mode — render the <ins> code from config
+  if (adsenseEnabled && adCode) {
     return (
-      <div className={`relative ${FORMAT_CLASSES[format]} ${className}`}>
-        <ins
-          ref={insRef}
-          className="adsbygoogle"
-          style={{ display: 'block' }}
-          data-ad-client={`ca-pub-${import.meta.env.VITE_ADSENSE_PUBLISHER_ID}`}
-          data-ad-slot={adSlotId}
-          data-ad-format={format === 'rectangle' ? 'rectangle' : 'auto'}
-          data-full-width-responsive="true"
-        />
-      </div>
+      <div
+        className={`relative ${FORMAT_CLASSES[format]} ${className}`}
+        dangerouslySetInnerHTML={{ __html: adCode }}
+      />
     );
   }
 

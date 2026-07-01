@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { EssayCorrection, ActivityLog } from '../types';
 import AdPlaceholder from './AdPlaceholder';
+import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
 
 interface RedacaoViewProps {
   onAddCorrection: (correction: EssayCorrection, log: ActivityLog) => void;
@@ -39,6 +40,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const [showRewardAd, setShowRewardAd] = useState(false);
 
   // DRAG AND DROP UTILITIES
   const handleDragOver = (e: React.DragEvent) => {
@@ -95,6 +97,17 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       alert('Carregue uma foto da sua redação antes de solicitar a correção.');
       return;
     }
+
+    incrementRewardCounter('correction');
+    if (shouldShowRewardAd('correction', 2)) {
+      setShowRewardAd(true);
+      return;
+    }
+
+    await doCorrection();
+  };
+
+  const doCorrection = async () => {
 
     setIsLoading(true);
     setSelectedIndex(-1); // reset accordion states

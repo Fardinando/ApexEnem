@@ -1,4 +1,5 @@
 import type { UserProfile } from '../types';
+import { ADSENSE_PUBLISHER_ID } from '../config/ads';
 
 declare global {
   interface Window {
@@ -15,12 +16,11 @@ export function pushAd(): void {
 }
 
 export function isAdsenseConfigured(): boolean {
-  return !!import.meta.env.VITE_ADSENSE_PUBLISHER_ID;
+  return !!ADSENSE_PUBLISHER_ID;
 }
 
 const STORAGE_KEY = 'ApexEnem_house_ad_seen';
 
-// Personalized house ads based on user profile
 export function getHouseAdContent(user?: Partial<UserProfile>): { emoji: string; title: string; text: string; cta: string; action?: string } {
   const hard = user?.hardSubjects || [];
   const serie = user?.serie || '';
@@ -52,7 +52,6 @@ export function getHouseAdContent(user?: Partial<UserProfile>): { emoji: string;
   return { emoji: '🚀', title: 'ApexEnem', text: 'Sua plataforma completa para arrasar no ENEM: redação, simulados, questões e mais!', cta: 'Explorar', action: 'dashboard' };
 }
 
-// Mark house ad as seen so it doesn't repeat same ad
 export function markHouseAdSeen(): void {
   try {
     localStorage.setItem(STORAGE_KEY, Date.now().toString());
@@ -62,7 +61,7 @@ export function markHouseAdSeen(): void {
 export function shouldShowHouseAd(): boolean {
   try {
     const last = parseInt(localStorage.getItem(STORAGE_KEY) || '0');
-    return Date.now() - last > 30000; // 30s between house ad rotations
+    return Date.now() - last > 30000;
   } catch {
     return true;
   }
