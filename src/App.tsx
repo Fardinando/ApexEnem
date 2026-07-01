@@ -19,7 +19,11 @@ export default function App() {
   const [loading, setLoading] = useState(true);
   const [requireOnboarding, setRequireOnboarding] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
-  const [isDarkMode, setIsDarkMode] = useState(false);
+  const [isDarkMode, setIsDarkMode] = useState(() => {
+    const saved = localStorage.getItem('ApexEnem_dark_theme');
+    if (saved !== null) return saved === 'true';
+    return window.matchMedia('(prefers-color-scheme: dark)').matches;
+  });
   const [essayCorrections, setEssayCorrections] = useState<EssayCorrection[]>([]);
   const [simuladosHistory, setSimuladosHistory] = useState<{ scorePercent: number; date: string; subject: string }[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
@@ -87,14 +91,7 @@ export default function App() {
     localStorage.setItem('ApexEnem_dark_theme', String(isDarkMode));
   }, [isDarkMode]);
 
-  useEffect(() => {
-    const savedTheme = localStorage.getItem('ApexEnem_dark_theme');
-    if (savedTheme !== null) {
-      setIsDarkMode(savedTheme === 'true');
-    } else {
-      setIsDarkMode(window.matchMedia('(prefers-color-scheme: dark)').matches);
-    }
-  }, []);
+
 
   const handleAuthSuccess = async () => {
     const { data: { session: s } } = await supabase.auth.getSession();

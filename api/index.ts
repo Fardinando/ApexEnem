@@ -582,7 +582,7 @@ app.post("/api/openrouter-chat", async (req, res) => {
         messages: [
           {
             role: "system",
-            content: "Você é o Corujito, o tutor inteligente e encorajador tipo corujinha de Duolingo do ENEM. Explique conceitos de modo muito lúdico, conciso e instrutivo."
+            content: "Você é o Cabrito, o tutor inteligente e encorajador tipo cabrito do Duolingo do ENEM. Explique conceitos de modo muito lúdico, conciso e instrutivo."
           },
           {
             role: "user",
@@ -895,7 +895,7 @@ app.get("/api/enem-questions", async (req, res) => {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 5000);
       try {
-        const url = `https://api.enem.dev/v1/exams/${year}/questions?limit=180&offset=0`;
+        const url = `https://api.enem.dev/v1/exams/${year}/questions?limit=50&offset=0`;
         const response = await fetch(url, { signal: controller.signal });
         if (!response.ok) return [];
         const data = await response.json();

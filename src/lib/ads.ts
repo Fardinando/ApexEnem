@@ -46,7 +46,7 @@ export function getHouseAdContent(user?: Partial<UserProfile>): { emoji: string;
     return { emoji: '🎯', title: 'Meta Alta', text: 'Foco total nos estudos! Simulados cronometrados com questões reais do ENEM.', cta: 'Fazer Simulado', action: 'simulados' };
   }
   if (serie === '9_fundamental' || serie === '1_medio') {
-    return { emoji: '🌱', title: 'Comece Bem', text: 'Construa uma base sólida desde já. Aprenda no seu ritmo com o Corujito.', cta: 'Aprender Agora', action: 'aprendizado' };
+    return { emoji: '🌱', title: 'Comece Bem', text: 'Construa uma base sólida desde já. Aprenda no seu ritmo com o Cabrito.', cta: 'Aprender Agora', action: 'aprendizado' };
   }
 
   return { emoji: '🚀', title: 'ApexEnem', text: 'Sua plataforma completa para arrasar no ENEM: redação, simulados, questões e mais!', cta: 'Explorar', action: 'dashboard' };

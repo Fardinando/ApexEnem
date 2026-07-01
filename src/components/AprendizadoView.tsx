@@ -294,10 +294,10 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
     }
   };
 
-  const handleAskCorujitoIa = async () => {
+  const handleAskCabritoIa = async () => {
     if (loadingAiExplanation) return;
     setLoadingAiExplanation(true);
-    setAiSpeechText("Carregando as asas do Corujito IA com conhecimento de alto nível...");
+    setAiSpeechText("Carregando o conhecimento do Cabrito IA com sabedoria de alto nível...");
 
     const currentEx = activeExercises[currentExerciseIdx];
 
@@ -319,7 +319,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
         setAiSpeechText(`Olhou, voou! Devido a limites de internet, eis a dica: ${currentEx.explanation}`);
       }
     } catch {
-      setAiSpeechText(`Eis a sabedoria do Corujito: ${currentEx.explanation}`);
+      setAiSpeechText(`Eis a sabedoria do Cabrito: ${currentEx.explanation}`);
     } finally {
       setLoadingAiExplanation(false);
     }
@@ -413,7 +413,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
     syncProgressToCloud(finalChapters, newXp);
   };
 
-  const getCorujitoMessage = () => {
+  const getCabritoMessage = () => {
     if (hasChecked) {
       return isCorrectAnswer
         ? ["Excelente! Você voou alto!", "Sensacional, gabarito impecável!", "Você está se aproximando do 1000!"][currentExerciseIdx % 3]
@@ -435,7 +435,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
         <div>
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
             <GraduationCap className="h-8 w-8 text-blue-600 dark:text-blue-400" />
-            Arena de Aprendizado Corujito
+            Arena de Aprendizado Cabrito
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
             Domine conteúdos críticos e as matrizes do ENEM jogando sessões gamificadas hiper-rápidas no estilo Duolingo.
@@ -569,7 +569,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                     IA
                   </div>
                 </div>
-                <h4 className="font-display font-black text-sm text-slate-800 dark:text-slate-100 mt-3">Corujito do Mil</h4>
+                <h4 className="font-display font-black text-sm text-slate-800 dark:text-slate-100 mt-3">Cabrito do Mil</h4>
                 <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest font-bold">Conselheiro de Trilha</span>
               </div>
 
@@ -619,7 +619,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                   </div>
                   <h3 className="text-2xl font-black text-red-650 dark:text-red-450">Nível não Concluído!</h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
-                    Sua precisão nesta rodada foi de <strong>{lessonScore}%</strong>. Para avançar de nível na arena do Corujito, você precisa obter pelo menos <strong>70% de precisão de acertos</strong> nas suas primeiras tentativas. Não desanime! O erro é parte integral do aprendizado.
+                    Sua precisão nesta rodada foi de <strong>{lessonScore}%</strong>. Para avançar de nível na arena do Cabrito, você precisa obter pelo menos <strong>70% de precisão de acertos</strong> nas suas primeiras tentativas. Não desanime! O erro é parte integral do aprendizado.
                   </p>
                 </div>
               )}
@@ -910,7 +910,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                     <div className="space-y-2">
                       <h4 className="font-display font-black text-lg text-red-600">As energias de voo acabaram!</h4>
                       <p className="text-xs text-slate-450 leading-relaxed max-w-sm mx-auto">
-                        Ops, as 5 vidas do Corujito foram esgotadas. Estudar exige perseverança e revisar os pontos mais duros!
+                        Ops, as 5 vidas do Cabrito foram esgotadas. Estudar exige perseverança e revisar os pontos mais duros!
                       </p>
                     </div>
                     <button
@@ -952,11 +952,11 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                     <button
                       id="btn-lesson-ask-ai"
                       type="button"
-                      onClick={handleAskCorujitoIa}
+                      onClick={handleAskCabritoIa}
                       className="px-4 py-2.5 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-350 rounded-xl text-xs font-bold font-sans cursor-pointer flex items-center gap-2 shadow-sm"
                     >
                       <Sparkles className="h-4 w-4 text-blue-500 animate-pulse" />
-                      <span>{loadingAiExplanation ? 'Invocando IA...' : 'Explicar com Corujito IA'}</span>
+                      <span>{loadingAiExplanation ? 'Invocando IA...' : 'Explicar com Cabrito IA'}</span>
                     </button>
 
                     {!hasChecked ? (
@@ -998,8 +998,8 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
               </div>
 
               <div className="w-full bg-white dark:bg-[#1e293b] p-4 rounded-xl border border-slate-200 dark:border-slate-800 text-xs leading-relaxed text-slate-700 dark:text-slate-350 relative shadow-sm">
-                <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Corujito:</p>
-                <p>"{getCorujitoMessage()}"</p>
+                <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Cabrito:</p>
+                <p>"{getCabritoMessage()}"</p>
               </div>
 
               {/* Ad inside lesson sidebar */}
@@ -1016,7 +1016,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                     <div className="flex justify-between items-center border-b border-blue-100 dark:border-slate-800 pb-1.5 select-none">
                       <span className="font-bold flex items-center gap-1.5 text-blue-700 dark:text-blue-400">
                         <Sparkles className="h-3.5 w-3.5" />
-                        Corujito IA Ensina:
+                        Cabrito IA Ensina:
                       </span>
                       <button
                         onClick={() => setAiSpeechText(null)}
