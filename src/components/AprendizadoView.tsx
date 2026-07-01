@@ -434,6 +434,11 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                   (wrongAnswers || []).forEach(w => {
                     wrongCounts[w.subject] = (wrongCounts[w.subject] || 0) + 1;
                   });
+                  (essayCorrections || []).forEach(e => {
+                    if ((e.score || 0) < 700) {
+                      wrongCounts['Redação'] = (wrongCounts['Redação'] || 0) + 1;
+                    }
+                  });
 
                   return chapters.map((chap, idx) => {
                     const nodeOffsets = [
@@ -449,7 +454,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                     const finishedFully = chap.level === chap.maxLevel;
                     const percent = Math.round((chap.level / chap.maxLevel) * 100);
                     const hasRequiredWrongs = (wrongCounts[chap.area] || 0) >= 2;
-                    const canAttempt = chap.unlocked && (idx < 2 || hasRequiredWrongs);
+                    const canAttempt = chap.unlocked && hasRequiredWrongs;
 
                     return (
                       <div
@@ -495,15 +500,14 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                             }`}>
                               {chap.area}
                             </span>
-                            {!canAttempt && chap.unlocked && <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-0.5">● ERRE 2+</span>}
-                            {!canAttempt && !chap.unlocked && <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-0.5">● BLOQUEADO</span>}
+                            {!canAttempt && <span className="text-yellow-600 dark:text-yellow-400 flex items-center gap-0.5">● PRECISA DE 2 ERROS</span>}
                           </div>
                           <h4 className={`font-display font-black text-sm block ${canAttempt ? 'text-slate-800 dark:text-slate-100' : 'text-slate-400'}`}>
                             {chap.title}
                           </h4>
                           <p className="text-[11px] text-slate-450 leading-snug truncate sm:whitespace-normal">
-                            {!canAttempt && chap.unlocked
-                              ? `Responda ${2 - (wrongCounts[chap.area] || 0)} questão(ões) de ${chap.area} incorretamente para desbloquear`
+                            {!canAttempt
+                              ? `Responda ${Math.max(0, 2 - (wrongCounts[chap.area] || 0))} questão(ões) de ${chap.area} incorretamente para desbloquear`
                               : chap.description}
                           </p>
                         </div>
@@ -517,7 +521,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
             </div>
           </div>
 
-          <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-24 lg:self-start">
+          <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-4 lg:self-start">
             <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm text-center space-y-4">
 
               <div className="flex flex-col items-center">
