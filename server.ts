@@ -113,9 +113,9 @@ app.use((req, res, next) => {
 // Authentication middleware — verifies Supabase JWT from Authorization header
 const requireAuth = async (req: any, res: any, next: any) => {
   const publicRoutes = [
-    "/api/confirm-email", "/api/send-confirmation", "/api/credentials-status",
-    "/api/supabase/keep-alive", "/api/supabase/setup",
-    "/api/enem-questions"
+    "/confirm-email", "/send-confirmation", "/credentials-status",
+    "/supabase/keep-alive", "/supabase/setup",
+    "/enem-questions"
   ];
   if (publicRoutes.includes(req.path)) return next();
 

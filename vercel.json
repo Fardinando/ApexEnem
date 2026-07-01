@@ -1,6 +1,7 @@
 {
+  "framework": null,
   "buildCommand": "vite build",
-  "devCommand": "tsx server.ts",
+  "outputDirectory": "dist",
   "rewrites": [
     { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
