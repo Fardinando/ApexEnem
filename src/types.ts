@@ -103,6 +103,12 @@ export interface ActivityLog {
   date: string;
 }
 
+export interface WrongAnswer {
+  subject: string;
+  source: 'simulado' | 'pergunta-ia';
+  timestamp: number;
+}
+
 export interface LearningChapter {
   id: string;
   title: string;

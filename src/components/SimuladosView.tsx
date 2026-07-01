@@ -25,6 +25,7 @@ import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './R
 
 interface SimuladosViewProps {
   onSaveSimuladoResult: (scorePercent: number, subject: string) => void;
+  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia') => void;
   accessToken?: string;
 }
 
@@ -40,7 +41,7 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return copy;
 };
 
-export default function SimuladosView({ onSaveSimuladoResult, accessToken }: SimuladosViewProps) {
+export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, accessToken }: SimuladosViewProps) {
   const [config, setConfig] = useState<SimuladoConfig>({
     subject: 'Matemática',
     questionCount: 3
@@ -193,6 +194,14 @@ export default function SimuladosView({ onSaveSimuladoResult, accessToken }: Sim
     });
 
     onSaveSimuladoResult(results.scorePercent, simulado.config.subject);
+
+    if (onWrongAnswer && simulado.config.subject !== 'Geral') {
+      simulado.questions.forEach(q => {
+        if (q.userAnswer && q.userAnswer !== q.correctAnswer) {
+          onWrongAnswer(simulado.config.subject, 'simulado');
+        }
+      });
+    }
   };
 
   const handleConfirmCancelExam = () => {

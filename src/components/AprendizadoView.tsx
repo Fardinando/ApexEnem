@@ -12,7 +12,7 @@ import {
   GraduationCap
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
-import type { LearningChapter, Exercise, EssayCorrection, UserProfile } from '../types';
+import type { LearningChapter, Exercise, EssayCorrection, UserProfile, WrongAnswer } from '../types';
 import { INITIAL_CHAPTERS, CHAPTER_EXERCISES } from '../data/learning-exercises';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
@@ -22,9 +22,10 @@ interface AprendizadoViewProps {
   simuladosHistory?: { scorePercent: number; date: string; subject: string }[];
   currentUser?: UserProfile;
   accessToken?: string;
+  wrongAnswers?: WrongAnswer[];
 }
 
-function getWeakAreas(essays?: EssayCorrection[], simHistory?: { scorePercent: number; subject: string }[], hardSubjects?: string[]): string[] {
+function getWeakAreas(essays?: EssayCorrection[], simHistory?: { scorePercent: number; subject: string }[], hardSubjects?: string[], wrongAnswers?: WrongAnswer[]): string[] {
   const weak: string[] = [];
   if (essays) {
     const lowScore = essays.filter(e => (e.score || 0) < 700);
@@ -38,10 +39,22 @@ function getWeakAreas(essays?: EssayCorrection[], simHistory?: { scorePercent: n
     if (lowSim.length > 0) weak.push(`${lowSim.length} simulados com < 50%`);
   }
   if (hardSubjects) weak.push(...hardSubjects);
+  if (wrongAnswers && wrongAnswers.length > 0) {
+    const counts: Record<string, number> = {};
+    wrongAnswers.forEach(w => {
+      counts[w.subject] = (counts[w.subject] || 0) + 1;
+    });
+    Object.entries(counts)
+      .filter(([, count]) => count >= 3)
+      .sort(([, a], [, b]) => b - a)
+      .forEach(([subject]) => {
+        weak.push(`${subject} (${counts[subject]} erros)`);
+      });
+  }
   return weak;
 }
 
-export default function AprendizadoView({ essayCorrections, simuladosHistory, currentUser, accessToken }: AprendizadoViewProps) {
+export default function AprendizadoView({ essayCorrections, simuladosHistory, currentUser, accessToken, wrongAnswers }: AprendizadoViewProps) {
   const [chapters, setChapters] = useState<LearningChapter[]>(INITIAL_CHAPTERS);
   const [activeChapter, setActiveChapter] = useState<LearningChapter | null>(null);
 
@@ -79,7 +92,8 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
   const weakAreas = getWeakAreas(
     essayCorrections,
     simuladosHistory,
-    (currentUser as any)?.hardSubjects
+    (currentUser as any)?.hardSubjects,
+    wrongAnswers
   );
 
   useEffect(() => {
@@ -429,7 +443,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
 
   return (
     <>
-    <div id="aprendizado-view" className="space-y-6 animate-fade-in" style={{ contentVisibility: 'auto' }}>
+    <div id="aprendizado-view" className="space-y-6 animate-fade-in">
 
       <div className="border-b border-slate-200 dark:border-slate-800 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>

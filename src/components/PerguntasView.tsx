@@ -8,7 +8,11 @@ import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen } from 'lucide-reac
 import { Question } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 
-export default function PerguntasView() {
+interface PerguntasViewProps {
+  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia') => void;
+}
+
+export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
   const [selectedArea, setSelectedArea] = useState<'Matemática' | 'Humanas' | 'Natureza' | 'Linguagens'>('Matemática');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -58,6 +62,11 @@ export default function PerguntasView() {
       ...selectedAnswers,
       [questionId]: optionLetter
     });
+
+    const q = questions.find(q => q.id === questionId);
+    if (q && optionLetter !== q.correctAnswer && onWrongAnswer) {
+      onWrongAnswer(q.area, 'pergunta-ia');
+    }
   };
 
   return (

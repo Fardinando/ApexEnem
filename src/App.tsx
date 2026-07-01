@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile } from './lib/supabase';
-import type { EssayCorrection, ActivityLog } from './types';
+import type { EssayCorrection, ActivityLog, WrongAnswer } from './types';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
 import Sidebar from './components/Sidebar';
@@ -27,6 +27,7 @@ export default function App() {
   const [essayCorrections, setEssayCorrections] = useState<EssayCorrection[]>([]);
   const [simuladosHistory, setSimuladosHistory] = useState<{ scorePercent: number; date: string; subject: string }[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
 
   useEffect(() => {
     supabase.auth.getSession()
@@ -81,6 +82,10 @@ export default function App() {
     })();
     return () => { cancelled = true; };
   }, [session?.user?.id]);
+
+  const handleWrongAnswer = (subject: string, source: 'simulado' | 'pergunta-ia') => {
+    setWrongAnswers(prev => [{ subject, source, timestamp: Date.now() }, ...prev].slice(0, 100));
+  };
 
   useEffect(() => {
     if (isDarkMode) {
@@ -137,6 +142,8 @@ export default function App() {
       await saveLog({ ...log, user_id: session.user.id });
       setEssayCorrections(prev => [newCorr, ...prev]);
       setActivityLogs(prev => [log, ...prev]);
+      const p = await getProfile(session.user.id);
+      if (p) setProfile(p);
     } catch (err) {
       console.error("Failed to save correction:", err);
     }
@@ -160,6 +167,8 @@ export default function App() {
       await saveLog({ ...log, user_id: session.user.id });
       setSimuladosHistory(prev => [newSim, ...prev]);
       setActivityLogs(prev => [log, ...prev]);
+      const p = await getProfile(session.user.id);
+      if (p) setProfile(p);
     } catch (err) {
       console.error("Failed to save simulado result:", err);
     }
@@ -262,7 +271,7 @@ export default function App() {
   };
 
   return (
-    <div id="app-workspace" className="min-h-screen bg-slate-50 dark:bg-[#0f172a] text-[#1b1b24] dark:text-[#f3effc] flex flex-col lg:flex-row transition-colors duration-300 pb-16 lg:pb-0">
+    <div id="app-workspace" className="min-h-screen lg:h-screen bg-slate-50 dark:bg-[#0f172a] text-[#1b1b24] dark:text-[#f3effc] flex flex-col lg:flex-row transition-colors duration-300 pb-16 lg:pb-0 lg:overflow-hidden">
       <Sidebar
         currentUser={currentUser as any}
         activeTab={activeTab}
@@ -271,7 +280,7 @@ export default function App() {
         isDarkMode={isDarkMode}
         toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
       />
-      <main id="view-pane" className="flex-grow p-6 md:p-10 lg:p-12 max-w-7xl mx-auto w-full overflow-y-auto">
+      <main id="view-pane" className="flex-grow p-6 md:p-10 lg:p-12 max-w-7xl mx-auto w-full lg:overflow-y-auto lg:h-screen">
         {activeTab === 'dashboard' && (
           <DashboardView
             currentUser={currentUser as any}
@@ -288,11 +297,12 @@ export default function App() {
           />
         )}
         {activeTab === 'perguntas' && (
-          <PerguntasView />
+          <PerguntasView onWrongAnswer={handleWrongAnswer} />
         )}
         {activeTab === 'simulados' && (
           <SimuladosView
             onSaveSimuladoResult={handleSaveSimuladoResult}
+            onWrongAnswer={handleWrongAnswer}
             accessToken={session.access_token}
           />
         )}
@@ -302,6 +312,7 @@ export default function App() {
             simuladosHistory={simuladosHistory}
             currentUser={currentUser as any}
             accessToken={session.access_token}
+            wrongAnswers={wrongAnswers}
           />
         )}
         {activeTab === 'configuracoes' && (
