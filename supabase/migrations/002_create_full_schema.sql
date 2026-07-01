@@ -67,41 +67,68 @@ ALTER TABLE public.simulado_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
 
 -- Políticas: cada usuário só vê/altera os próprios dados
-CREATE POLICY "Usuarios podem ler seu perfil"
-  ON public.profiles FOR SELECT
-  USING (auth.uid() = id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem ler seu perfil" ON public.profiles;
+  CREATE POLICY "Usuarios podem ler seu perfil"
+    ON public.profiles FOR SELECT
+    USING (auth.uid() = id);
+END $$;
 
-CREATE POLICY "Usuarios podem inserir seu perfil"
-  ON public.profiles FOR INSERT
-  WITH CHECK (auth.uid() = id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem inserir seu perfil" ON public.profiles;
+  CREATE POLICY "Usuarios podem inserir seu perfil"
+    ON public.profiles FOR INSERT
+    WITH CHECK (auth.uid() = id);
+END $$;
 
-CREATE POLICY "Usuarios podem atualizar seu perfil"
-  ON public.profiles FOR UPDATE
-  USING (auth.uid() = id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem atualizar seu perfil" ON public.profiles;
+  CREATE POLICY "Usuarios podem atualizar seu perfil"
+    ON public.profiles FOR UPDATE
+    USING (auth.uid() = id);
+END $$;
 
-CREATE POLICY "Usuarios podem ler suas correcoes"
-  ON public.essay_corrections FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem ler suas correcoes" ON public.essay_corrections;
+  CREATE POLICY "Usuarios podem ler suas correcoes"
+    ON public.essay_corrections FOR SELECT
+    USING (auth.uid() = user_id);
+END $$;
 
-CREATE POLICY "Usuarios podem inserir correcoes"
-  ON public.essay_corrections FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem inserir correcoes" ON public.essay_corrections;
+  CREATE POLICY "Usuarios podem inserir correcoes"
+    ON public.essay_corrections FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+END $$;
 
-CREATE POLICY "Usuarios podem ler seus simulados"
-  ON public.simulado_history FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem ler seus simulados" ON public.simulado_history;
+  CREATE POLICY "Usuarios podem ler seus simulados"
+    ON public.simulado_history FOR SELECT
+    USING (auth.uid() = user_id);
+END $$;
 
-CREATE POLICY "Usuarios podem inserir simulados"
-  ON public.simulado_history FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem inserir simulados" ON public.simulado_history;
+  CREATE POLICY "Usuarios podem inserir simulados"
+    ON public.simulado_history FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+END $$;
 
-CREATE POLICY "Usuarios podem ler seus logs"
-  ON public.activity_logs FOR SELECT
-  USING (auth.uid() = user_id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem ler seus logs" ON public.activity_logs;
+  CREATE POLICY "Usuarios podem ler seus logs"
+    ON public.activity_logs FOR SELECT
+    USING (auth.uid() = user_id);
+END $$;
 
-CREATE POLICY "Usuarios podem inserir logs"
-  ON public.activity_logs FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
+DO $$ BEGIN
+  DROP POLICY IF EXISTS "Usuarios podem inserir logs" ON public.activity_logs;
+  CREATE POLICY "Usuarios podem inserir logs"
+    ON public.activity_logs FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+END $$;
 
 -- Trigger: criar perfil automaticamente ao cadastrar
 CREATE OR REPLACE FUNCTION public.handle_new_user()
