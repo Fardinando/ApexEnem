@@ -165,8 +165,7 @@ function extractJsonFromText(rawText: string): any {
 const apiKey = process.env.OPENROUTER_API_KEY;
 
 const FREE_MODELS = [
-  "meta-llama/llama-3.1-8b-instruct:free",
-  "mistralai/mistral-7b-instruct:free"
+  "openrouter/free"
 ];
 
 let cachedModels: any[] | null = null;
@@ -527,7 +526,7 @@ Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options"
         "X-Title": "ApexEnem"
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.1-8b-instruct:free",
+        model: "openrouter/free",
         messages: [
           { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
           { role: "user", content: prompt }
