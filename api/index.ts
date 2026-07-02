@@ -510,7 +510,7 @@ async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.9, maxOutputTokens: 2048 }
+        generationConfig: { temperature: 0.9, maxOutputTokens: 1024 }
       }),
       signal
     });
@@ -568,23 +568,13 @@ app.post("/api/questions", async (req, res) => {
   const targetArea = area || "Geral";
   const numQuestions = count || 2;
 
-  const prompt = `Você é um especialista em criar questões no estilo ENEM (Exame Nacional do Ensino Médio). Gere ${numQuestions} questões de múltipla escolha de nível avançado (ensino médio) focadas em "${targetArea}".
-
-REGRAS OBRIGATÓRIAS:
-- Cada questão deve ter um ENUNCIADO LONGO E CONTEXTUALIZADO (3-5 linhas) com uma situação-problema, texto de apoio, tabela, gráfico ou citação para o aluno interpretar.
-- Nível de DIFICULDADE ALTO, compatível com ENEM real.
-- As alternativas (A-E) devem ser PLACÍVEIS (todas parecem corretas à primeira vista, apenas uma é correta).
-- A resposta correta só deve ser descoberta após análise cuidadosa do enunciado.
-- NÃO usar perguntas de conhecimento factual direto como "quanto é 2+2" ou "qual a capital do Brasil".
-- NÃO usar cálculos simples de uma etapa.
-- As questões devem TESTAR RACIOCÍNIO, não memória.
-- Incluir no enunciado dados, números, citações ou referências que o aluno precisa analisar.
-
-Formato de resposta (APENAS JSON, sem markdown):
-[{"id":"q_1","statement":"enunciado longo e contextualizado aqui","options":[{"letter":"A","text":"alternativa A"},{"letter":"B","text":"alternativa B"},{"letter":"C","text":"alternativa C"},{"letter":"D","text":"alternativa D"},{"letter":"E","text":"alternativa E"}],"correctAnswer":"A","explanation":"explicação detalhada do raciocínio"}]`;
+  const prompt = `Crie ${numQuestions} questões de múltipla escolha estilo ENEM de nível avançado sobre "${targetArea}".
+Cada questão deve ter enunciado longo contextualizado (com dados, citação ou situação-problema), 5 alternativas plausíveis, resposta correta não-óbvia.
+Proibido: perguntas factuais, contas simples, conhecimento direto. Exigido: raciocínio, interpretação, análise.
+Retorne APENAS JSON: [{"id":"q_1","statement":"enunciado longo","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}]`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9500);
+  const timeoutId = setTimeout(() => controller.abort(), 9900);
 
   const geminiModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
   const attempts = [
@@ -603,7 +593,7 @@ app.post("/api/openrouter-chat", async (req, res) => {
   const { questionText, instructions, correctAnswer } = req.body;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9500);
+  const timeoutId = setTimeout(() => controller.abort(), 9900);
 
   const cabritoPrompt = `Por favor, explique de forma motivadora este exercício para mim:\nExercício/Pergunta: "${questionText}"\nTipo do desafio: "${instructions}"\nGabarito Oficial: "${correctAnswer}"\n\nRetorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.`;
 
@@ -645,7 +635,7 @@ app.post("/api/generate-learning-exercises", async (req, res) => {
   const { chapterTitle, chapterArea, weakAreas, count } = req.body;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9500);
+  const timeoutId = setTimeout(() => controller.abort(), 9900);
 
   const systemMsg = `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
 Os exercícios DEVEM ser variados entre os tipos: 'choice', 'true-false', 'reorder', 'matching'.
