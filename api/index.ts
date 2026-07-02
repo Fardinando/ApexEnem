@@ -17,6 +17,7 @@ declare global {
 if (!process.env.VERCEL) dotenv.config();
 
 const app = express();
+app.set("trust proxy", 1);
 const PORT = 3000;
 
 const apiLimiter = rateLimit({
@@ -507,78 +508,109 @@ app.post("/api/questions", async (req, res) => {
   const targetArea = area || "Geral";
   const numQuestions = count || 2;
 
-  const prompt = `Crie ${numQuestions} questões de múltipla escolha estilo ENEM nível alto sobre "${targetArea}".
-Cada questão: enunciado longo contextualizado, 5 alternativas, resposta não-óbvia, explicação.
-Proibido: trivia, contas simples. Exigido: raciocínio.
-Retorne APENAS JSON array.`;
+  const prompt = `Crie ${numQuestions} questões de múltipla escolha estilo ENEM de nível avançado sobre "${targetArea}".
+Cada questão deve ter enunciado longo contextualizado (com dados, citação ou situação-problema), 5 alternativas plausíveis, resposta correta não-óbvia.
+Evite perguntas factuais ou contas simples. Exigido: raciocínio, interpretação, análise.
+Retorne APENAS JSON: [{"statement":"enunciado","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}].`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9900);
-
-  async function tryModel(provider: 'gemini' | 'openrouter', model: string): Promise<any[] | null> {
+  async function tryGemini(model: string): Promise<any[] | null> {
+    if (!googleApiKey) return null;
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 7000);
     try {
-      let res: Response;
-      if (provider === 'gemini') {
-        if (!googleApiKey) return null;
-        res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.9, maxOutputTokens: 2048 }
-          }),
-          signal: controller.signal
-        });
-      } else {
-        res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${apiKey}`,
-            "HTTP-Referer": "https://apexenem.vercel.app",
-            "X-Title": "ApexEnem"
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: "Você é um especialista em questões ENEM. Gere apenas JSON." },
-              { role: "user", content: prompt }
-            ],
-            temperature: 0.9,
-            max_tokens: 2048
-          }),
-          signal: controller.signal
-        });
-      }
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          safetySettings: [
+            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+          ],
+          generationConfig: { temperature: 0.9, maxOutputTokens: 8192 }
+        }),
+        signal: ctrl.signal
+      });
+      clearTimeout(tid);
       if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        console.error(`${provider}/${model}: ${res.status} ${body.slice(0, 100)}`);
+        const errBody = await res.text().catch(() => '');
+        console.error(`Gemini ${model}: ${res.status} ${errBody.slice(0, 200)}`);
         return null;
       }
       const data = await res.json();
-      const content = provider === 'gemini'
-        ? data?.candidates?.[0]?.content?.parts?.[0]?.text
-        : data?.choices?.[0]?.message?.content;
-      if (!content) { console.error(`${provider}/${model}: no content`); return null; }
-      console.error(`${provider}/${model}: len=${content.length} start=${content.slice(0, 80)}`);
-      const questions = extractJsonFromText(content);
+      const candidate = data?.candidates?.[0];
+      const finishReason = candidate?.finishReason;
+      const text = candidate?.content?.parts?.[0]?.text;
+      console.error(`Gemini ${model} finishReason=${finishReason} rawLen=${text?.length || 0}`);
+      if (!text || finishReason === "SAFETY") {
+        console.error(`Gemini ${model}: blocked (${finishReason})`);
+        return null;
+      }
+      const questions = extractJsonFromText(text);
       return Array.isArray(questions) && questions.length > 0 ? questions : null;
     } catch (err: any) {
-      console.error(`${provider}/${model}:`, err?.message || err);
+      console.error(`Gemini ${model} error:`, err?.message || err);
       return null;
+    } finally {
+      clearTimeout(tid);
     }
   }
 
-  const models = [
-    tryModel('openrouter', 'openrouter/free'),
-    tryModel('gemini', 'gemini-2.5-flash'),
+  async function tryOpenRouter(model: string): Promise<any[] | null> {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 9900);
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://apexenem.vercel.app",
+          "X-Title": "ApexEnem"
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: "Você é um especialista em questões ENEM. Gere apenas JSON." },
+            { role: "user", content: prompt }
+          ],
+          temperature: 0.9,
+          max_tokens: 2048
+        }),
+        signal: ctrl.signal
+      });
+      clearTimeout(tid);
+      if (!res.ok) {
+        console.error(`OpenRouter ${model}: ${res.status}`);
+        return null;
+      }
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) { console.error(`OpenRouter ${model}: no content`); return null; }
+      console.error(`OpenRouter ${model}: len=${content.length} start=${content.slice(0, 80)}`);
+      const questions = extractJsonFromText(content);
+      return Array.isArray(questions) && questions.length > 0 ? questions : null;
+    } catch (err: any) {
+      console.error(`OpenRouter ${model}:`, err?.message || err);
+      return null;
+    } finally {
+      clearTimeout(tid);
+    }
+  }
+
+  const attempts = [
+    tryGemini("gemini-2.5-flash"),
+    tryOpenRouter("meta-llama/llama-3.2-3b-instruct:free"),
+    tryOpenRouter("openrouter/free"),
+    tryGemini("gemini-2.0-flash"),
   ];
 
-  const result = await Promise.any(models.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))).catch(() => null);
-  clearTimeout(timeoutId);
+  const result = await Promise.any(attempts.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))).catch(() => null);
 
   if (result) return res.json(result);
-  return res.status(502).json({ error: "Nenhum modelo gratuito respondeu a tempo. Tente novamente." });
+  return res.status(502).json({ error: "Todos os modelos gratuitos falharam. Verifique os logs do Vercel para detalhes." });
 });
 
 app.post("/api/openrouter-chat", async (req, res) => {
