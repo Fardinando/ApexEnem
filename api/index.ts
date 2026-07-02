@@ -108,7 +108,8 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/openrouter-chat", "/generate-learning-exercises",
     "/adsense-status"
   ];
-  if (publicRoutes.includes(req.path)) return next();
+  const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
+  if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath)) return next();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
