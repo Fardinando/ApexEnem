@@ -502,8 +502,10 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
   }
 });
 
-async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal): Promise<any[] | null> {
+async function tryGeminiModel(model: string, prompt: string): Promise<any[] | null> {
   if (!googleApiKey) return null;
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 7000);
   try {
     const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
       method: "POST",
@@ -516,10 +518,11 @@ async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal
           { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
           { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
         ],
-        generationConfig: { temperature: 0.9 }
+        generationConfig: { temperature: 0.9, maxOutputTokens: 8192 }
       }),
-      signal
+      signal: ctrl.signal
     });
+    clearTimeout(tid);
     if (!res.ok) {
       const errBody = await res.text().catch(() => '');
       console.error(`Gemini ${model}: ${res.status} ${errBody.slice(0, 200)}`);
@@ -539,6 +542,8 @@ async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal
   } catch (err: any) {
     console.error(`Gemini ${model} error:`, err?.message || err);
     return null;
+  } finally {
+    clearTimeout(tid);
   }
 }
 
@@ -589,7 +594,7 @@ Retorne APENAS JSON: [{"id":"q_1","statement":"enunciado longo","options":[{"let
 
   const geminiModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
   const attempts = [
-    ...geminiModels.map(m => tryGeminiModel(m, prompt, controller.signal)),
+    ...geminiModels.map(m => tryGeminiModel(m, prompt)),
     tryOpenRouter("openrouter/free", prompt, controller.signal)
   ];
 
