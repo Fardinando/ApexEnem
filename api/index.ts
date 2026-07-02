@@ -551,93 +551,26 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
   }
 });
 
-async function tryGenerateQuestions(model: string, targetArea: string, numQuestions: number): Promise<any[] | null> {
-  await assertModelIsFree(model);
-
-  const seed = Date.now() + Math.random();
-  const prompt = `Gere ${numQuestions} perguntas de múltipla escolha INÉDITAS (nunca repetir as mesmas questões de antes) no estilo exato do ENEM focadas na área de conhecimento: "${targetArea}". Use o seed ${seed} para garantir variedade.
-Cada questão deve conter:
-- Um enunciado contextualizado baseado em problemas reais (tipo do INEP/ENEM).
-- Cinco alternativas listadas de A até E de forma equilibrada.
-- Gabarito preciso indicando qual das alternativas é a correta.
-- Justificativa/Explicação pedagógica robusta.
-
-Retorne estritamente o resultado em formato de matriz JSON estruturado exatamente assim:
-[
-  {
-    "id": "q_12345",
-    "statement": "Enunciado clássico...",
-    "options": [
-      { "letter": "A", "text": "Texto da alternativa A" },
-      { "letter": "B", "text": "Texto da alternativa B" },
-      { "letter": "C", "text": "Texto da alternativa C" },
-      { "letter": "D", "text": "Texto da alternativa D" },
-      { "letter": "E", "text": "Texto da alternativa E" }
-    ],
-    "correctAnswer": "A",
-    "explanation": "Explicação completa..."
-  }
-]
-
-Retorne APENAS o JSON. Não escreva textos adicionais.`;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9000);
-
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://ai.studio/build",
-        "X-Title": "ApexEnem ENEM Applet"
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "Você é um gerador de avaliações do ENEM especialista. Responda apenas com o JSON bruto solicitado." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.8
-      }),
-      signal: controller.signal
-    });
-
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    const rawContent = data.choices?.[0]?.message?.content;
-    if (!rawContent) return null;
-
-    return extractJsonFromText(rawContent);
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
+const QUESTIONS_TIMEOUT = 8000;
 
 app.post("/api/questions", async (req, res) => {
   const { area, count } = req.body;
   const targetArea = area || "Geral";
   const numQuestions = count || 2;
 
-  for (const model of FREE_MODELS) {
-    const result = await tryGenerateQuestions(model, targetArea, numQuestions);
-    if (result && result.length > 0) {
-      return res.json(result);
-    }
-  }
+  const model = FREE_MODELS[0];
+  const seed = Date.now() + Math.random();
+  const prompt = `Gere ${numQuestions} perguntas de múltipla escolha INÉDITAS no estilo ENEM focadas em "${targetArea}". Seed ${seed}.
 
-  return res.json(generateFallbackQuestions(targetArea));
-});
+Cada questão deve ter: statement, options (A-E), correctAnswer, explanation.
 
-async function tryCabritoChat(model: string, questionText: string, instructions: string, correctAnswer: string): Promise<string | null> {
-  await assertModelIsFree(model);
+Retorne APENAS JSON array:
+[{"id":"q_1","statement":"...","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}]
+
+Nada mais além do JSON.`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9000);
+  const timeoutId = setTimeout(() => controller.abort(), QUESTIONS_TIMEOUT);
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -645,8 +578,55 @@ async function tryCabritoChat(model: string, questionText: string, instructions:
       headers: {
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://ai.studio/build",
-        "X-Title": "ApexEnem ENEM Applet"
+        "HTTP-Referer": "https://apexenem.vercel.app",
+        "X-Title": "ApexEnem"
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.9
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) throw new Error(`OpenRouter ${response.status}`);
+
+    const data = await response.json();
+    const rawContent = data.choices?.[0]?.message?.content;
+    if (!rawContent) throw new Error("Empty response");
+
+    const questions = extractJsonFromText(rawContent);
+    if (Array.isArray(questions) && questions.length > 0) {
+      return res.json(questions);
+    }
+  } catch (err: any) {
+    console.error("AI questions error:", err?.message || err);
+  } finally {
+    clearTimeout(timeoutId);
+  }
+
+  const fallback = generateFallbackQuestions(targetArea);
+  return res.json(Array.isArray(fallback) ? fallback : []);
+});
+
+app.post("/api/openrouter-chat", async (req, res) => {
+  const { questionText, instructions, correctAnswer } = req.body;
+  const model = FREE_MODELS[0];
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://apexenem.vercel.app",
+        "X-Title": "ApexEnem"
       },
       body: JSON.stringify({
         model,
@@ -658,35 +638,26 @@ async function tryCabritoChat(model: string, questionText: string, instructions:
       signal: controller.signal
     });
 
-    if (!response.ok) return null;
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || null;
+    if (response.ok) {
+      const data = await response.json();
+      const text = data.choices?.[0]?.message?.content;
+      if (text) return res.json({ text });
+    }
   } catch {
-    return null;
+    // fallback below
   } finally {
     clearTimeout(timeoutId);
-  }
-}
-
-app.post("/api/openrouter-chat", async (req, res) => {
-  const { questionText, instructions, correctAnswer } = req.body;
-
-  for (const model of FREE_MODELS) {
-    const text = await tryCabritoChat(model, questionText, instructions, correctAnswer);
-    if (text) {
-      return res.json({ text });
-    }
   }
 
   return res.json({ text: "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
 });
 
-async function tryGenerateExercises(model: string, chapterTitle: string, chapterArea: string, weakAreas: string[], count: number): Promise<any[] | null> {
-  await assertModelIsFree(model);
+app.post("/api/generate-learning-exercises", async (req, res) => {
+  const { chapterTitle, chapterArea, weakAreas, count } = req.body;
+  const model = FREE_MODELS[0];
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9000);
+  const timeoutId = setTimeout(() => controller.abort(), 8000);
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -695,27 +666,22 @@ async function tryGenerateExercises(model: string, chapterTitle: string, chapter
         "Content-Type": "application/json",
         "Authorization": `Bearer ${apiKey}`,
         "HTTP-Referer": "https://apexenem.vercel.app",
-        "X-Title": "ApexEnem Learning"
+        "X-Title": "ApexEnem"
       },
       body: JSON.stringify({
         model,
         messages: [
           { role: "system", content: `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
-Os exercícios DEVEM ser variados entre os tipos: 'choice' (múltipla escolha com 5 opções A-E), 'true-false' (verdadeiro/falso), 'reorder' (ordenar blocos de palavras), 'matching' (associar colunas).
-
-IMPORTANTE: 
-- O JSON deve ser um array de objetos, cada um com: id (string), type (um dos 4 tipos), instructions (string instrutiva), statement (enunciado), options (array de {letter, text} para choice), correctLetter (string para choice), correctBoolean (boolean para true-false), shuffledWords (string[] para reorder), correctSentenceWords (string[] para reorder), matchingPairs (array de {left, right} para matching), explanation (string educativa).
-- Sempre retorne APENAS o JSON puro, sem markdown, sem explicações extras.
-- Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque neles.
-- Os exercícios devem ser de nível ENEM (ensino médio), com linguagem clara e adequada.
-- Para matching, use 3 pares. Para reorder, use 4-6 palavras.` },
+Os exercícios DEVEM ser variados entre os tipos: 'choice', 'true-false', 'reorder', 'matching'.
+Sempre retorne APENAS o JSON array, sem markdown.
+Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque neles.` },
           { role: "user", content: `Gere ${count || 3} exercícios sobre "${chapterTitle}" para o ENEM, focando nos pontos fracos: ${weakAreas?.join(', ') || 'nenhum específico'}. Retorne apenas o JSON.` }
         ]
       }),
       signal: controller.signal
     });
 
-    if (!response.ok) return null;
+    if (!response.ok) throw new Error(`OpenRouter ${response.status}`);
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "[]";
@@ -729,26 +695,17 @@ IMPORTANTE:
       if (match) {
         exercises = JSON.parse(match[0]);
       } else {
-        return null;
+        throw new Error("No JSON found");
       }
     }
 
-    return Array.isArray(exercises) ? exercises : null;
-  } catch {
-    return null;
-  } finally {
-    clearTimeout(timeoutId);
-  }
-}
-
-app.post("/api/generate-learning-exercises", async (req, res) => {
-  const { chapterId, chapterTitle, chapterArea, weakAreas, count } = req.body;
-
-  for (const model of FREE_MODELS) {
-    const exercises = await tryGenerateExercises(model, chapterTitle, chapterArea, weakAreas || [], count || 3);
-    if (exercises && exercises.length > 0) {
+    if (Array.isArray(exercises) && exercises.length > 0) {
       return res.json({ exercises });
     }
+  } catch (err: any) {
+    console.error("Exercises error:", err?.message || err);
+  } finally {
+    clearTimeout(timeoutId);
   }
 
   return res.json({ exercises: null });
