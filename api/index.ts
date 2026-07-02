@@ -515,6 +515,7 @@ async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal
     const data = await res.json();
     const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!text) { console.error(`Gemini ${model}: empty response`); return null; }
+    console.error(`Gemini ${model} RAW: ${text.slice(0, 300)}`);
     const questions = extractJsonFromText(text);
     return Array.isArray(questions) && questions.length > 0 ? questions : null;
   } catch (err: any) {
