@@ -41,6 +41,51 @@ const shuffleArray = <T,>(array: T[]): T[] => {
   return copy;
 };
 
+const IMAGE_URL_RE = /https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[^\s]*)?/gi;
+const MARKDOWN_IMG_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+
+function renderContent(text: string): (React.ReactNode | string)[] {
+  const parts: (React.ReactNode | string)[] = [];
+  let lastIndex = 0;
+
+  const combined: { index: number; length: number; node: React.ReactNode }[] = [];
+
+  for (const match of text.matchAll(MARKDOWN_IMG_RE)) {
+    combined.push({
+      index: match.index!,
+      length: match[0].length,
+      node: <img key={`md-${match.index}`} src={match[2]} alt={match[1] || 'Imagem'} className="max-w-full h-auto rounded-lg border border-slate-200 dark:border-slate-700 my-2" loading="lazy" />
+    });
+  }
+
+  for (const match of text.matchAll(IMAGE_URL_RE)) {
+    const skip = combined.some(c => match.index! >= c.index && match.index! < c.index + c.length);
+    if (!skip) {
+      combined.push({
+        index: match.index!,
+        length: match[0].length,
+        node: <img key={`url-${match.index}`} src={match[0]} alt="Imagem da questão" className="max-w-full h-auto rounded-lg border border-slate-200 dark:border-slate-700 my-2" loading="lazy" />
+      });
+    }
+  }
+
+  combined.sort((a, b) => a.index - b.index);
+
+  for (const item of combined) {
+    if (item.index > lastIndex) {
+      parts.push(text.slice(lastIndex, item.index));
+    }
+    parts.push(item.node);
+    lastIndex = item.index + item.length;
+  }
+
+  if (lastIndex < text.length) {
+    parts.push(text.slice(lastIndex));
+  }
+
+  return parts.length > 0 ? parts : [text];
+}
+
 export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, accessToken }: SimuladosViewProps) {
   const [config, setConfig] = useState<SimuladoConfig>({
     subject: 'Matemática',
@@ -394,7 +439,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                   loading="lazy"
                 />
               )}
-              <p className="whitespace-pre-wrap">{activeQuestion.statement}</p>
+              <p className="whitespace-pre-wrap">{renderContent(activeQuestion.statement)}</p>
             </div>
 
             {/* Exam Alternatives Choices A-E */}
@@ -429,7 +474,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                           loading="lazy"
                         />
                       )}
-                      {opt.text}
+                      {renderContent(opt.text)}
                     </span>
                   </button>
                 );
@@ -591,9 +636,9 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                           loading="lazy"
                         />
                       )}
-                      <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed italic pr-4 select-all">
-                        "{q.statement.substring(0, 160)}..."
-                      </p>
+                      <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed italic pr-4 select-all">
+                        {renderContent(q.statement.substring(0, 160))}
+                      </div>
 
                       <div className="bg-white dark:bg-[#0f172a] p-3.5 border border-slate-200 dark:border-slate-800 text-[11px] rounded-lg text-slate-650 dark:text-slate-350 leading-relaxed font-sans space-y-1.5">
                         <p className="font-bold flex items-center gap-1.5"><BookOpen className="h-3.5 w-3.5 text-blue-600" />Resolução:</p>
