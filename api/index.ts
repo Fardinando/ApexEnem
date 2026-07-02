@@ -163,7 +163,10 @@ function extractJsonFromText(rawText: string): any {
 
 const apiKey = process.env.OPENROUTER_API_KEY;
 
-const FREE_MODEL = "google/gemini-2.0-flash-exp:free";
+const FREE_MODELS = [
+  "meta-llama/llama-3.1-8b-instruct:free",
+  "mistralai/mistral-7b-instruct:free"
+];
 
 let cachedModels: any[] | null = null;
 let modelsCacheTime = 0;
@@ -207,10 +210,9 @@ function generateFallbackCorrection(title: string, text: string) {
 }
 
 function generateFallbackQuestions(area: string) {
-  return [
+  const pool = [
     {
-      id: "q-fb-1",
-      area: area,
+      id: "q-fb-sust",
       statement: `(ENEM Simulado) Em relação às principais discussões contemporâneas sobre sustentabilidade e impacto ambiental na região brasileira de ${area}, observa-se uma forte necessidade de reestruturação produtiva. Qual das seguintes medidas promove um desenvolvimento verdadeiramente sustentável?`,
       options: [
         { letter: "A", text: "Expansão desordenada de áreas para pecuária extensiva com subsídios estatais." },
@@ -221,8 +223,37 @@ function generateFallbackQuestions(area: string) {
       ],
       correctAnswer: "B",
       explanation: "A alternativa B descreve práticas consolidadas de sustentabilidade agrícola: o uso planejado dos recursos, a rotação de culturas que preserva a fertilidade do solo e o reflorestamento que sequestra carbono."
+    },
+    {
+      id: "q-fb-cidad",
+      statement: `(ENEM ${2020 + Math.floor(Math.random() * 5)}) A cidadania no Brasil contemporâneo envolve não apenas direitos políticos, mas também o acesso a políticas públicas que garantam dignidade. Considerando a área de ${area}, analise qual alternativa representa um exercício pleno de cidadania:`,
+      options: [
+        { letter: "A", text: "Votar em eleições e desconhecer os projetos dos candidatos." },
+        { letter: "B", text: "Participar de conselhos municipais e cobrar transparência do poder público." },
+        { letter: "C", text: "Pagar impostos sem questionar sua destinação social." },
+        { letter: "D", text: "Aguardar passivamente que o Estado resolva problemas comunitários." },
+        { letter: "E", text: "Utilizar serviços públicos sem contribuir para sua manutenção." }
+      ],
+      correctAnswer: "B",
+      explanation: "A participação em conselhos municipais e o controle social sobre o poder público são manifestações ativas de cidadania, indo além do voto periódico."
+    },
+    {
+      id: "q-fb-cien",
+      statement: `(ENEM ${2020 + Math.floor(Math.random() * 5)}) O avanço científico e tecnológico no século XXI trouxe inúmeros benefícios, mas também desafios éticos. Na perspectiva de ${area}, qual afirmação melhor descreve a relação entre ciência e sociedade?`,
+      options: [
+        { letter: "A", text: "A ciência deve ser neutra e isolada de debates sociais." },
+        { letter: "B", text: "O conhecimento científico precisa ser acessível e dialogar com saberes populares." },
+        { letter: "C", text: "A tecnologia substituirá completamente o trabalho humano em uma década." },
+        { letter: "D", text: "Pesquisas científicas não precisam de regulação ética." },
+        { letter: "E", text: "Apenas cientistas podem opinar sobre políticas científicas." }
+      ],
+      correctAnswer: "B",
+      explanation: "A ciência contemporânea reconhece a importância do diálogo com a sociedade e da democratização do conhecimento científico para seu desenvolvimento ético."
     }
   ];
+
+  const shuffled = pool.sort(() => Math.random() - 0.5);
+  return shuffled.slice(0, Math.min(2, shuffled.length)).map((q, i) => ({ ...q, id: `q-fb-${i}-${Date.now()}` }));
 }
 
 async function fetchCorrectionFromModel(modelName: string, prompt: string) {
@@ -519,14 +550,11 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
   }
 });
 
-app.post("/api/questions", async (req, res) => {
-  const { area, count } = req.body;
-  const targetArea = area || "Geral";
-  const numQuestions = count || 2;
+async function tryGenerateQuestions(model: string, targetArea: string, numQuestions: number): Promise<any[] | null> {
+  await assertModelIsFree(model);
 
-  try {
-    const seed = Date.now() + Math.random();
-    const prompt = `Gere ${numQuestions} perguntas de múltipla escolha INÉDITAS (nunca repetir as mesmas questões de antes) no estilo exato do ENEM focadas na área de conhecimento: "${targetArea}". Use o seed ${seed} para garantir variedade.
+  const seed = Date.now() + Math.random();
+  const prompt = `Gere ${numQuestions} perguntas de múltipla escolha INÉDITAS (nunca repetir as mesmas questões de antes) no estilo exato do ENEM focadas na área de conhecimento: "${targetArea}". Use o seed ${seed} para garantir variedade.
 Cada questão deve conter:
 - Um enunciado contextualizado baseado em problemas reais (tipo do INEP/ENEM).
 - Cinco alternativas listadas de A até E de forma equilibrada.
@@ -552,8 +580,10 @@ Retorne estritamente o resultado em formato de matriz JSON estruturado exatament
 
 Retorne APENAS o JSON. Não escreva textos adicionais.`;
 
-    await assertModelIsFree(FREE_MODEL);
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 9000);
 
+  try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -563,92 +593,101 @@ Retorne APENAS o JSON. Não escreva textos adicionais.`;
         "X-Title": "ApexEnem ENEM Applet"
       },
       body: JSON.stringify({
-        model: FREE_MODEL,
+        model,
         messages: [
-          {
-            role: "system",
-            content: "Você é um gerador de avaliações do ENEM especialista. Responda apenas com o JSON bruto solicitado."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
+          { role: "system", content: "Você é um gerador de avaliações do ENEM especialista. Responda apenas com o JSON bruto solicitado." },
+          { role: "user", content: prompt }
         ],
         temperature: 0.8
-      })
+      }),
+      signal: controller.signal
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter returned status ${response.status}`);
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content;
-    if (!rawContent) {
-      return res.json(generateFallbackQuestions(targetArea));
-    }
+    if (!rawContent) return null;
 
-    const parsedQuestions = extractJsonFromText(rawContent);
-    return res.json(parsedQuestions);
-  } catch (error: any) {
-    console.error("OpenRouter questions generation error:", error);
-    return res.json(generateFallbackQuestions(targetArea));
+    return extractJsonFromText(rawContent);
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
+}
+
+app.post("/api/questions", async (req, res) => {
+  const { area, count } = req.body;
+  const targetArea = area || "Geral";
+  const numQuestions = count || 2;
+
+  for (const model of FREE_MODELS) {
+    const result = await tryGenerateQuestions(model, targetArea, numQuestions);
+    if (result && result.length > 0) {
+      return res.json(result);
+    }
+  }
+
+  return res.json(generateFallbackQuestions(targetArea));
 });
+
+async function tryCabritoChat(model: string, questionText: string, instructions: string, correctAnswer: string): Promise<string | null> {
+  await assertModelIsFree(model);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 9000);
+
+  try {
+    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://ai.studio/build",
+        "X-Title": "ApexEnem ENEM Applet"
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "Você é o Cabrito, o tutor inteligente e encorajador tipo cabrito do Duolingo do ENEM. Explique conceitos de modo muito lúdico, conciso e instrutivo." },
+          { role: "user", content: `Por favor, explique de forma motivadora este exercício para mim:\nExercício/Pergunta: "${questionText}"\nTipo do desafio: "${instructions}"\nGabarito Oficial: "${correctAnswer}"\n\nRetorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.` }
+        ]
+      }),
+      signal: controller.signal
+    });
+
+    if (!response.ok) return null;
+
+    const data = await response.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
 
 app.post("/api/openrouter-chat", async (req, res) => {
   const { questionText, instructions, correctAnswer } = req.body;
 
-  try {
-    await assertModelIsFree(FREE_MODEL);
-
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://ai.studio/build",
-        "X-Title": "ApexEnem ENEM Applet"
-      },
-      body: JSON.stringify({
-        model: FREE_MODEL,
-        messages: [
-          {
-            role: "system",
-            content: "Você é o Cabrito, o tutor inteligente e encorajador tipo cabrito do Duolingo do ENEM. Explique conceitos de modo muito lúdico, conciso e instrutivo."
-          },
-          {
-            role: "user",
-            content: `Por favor, explique de forma motivadora este exercício para mim:
-Exercício/Pergunta: "${questionText}"
-Tipo do desafio: "${instructions}"
-Gabarito Oficial: "${correctAnswer}"
-
-Retorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.`
-          }
-        ]
-      })
-    });
-
-    if (!response.ok) {
-      throw new Error(`OpenRouter respondeu com status ${response.status}`);
+  for (const model of FREE_MODELS) {
+    const text = await tryCabritoChat(model, questionText, instructions, correctAnswer);
+    if (text) {
+      return res.json({ text });
     }
-
-    const data = await response.json();
-    const text = data.choices?.[0]?.message?.content || "Eis meu conselho do pasto secreto!";
-    return res.json({ text });
-  } catch (err: any) {
-    console.error("OpenRouter error:", err);
-    return res.json({ text: "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
   }
+
+  return res.json({ text: "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
 });
 
-app.post("/api/generate-learning-exercises", async (req, res) => {
-  const { chapterId, chapterTitle, chapterArea, weakAreas, count } = req.body;
+async function tryGenerateExercises(model: string, chapterTitle: string, chapterArea: string, weakAreas: string[], count: number): Promise<any[] | null> {
+  await assertModelIsFree(model);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 9000);
 
   try {
-    await assertModelIsFree(FREE_MODEL);
-
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -658,36 +697,29 @@ app.post("/api/generate-learning-exercises", async (req, res) => {
         "X-Title": "ApexEnem Learning"
       },
       body: JSON.stringify({
-        model: FREE_MODEL,
+        model,
         messages: [
-          {
-            role: "system",
-            content: `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
-            Os exercícios DEVEM ser variados entre os tipos: 'choice' (múltipla escolha com 5 opções A-E), 'true-false' (verdadeiro/falso), 'reorder' (ordenar blocos de palavras), 'matching' (associar colunas).
-            
-            IMPORTANTE: 
-            - O JSON deve ser um array de objetos, cada um com: id (string), type (um dos 4 tipos), instructions (string instrutiva), statement (enunciado), options (array de {letter, text} para choice), correctLetter (string para choice), correctBoolean (boolean para true-false), shuffledWords (string[] para reorder), correctSentenceWords (string[] para reorder), matchingPairs (array de {left, right} para matching), explanation (string educativa).
-            - Sempre retorne APENAS o JSON puro, sem markdown, sem explicações extras.
-            - Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque neles.
-            - Os exercícios devem ser de nível ENEM (ensino médio), com linguagem clara e adequada.
-            - Para matching, use 3 pares. Para reorder, use 4-6 palavras.`
-          },
-          {
-            role: "user",
-            content: `Gere ${count || 3} exercícios sobre "${chapterTitle}" para o ENEM, focando nos pontos fracos: ${weakAreas?.join(', ') || 'nenhum específico'}. Retorne apenas o JSON.`
-          }
+          { role: "system", content: `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
+Os exercícios DEVEM ser variados entre os tipos: 'choice' (múltipla escolha com 5 opções A-E), 'true-false' (verdadeiro/falso), 'reorder' (ordenar blocos de palavras), 'matching' (associar colunas).
+
+IMPORTANTE: 
+- O JSON deve ser um array de objetos, cada um com: id (string), type (um dos 4 tipos), instructions (string instrutiva), statement (enunciado), options (array de {letter, text} para choice), correctLetter (string para choice), correctBoolean (boolean para true-false), shuffledWords (string[] para reorder), correctSentenceWords (string[] para reorder), matchingPairs (array de {left, right} para matching), explanation (string educativa).
+- Sempre retorne APENAS o JSON puro, sem markdown, sem explicações extras.
+- Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque neles.
+- Os exercícios devem ser de nível ENEM (ensino médio), com linguagem clara e adequada.
+- Para matching, use 3 pares. Para reorder, use 4-6 palavras.` },
+          { role: "user", content: `Gere ${count || 3} exercícios sobre "${chapterTitle}" para o ENEM, focando nos pontos fracos: ${weakAreas?.join(', ') || 'nenhum específico'}. Retorne apenas o JSON.` }
         ]
-      })
+      }),
+      signal: controller.signal
     });
 
-    if (!response.ok) {
-      throw new Error(`OpenRouter respondeu com status ${response.status}`);
-    }
+    if (!response.ok) return null;
 
     const data = await response.json();
     const content = data.choices?.[0]?.message?.content || "[]";
-    
     const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+
     let exercises;
     try {
       exercises = JSON.parse(cleaned);
@@ -696,15 +728,29 @@ app.post("/api/generate-learning-exercises", async (req, res) => {
       if (match) {
         exercises = JSON.parse(match[0]);
       } else {
-        throw new Error("Could not parse exercises JSON");
+        return null;
       }
     }
-    
-    return res.json({ exercises });
-  } catch (err: any) {
-    console.error("AI exercise generation error:", err.message);
-    return res.json({ exercises: null });
+
+    return Array.isArray(exercises) ? exercises : null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(timeoutId);
   }
+}
+
+app.post("/api/generate-learning-exercises", async (req, res) => {
+  const { chapterId, chapterTitle, chapterArea, weakAreas, count } = req.body;
+
+  for (const model of FREE_MODELS) {
+    const exercises = await tryGenerateExercises(model, chapterTitle, chapterArea, weakAreas || [], count || 3);
+    if (exercises && exercises.length > 0) {
+      return res.json({ exercises });
+    }
+  }
+
+  return res.json({ exercises: null });
 });
 
 app.post("/api/supabase/save-progress", async (req, res) => {

@@ -521,7 +521,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
             </div>
           </div>
 
-          <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-4 lg:self-start">
+          <div className="lg:col-span-4 space-y-5 lg:sticky lg:top-8 lg:self-start lg:max-h-[calc(100vh-6rem)] lg:overflow-y-auto">
             <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm text-center space-y-4">
 
               <div className="flex flex-col items-center">
