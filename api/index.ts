@@ -137,26 +137,17 @@ app.use("/api/", requireAuth);
 function extractJsonFromText(rawText: string): any {
   try {
     return JSON.parse(rawText.trim());
-  } catch (e) {
-    // Continue
+  } catch {}
+  const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  if (match) {
+    try { return JSON.parse(match[1].trim()); } catch {}
   }
-  const regex = /```json\s*([\s\S]*?)\s*```/;
-  const match = rawText.match(regex);
-  if (match && match[1]) {
-    try {
-      return JSON.parse(match[1].trim());
-    } catch (e) {
-      // Continue
-    }
-  }
-  const startIdx = rawText.indexOf('{');
-  const endIdx = rawText.lastIndexOf('}');
-  if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-    const jsonStr = rawText.substring(startIdx, endIdx + 1);
-    try {
-      return JSON.parse(jsonStr);
-    } catch (e) {
-      // Continue
+  for (const ch of ['[', '{']) {
+    const end = ch === '[' ? ']' : '}';
+    const startIdx = rawText.indexOf(ch);
+    const endIdx = rawText.lastIndexOf(end);
+    if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
+      try { return JSON.parse(rawText.substring(startIdx, endIdx + 1)); } catch {}
     }
   }
   throw new Error("Could not parse JSON from LLM response");
