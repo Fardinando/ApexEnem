@@ -163,6 +163,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
   const handleGenerateQuestions = async () => {
     setIsLoading(true);
     setSelectedAnswers({});
+    let usedLocal = false;
     try {
       const res = await fetch('/api/questions', {
         method: 'POST',
@@ -178,8 +179,11 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
           return;
         }
       }
+      console.warn(`API questions status ${res.status}: ${await res.text().catch(() => '')}`);
+      usedLocal = true;
     } catch (err) {
       console.warn('API questions unavailable, using local fallback:', err);
+      usedLocal = true;
     }
 
     setQuestions(getLocalQuestions(selectedArea, 2));
