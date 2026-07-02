@@ -510,7 +510,7 @@ async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+        generationConfig: { temperature: 0.9, maxOutputTokens: 2048 }
       }),
       signal
     });
@@ -544,11 +544,11 @@ async function tryOpenRouter(model: string, prompt: string, signal: AbortSignal)
       body: JSON.stringify({
         model,
         messages: [
-          { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
+          { role: "system", content: "Você é um especialista em questões ENEM de nível avançado. Gere apenas JSON." },
           { role: "user", content: prompt }
         ],
-        temperature: 0.7,
-        max_tokens: 1024
+        temperature: 0.9,
+        max_tokens: 2048
       }),
       signal
     });
@@ -568,9 +568,20 @@ app.post("/api/questions", async (req, res) => {
   const targetArea = area || "Geral";
   const numQuestions = count || 2;
 
-  const prompt = `Gere ${numQuestions} perguntas de múltipla escolha no estilo ENEM focadas em "${targetArea}". Seed ${Date.now()}.
-Cada questão deve ter: statement, options (A-E), correctAnswer, explanation.
-Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}]`;
+  const prompt = `Você é um especialista em criar questões no estilo ENEM (Exame Nacional do Ensino Médio). Gere ${numQuestions} questões de múltipla escolha de nível avançado (ensino médio) focadas em "${targetArea}".
+
+REGRAS OBRIGATÓRIAS:
+- Cada questão deve ter um ENUNCIADO LONGO E CONTEXTUALIZADO (3-5 linhas) com uma situação-problema, texto de apoio, tabela, gráfico ou citação para o aluno interpretar.
+- Nível de DIFICULDADE ALTO, compatível com ENEM real.
+- As alternativas (A-E) devem ser PLACÍVEIS (todas parecem corretas à primeira vista, apenas uma é correta).
+- A resposta correta só deve ser descoberta após análise cuidadosa do enunciado.
+- NÃO usar perguntas de conhecimento factual direto como "quanto é 2+2" ou "qual a capital do Brasil".
+- NÃO usar cálculos simples de uma etapa.
+- As questões devem TESTAR RACIOCÍNIO, não memória.
+- Incluir no enunciado dados, números, citações ou referências que o aluno precisa analisar.
+
+Formato de resposta (APENAS JSON, sem markdown):
+[{"id":"q_1","statement":"enunciado longo e contextualizado aqui","options":[{"letter":"A","text":"alternativa A"},{"letter":"B","text":"alternativa B"},{"letter":"C","text":"alternativa C"},{"letter":"D","text":"alternativa D"},{"letter":"E","text":"alternativa E"}],"correctAnswer":"A","explanation":"explicação detalhada do raciocínio"}]`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 9500);
