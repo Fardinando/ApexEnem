@@ -163,6 +163,7 @@ function extractJsonFromText(rawText: string): any {
 }
 
 const apiKey = process.env.OPENROUTER_API_KEY;
+const googleApiKey = process.env.GOOGLE_API_KEY;
 
 const FREE_MODELS = [
   "openrouter/free"
@@ -503,31 +504,50 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
   }
 });
 
-function callOpenRouter(model: string, prompt: string, signal: AbortSignal): Promise<any> {
-  return fetch("https://openrouter.ai/api/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`,
-      "HTTP-Referer": "https://apexenem.vercel.app",
-      "X-Title": "ApexEnem"
-    },
-    body: JSON.stringify({
-      model,
-      messages: [
-        { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
-        { role: "user", content: prompt }
-      ],
-      temperature: 0.7,
-      max_tokens: 1024
-    }),
-    signal
-  });
+async function tryGemini(prompt: string, signal: AbortSignal): Promise<any[] | null> {
+  if (!googleApiKey) return null;
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+      }),
+      signal
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!text) return null;
+    const questions = extractJsonFromText(text);
+    return Array.isArray(questions) && questions.length > 0 ? questions : null;
+  } catch {
+    return null;
+  }
 }
 
-async function tryModel(model: string, prompt: string, signal: AbortSignal): Promise<any[] | null> {
+async function tryOpenRouter(model: string, prompt: string, signal: AbortSignal): Promise<any[] | null> {
   try {
-    const res = await callOpenRouter(model, prompt, signal);
+    const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": "https://apexenem.vercel.app",
+        "X-Title": "ApexEnem"
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7,
+        max_tokens: 1024
+      }),
+      signal
+    });
     if (!res.ok) return null;
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content;
@@ -544,31 +564,24 @@ app.post("/api/questions", async (req, res) => {
   const targetArea = area || "Geral";
   const numQuestions = count || 2;
 
-  const seed = Date.now() + Math.random();
-  const prompt = `Gere ${numQuestions} perguntas de múltipla escolha no estilo ENEM focadas em "${targetArea}". Seed ${seed}.
+  const prompt = `Gere ${numQuestions} perguntas de múltipla escolha no estilo ENEM focadas em "${targetArea}". Seed ${Date.now()}.
 Cada questão deve ter: statement, options (A-E), correctAnswer, explanation.
 Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}]`;
 
   const controller = new AbortController();
   const timeoutId = setTimeout(() => controller.abort(), 9500);
 
-  const models = [
-    "meta-llama/llama-3.2-3b-instruct:free",
-    "google/gemma-4-26b-a4b:free",
-    "openrouter/free"
+  const attempts: Promise<any[] | null>[] = [
+    tryGemini(prompt, controller.signal),
+    tryOpenRouter("openrouter/free", prompt, controller.signal)
   ];
 
-  try {
-    const results = await Promise.any(
-      models.map(m => tryModel(m, prompt, controller.signal).then(q => q ? { model: m, questions: q } : Promise.reject()))
-    );
+  const result = await Promise.any(attempts.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))).catch(() => null);
+  clearTimeout(timeoutId);
 
-    return res.json(results.questions);
-  } catch {
-    return res.status(502).json({ error: "Todos os modelos gratuitos do OpenRouter falharam ou excederam o tempo limite (9.5s). Tente novamente." });
-  } finally {
-    clearTimeout(timeoutId);
-  }
+  if (result) return res.json(result);
+  if (!googleApiKey) return res.status(502).json({ error: "Gemini não configurado (falta GOOGLE_API_KEY) e OpenRouter gratuito excedeu tempo limite. Adicione uma GOOGLE_API_KEY grátis em aistudio.google.com/apikey." });
+  return res.status(502).json({ error: "Gemini 2.0 Flash e OpenRouter gratuito falharam. Tente novamente." });
 });
 
 app.post("/api/openrouter-chat", async (req, res) => {
