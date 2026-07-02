@@ -210,53 +210,6 @@ function generateFallbackCorrection(title: string, text: string) {
   };
 }
 
-function generateFallbackQuestions(area: string) {
-  const pool = [
-    {
-      id: "q-fb-sust",
-      statement: `(ENEM Simulado) Em relação às principais discussões contemporâneas sobre sustentabilidade e impacto ambiental na região brasileira de ${area}, observa-se uma forte necessidade de reestruturação produtiva. Qual das seguintes medidas promove um desenvolvimento verdadeiramente sustentável?`,
-      options: [
-        { letter: "A", text: "Expansão desordenada de áreas para pecuária extensiva com subsídios estatais." },
-        { letter: "B", text: "Uso racional e planejado de recursos naturais com rotação de culturas e reflorestamento." },
-        { letter: "C", text: "Industrialização pesada sem mitigação de emissões carboníferas." },
-        { letter: "D", text: "Privatização desregulada de mananciais de água para consumo do agronegócio." },
-        { letter: "E", text: "Incentivo a defensivos agrícolas químicos altamente persistentes no lençol freático." }
-      ],
-      correctAnswer: "B",
-      explanation: "A alternativa B descreve práticas consolidadas de sustentabilidade agrícola: o uso planejado dos recursos, a rotação de culturas que preserva a fertilidade do solo e o reflorestamento que sequestra carbono."
-    },
-    {
-      id: "q-fb-cidad",
-      statement: `(ENEM ${2020 + Math.floor(Math.random() * 5)}) A cidadania no Brasil contemporâneo envolve não apenas direitos políticos, mas também o acesso a políticas públicas que garantam dignidade. Considerando a área de ${area}, analise qual alternativa representa um exercício pleno de cidadania:`,
-      options: [
-        { letter: "A", text: "Votar em eleições e desconhecer os projetos dos candidatos." },
-        { letter: "B", text: "Participar de conselhos municipais e cobrar transparência do poder público." },
-        { letter: "C", text: "Pagar impostos sem questionar sua destinação social." },
-        { letter: "D", text: "Aguardar passivamente que o Estado resolva problemas comunitários." },
-        { letter: "E", text: "Utilizar serviços públicos sem contribuir para sua manutenção." }
-      ],
-      correctAnswer: "B",
-      explanation: "A participação em conselhos municipais e o controle social sobre o poder público são manifestações ativas de cidadania, indo além do voto periódico."
-    },
-    {
-      id: "q-fb-cien",
-      statement: `(ENEM ${2020 + Math.floor(Math.random() * 5)}) O avanço científico e tecnológico no século XXI trouxe inúmeros benefícios, mas também desafios éticos. Na perspectiva de ${area}, qual afirmação melhor descreve a relação entre ciência e sociedade?`,
-      options: [
-        { letter: "A", text: "A ciência deve ser neutra e isolada de debates sociais." },
-        { letter: "B", text: "O conhecimento científico precisa ser acessível e dialogar com saberes populares." },
-        { letter: "C", text: "A tecnologia substituirá completamente o trabalho humano em uma década." },
-        { letter: "D", text: "Pesquisas científicas não precisam de regulação ética." },
-        { letter: "E", text: "Apenas cientistas podem opinar sobre políticas científicas." }
-      ],
-      correctAnswer: "B",
-      explanation: "A ciência contemporânea reconhece a importância do diálogo com a sociedade e da democratização do conhecimento científico para seu desenvolvimento ético."
-    }
-  ];
-
-  const shuffled = pool.sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, Math.min(2, shuffled.length)).map((q, i) => ({ ...q, id: `q-fb-${i}-${Date.now()}` }));
-}
-
 async function fetchCorrectionFromModel(modelName: string, prompt: string) {
   const controller = new AbortController();
   const timeoutId = setTimeout(() => {
@@ -551,26 +504,18 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
   }
 });
 
-const QUESTIONS_TIMEOUT = 8000;
-
 app.post("/api/questions", async (req, res) => {
   const { area, count } = req.body;
   const targetArea = area || "Geral";
   const numQuestions = count || 2;
 
-  const model = FREE_MODELS[0];
   const seed = Date.now() + Math.random();
-  const prompt = `Gere ${numQuestions} perguntas de múltipla escolha INÉDITAS no estilo ENEM focadas em "${targetArea}". Seed ${seed}.
-
+  const prompt = `Gere ${numQuestions} perguntas de múltipla escolha no estilo ENEM focadas em "${targetArea}". Seed ${seed}.
 Cada questão deve ter: statement, options (A-E), correctAnswer, explanation.
-
-Retorne APENAS JSON array:
-[{"id":"q_1","statement":"...","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}]
-
-Nada mais além do JSON.`;
+Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}]`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), QUESTIONS_TIMEOUT);
+  const timeoutId = setTimeout(() => controller.abort(), 9000);
 
   try {
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -582,7 +527,7 @@ Nada mais além do JSON.`;
         "X-Title": "ApexEnem"
       },
       body: JSON.stringify({
-        model,
+        model: "openrouter/auto",
         messages: [
           { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
           { role: "user", content: prompt }
@@ -592,24 +537,32 @@ Nada mais além do JSON.`;
       signal: controller.signal
     });
 
-    if (!response.ok) throw new Error(`OpenRouter ${response.status}`);
+    if (!response.ok) {
+      return res.status(502).json({ error: `OpenRouter retornou status ${response.status}` });
+    }
 
     const data = await response.json();
     const rawContent = data.choices?.[0]?.message?.content;
-    if (!rawContent) throw new Error("Empty response");
+    if (!rawContent) {
+      return res.status(502).json({ error: "OpenRouter retornou resposta vazia." });
+    }
 
     const questions = extractJsonFromText(rawContent);
     if (Array.isArray(questions) && questions.length > 0) {
       return res.json(questions);
     }
+
+    return res.status(502).json({ error: "IA não gerou questões válidas." });
   } catch (err: any) {
     console.error("AI questions error:", err?.message || err);
+    return res.status(502).json({
+      error: err?.name === "AbortError"
+        ? "Tempo limite excedido ao gerar questões (9s). Tente novamente."
+        : `Erro ao gerar questões: ${err?.message || "desconhecido"}`
+    });
   } finally {
     clearTimeout(timeoutId);
   }
-
-  const fallback = generateFallbackQuestions(targetArea);
-  return res.json(Array.isArray(fallback) ? fallback : []);
 });
 
 app.post("/api/openrouter-chat", async (req, res) => {

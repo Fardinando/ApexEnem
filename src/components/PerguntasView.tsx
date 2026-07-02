@@ -7,150 +7,11 @@ interface PerguntasViewProps {
   onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia') => void;
 }
 
-const LOCAL_QUESTIONS: Record<string, Question[]> = {
-  Matemática: [
-    {
-      id: 'local-mat-1',
-      area: 'Matemática',
-      statement: '(ENEM 2023) Uma loja de eletrodomésticos oferece um desconto de 15% em um produto que custa R$ 800,00. Qual o valor do desconto em reais?',
-      options: [
-        { letter: 'A', text: 'R$ 80,00' },
-        { letter: 'B', text: 'R$ 100,00' },
-        { letter: 'C', text: 'R$ 120,00' },
-        { letter: 'D', text: 'R$ 150,00' },
-        { letter: 'E', text: 'R$ 200,00' },
-      ],
-      correctAnswer: 'C',
-      explanation: '15% de 800 = 0,15 × 800 = R$ 120,00 de desconto.',
-    },
-    {
-      id: 'local-mat-2',
-      area: 'Matemática',
-      statement: '(ENEM 2023) Uma progressão aritmética tem primeiro termo igual a 5 e razão igual a 3. Qual é o valor do décimo termo?',
-      options: [
-        { letter: 'A', text: '27' },
-        { letter: 'B', text: '30' },
-        { letter: 'C', text: '32' },
-        { letter: 'D', text: '35' },
-        { letter: 'E', text: '40' },
-      ],
-      correctAnswer: 'C',
-      explanation: 'an = a1 + (n-1)r → a10 = 5 + 9×3 = 5 + 27 = 32.',
-    },
-  ],
-  Humanas: [
-    {
-      id: 'local-hum-1',
-      area: 'Humanas',
-      statement: '(ENEM 2023) A Revolução Francesa (1789) foi um marco na história ocidental. Qual das alternativas abaixo representa uma de suas principais causas?',
-      options: [
-        { letter: 'A', text: 'A unificação da Alemanha' },
-        { letter: 'B', text: 'A desigualdade social e os privilégios do clero e da nobreza' },
-        { letter: 'C', text: 'A descoberta do Brasil' },
-        { letter: 'D', text: 'A Guerra dos Cem Anos' },
-        { letter: 'E', text: 'A invenção da imprensa' },
-      ],
-      correctAnswer: 'B',
-      explanation: 'A desigualdade social, a crise financeira e os privilégios do Primeiro e Segundo Estado foram causas fundamentais da Revolução Francesa.',
-    },
-    {
-      id: 'local-hum-2',
-      area: 'Humanas',
-      statement: '(ENEM 2023) O conceito de cidadania na Grécia Antiga estava restrito a qual grupo?',
-      options: [
-        { letter: 'A', text: 'Todos os habitantes da pólis' },
-        { letter: 'B', text: 'Homens livres nascidos na pólis' },
-        { letter: 'C', text: 'Mulheres e estrangeiros' },
-        { letter: 'D', text: 'Escravos e comerciantes' },
-        { letter: 'E', text: 'Apenas os filósofos' },
-      ],
-      correctAnswer: 'B',
-      explanation: 'Na Grécia Antiga, apenas homens livres nascidos na pólis eram considerados cidadãos, excluindo mulheres, estrangeiros e escravos.',
-    },
-  ],
-  Natureza: [
-    {
-      id: 'local-nat-1',
-      area: 'Natureza',
-      statement: '(ENEM 2023) A fotossíntese é um processo fundamental para a vida na Terra. Qual gás é liberado durante a fase clara da fotossíntese?',
-      options: [
-        { letter: 'A', text: 'Gás carbônico (CO₂)' },
-        { letter: 'B', text: 'Nitrogênio (N₂)' },
-        { letter: 'C', text: 'Oxigênio (O₂)' },
-        { letter: 'D', text: 'Hidrogênio (H₂)' },
-        { letter: 'E', text: 'Metano (CH₄)' },
-      ],
-      correctAnswer: 'C',
-      explanation: 'Na fase clara da fotossíntese, a energia luminosa quebra moléculas de água (fotólise), liberando oxigênio (O₂) na atmosfera.',
-    },
-    {
-      id: 'local-nat-2',
-      area: 'Natureza',
-      statement: '(ENEM 2023) Qual das seguintes grandezas é uma grandeza vetorial?',
-      options: [
-        { letter: 'A', text: 'Temperatura' },
-        { letter: 'B', text: 'Massa' },
-        { letter: 'C', text: 'Velocidade' },
-        { letter: 'D', text: 'Tempo' },
-        { letter: 'E', text: 'Volume' },
-      ],
-      correctAnswer: 'C',
-      explanation: 'Grandezas vetoriais possuem módulo, direção e sentido. A velocidade é um exemplo clássico, ao contrário de temperatura, massa, tempo e volume (escalares).',
-    },
-  ],
-  Linguagens: [
-    {
-      id: 'local-lin-1',
-      area: 'Linguagens',
-      statement: '(ENEM 2023) Leia o trecho: "O sol despontava no horizonte, pintando o céu de tons alaranjados." A figura de linguagem presente no trecho é:',
-      options: [
-        { letter: 'A', text: 'Metáfora' },
-        { letter: 'B', text: 'Prosopopeia' },
-        { letter: 'C', text: 'Hipérbole' },
-        { letter: 'D', text: 'Ironia' },
-        { letter: 'E', text: 'Eufemismo' },
-      ],
-      correctAnswer: 'B',
-      explanation: 'Prosopopeia (ou personificação) atribui ações humanas a seres inanimados. "O sol despontava" e "pintando o céu" são ações humanas atribuídas ao sol.',
-    },
-    {
-      id: 'local-lin-2',
-      area: 'Linguagens',
-      statement: '(ENEM 2023) Na frase "Ele é um leão no trabalho", a palavra "leão" foi usada em sentido:',
-      options: [
-        { letter: 'A', text: 'Denotativo' },
-        { letter: 'B', text: 'Conotativo' },
-        { letter: 'C', text: 'Científico' },
-        { letter: 'D', text: 'Histórico' },
-        { letter: 'E', text: 'Literal' },
-      ],
-      correctAnswer: 'B',
-      explanation: 'O sentido conotativo (figurado) usa a palavra fora de seu significado literal. "Leão" aqui significa pessoa corajosa ou forte, não o animal.',
-    },
-  ],
-};
-
-function shuffleArray<T>(arr: T[]): T[] {
-  const a = [...arr];
-  for (let i = a.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
-    [a[i], a[j]] = [a[j], a[i]];
-  }
-  return a;
-}
-
-function getLocalQuestions(area: string, count: number): Question[] {
-  const pool = LOCAL_QUESTIONS[area] || LOCAL_QUESTIONS.Matemática;
-  return shuffleArray(pool).slice(0, count).map((q, i) => ({
-    ...q,
-    id: `q-local-${Date.now()}-${i}`,
-  }));
-}
-
 export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
   const [selectedArea, setSelectedArea] = useState<'Matemática' | 'Humanas' | 'Natureza' | 'Linguagens'>('Matemática');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D' | 'E'>>({});
 
   const areas = [
@@ -162,8 +23,9 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
 
   const handleGenerateQuestions = async () => {
     setIsLoading(true);
+    setError(null);
     setSelectedAnswers({});
-    let usedLocal = false;
+    setQuestions([]);
     try {
       const res = await fetch('/api/questions', {
         method: 'POST',
@@ -171,23 +33,20 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
         body: JSON.stringify({ area: selectedArea, count: 2 }),
       });
 
-      if (res.ok) {
-        const data = await res.json();
-        if (Array.isArray(data) && data.length > 0) {
-          setQuestions(data);
-          setIsLoading(false);
-          return;
-        }
-      }
-      console.warn(`API questions status ${res.status}: ${await res.text().catch(() => '')}`);
-      usedLocal = true;
-    } catch (err) {
-      console.warn('API questions unavailable, using local fallback:', err);
-      usedLocal = true;
-    }
+      const data = await res.json();
 
-    setQuestions(getLocalQuestions(selectedArea, 2));
-    setIsLoading(false);
+      if (res.ok && Array.isArray(data) && data.length > 0) {
+        setQuestions(data);
+        setIsLoading(false);
+        return;
+      }
+
+      setError(data?.error || `Erro ${res.status}: não foi possível gerar questões.`);
+    } catch (err: any) {
+      setError(err?.message || 'Erro de conexão com o servidor.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleSelectOption = (questionId: string, optionLetter: 'A' | 'B' | 'C' | 'D' | 'E') => {
@@ -284,7 +143,15 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
           </div>
         )}
 
-        {!isLoading && questions.length === 0 && (
+        {!isLoading && error && (
+          <div className="bg-red-50/80 dark:bg-red-950/20 rounded-3xl border-2 border-red-300 dark:border-red-800 py-10 px-6 text-center space-y-3 flex flex-col items-center">
+            <X className="h-8 w-8 text-red-500" />
+            <h3 className="font-display font-extrabold text-red-700 dark:text-red-400 text-sm md:text-base">Erro ao gerar questões</h3>
+            <p className="text-xs text-red-600 dark:text-red-300 max-w-md leading-relaxed">{error}</p>
+          </div>
+        )}
+
+        {!isLoading && !error && questions.length === 0 && (
           <div className="bg-slate-50/50 dark:bg-[#1e293b]/60 rounded-3xl border-2 border-dashed border-slate-250 dark:border-slate-800 py-16 text-center space-y-4 flex flex-col items-center justify-center">
             <div className="p-3.5 bg-slate-100 dark:bg-[#0f172a] text-[#777587] rounded-full">
               <HelpCircle className="h-8 w-8 text-blue-600 dark:text-blue-400" />
