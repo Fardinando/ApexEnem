@@ -516,7 +516,7 @@ async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal
           { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
           { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
         ],
-        generationConfig: { temperature: 0.9, maxOutputTokens: 1024 }
+        generationConfig: { temperature: 0.9 }
       }),
       signal
     });
