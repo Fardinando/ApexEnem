@@ -19,6 +19,7 @@ import {
   AlertTriangle,
   Loader2
 } from 'lucide-react';
+import { renderToString } from 'katex';
 import { SimuladoConfig, SimuladoQuestion, SimuladoState } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
@@ -43,6 +44,58 @@ const shuffleArray = <T,>(array: T[]): T[] => {
 
 const IMAGE_URL_RE = /https?:\/\/[^\s]+\.(?:png|jpg|jpeg|gif|webp|svg)(?:\?[^\s]*)?/gi;
 const MARKDOWN_IMG_RE = /!\[([^\]]*)\]\(([^)]+)\)/g;
+const DISPLAY_MATH_RE = /\$\$([^$]+)\$\$/g;
+const INLINE_MATH_RE = /\$([^$]+)\$/g;
+
+function renderMath(expr: string, display: boolean): string {
+  try {
+    return renderToString(expr, { displayMode: display, throwOnError: false });
+  } catch {
+    return expr;
+  }
+}
+
+function renderMathSegments(segment: string): (React.ReactNode | string)[] {
+  const parts: (React.ReactNode | string)[] = [];
+  let last = 0;
+
+  const matches: { index: number; length: number; node: React.ReactNode }[] = [];
+
+  for (const m of segment.matchAll(DISPLAY_MATH_RE)) {
+    matches.push({
+      index: m.index!,
+      length: m[0].length,
+      node: <span key={`dm-${m.index}`} dangerouslySetInnerHTML={{ __html: renderMath(m[1].trim(), true) }} />
+    });
+  }
+
+  for (const m of segment.matchAll(INLINE_MATH_RE)) {
+    const skip = matches.some(c => m.index! >= c.index && m.index! < c.index + c.length);
+    if (!skip) {
+      matches.push({
+        index: m.index!,
+        length: m[0].length,
+        node: <span key={`im-${m.index}`} dangerouslySetInnerHTML={{ __html: renderMath(m[1].trim(), false) }} />
+      });
+    }
+  }
+
+  matches.sort((a, b) => a.index - b.index);
+
+  for (const item of matches) {
+    if (item.index > last) {
+      parts.push(segment.slice(last, item.index));
+    }
+    parts.push(item.node);
+    last = item.index + item.length;
+  }
+
+  if (last < segment.length) {
+    parts.push(segment.slice(last));
+  }
+
+  return parts.length > 0 ? parts : [segment];
+}
 
 function renderContent(text: string): (React.ReactNode | string)[] {
   const parts: (React.ReactNode | string)[] = [];
@@ -73,14 +126,16 @@ function renderContent(text: string): (React.ReactNode | string)[] {
 
   for (const item of combined) {
     if (item.index > lastIndex) {
-      parts.push(text.slice(lastIndex, item.index));
+      const segment = text.slice(lastIndex, item.index);
+      parts.push(...renderMathSegments(segment));
     }
     parts.push(item.node);
     lastIndex = item.index + item.length;
   }
 
   if (lastIndex < text.length) {
-    parts.push(text.slice(lastIndex));
+    const segment = text.slice(lastIndex);
+    parts.push(...renderMathSegments(segment));
   }
 
   return parts.length > 0 ? parts : [text];

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen } from 'lucide-react';
 import type { Question } from '../types';
 import AdPlaceholder from './AdPlaceholder';
+import MathRenderer from './MathRenderer';
 
 interface PerguntasViewProps {
   onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia') => void;
@@ -192,7 +193,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
               </div>
 
               <div className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed font-sans space-y-3">
-                <p className="whitespace-pre-wrap">{q.statement}</p>
+                <p className="whitespace-pre-wrap"><MathRenderer text={q.statement} /></p>
               </div>
 
               <div className="grid grid-cols-1 gap-2.5" id={`options-group-${q.id}`}>

@@ -11,6 +11,7 @@ import {
   Trophy,
   GraduationCap
 } from 'lucide-react';
+import MathRenderer from './MathRenderer';
 import { motion, AnimatePresence } from 'motion/react';
 import type { LearningChapter, Exercise, EssayCorrection, UserProfile, WrongAnswer } from '../types';
 import { INITIAL_CHAPTERS, CHAPTER_EXERCISES } from '../data/learning-exercises';
@@ -692,7 +693,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
 
                 <div className="bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-850 p-4 rounded-2xl md:p-6 text-sm leading-relaxed text-slate-800 dark:text-slate-100">
                   <p className="font-semibold text-sm leading-relaxed whitespace-pre-wrap">
-                    {activeExercises[currentExerciseIdx].statement}
+                    <MathRenderer text={activeExercises[currentExerciseIdx].statement} />
                   </p>
                 </div>
 
