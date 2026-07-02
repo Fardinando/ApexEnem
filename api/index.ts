@@ -505,26 +505,35 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
 });
 
 async function tryGemini(prompt: string, signal: AbortSignal): Promise<any[] | null> {
-  if (!googleApiKey) return null;
-  try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
-      }),
-      signal
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) return null;
-    const questions = extractJsonFromText(text);
-    return Array.isArray(questions) && questions.length > 0 ? questions : null;
-  } catch {
-    return null;
+  if (!googleApiKey) { console.error("Gemini: GOOGLE_API_KEY not set"); return null; }
+  const models = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+  for (const model of models) {
+    try {
+      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { temperature: 0.7, maxOutputTokens: 1024 }
+        }),
+        signal
+      });
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        console.error(`Gemini ${model}: ${res.status} ${errBody.slice(0, 200)}`);
+        continue;
+      }
+      const data = await res.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!text) { console.error(`Gemini ${model}: empty response`); continue; }
+      const questions = extractJsonFromText(text);
+      if (Array.isArray(questions) && questions.length > 0) return questions;
+      console.error(`Gemini ${model}: invalid JSON from: ${text.slice(0, 200)}`);
+    } catch (err: any) {
+      console.error(`Gemini ${model} error:`, err?.message || err);
+    }
   }
+  return null;
 }
 
 async function tryOpenRouter(model: string, prompt: string, signal: AbortSignal): Promise<any[] | null> {
@@ -580,8 +589,8 @@ Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options"
   clearTimeout(timeoutId);
 
   if (result) return res.json(result);
-  if (!googleApiKey) return res.status(502).json({ error: "Gemini não configurado (falta GOOGLE_API_KEY) e OpenRouter gratuito excedeu tempo limite. Adicione uma GOOGLE_API_KEY grátis em aistudio.google.com/apikey." });
-  return res.status(502).json({ error: "Gemini 2.0 Flash e OpenRouter gratuito falharam. Tente novamente." });
+  if (!googleApiKey) return res.status(502).json({ error: "Adicione GOOGLE_API_KEY (grátis) nas env vars do Vercel. https://aistudio.google.com/apikey" });
+  return res.status(502).json({ error: "Gemini e OpenRouter falharam. Verifique os logs do Vercel para detalhes." });
 });
 
 app.post("/api/openrouter-chat", async (req, res) => {
