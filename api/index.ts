@@ -510,6 +510,12 @@ async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ parts: [{ text: prompt }] }],
+        safetySettings: [
+          { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+          { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+        ],
         generationConfig: { temperature: 0.9, maxOutputTokens: 1024 }
       }),
       signal
@@ -520,9 +526,14 @@ async function tryGeminiModel(model: string, prompt: string, signal: AbortSignal
       return null;
     }
     const data = await res.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!text) { console.error(`Gemini ${model}: empty response`); return null; }
-    console.error(`Gemini ${model} RAW: ${text.slice(0, 300)}`);
+    const candidate = data?.candidates?.[0];
+    const finishReason = candidate?.finishReason;
+    const text = candidate?.content?.parts?.[0]?.text;
+    console.error(`Gemini ${model} finishReason=${finishReason} rawLen=${text?.length || 0}`);
+    if (!text || finishReason === "SAFETY") {
+      console.error(`Gemini ${model}: blocked (${finishReason})`);
+      return null;
+    }
     const questions = extractJsonFromText(text);
     return Array.isArray(questions) && questions.length > 0 ? questions : null;
   } catch (err: any) {
