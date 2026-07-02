@@ -527,7 +527,7 @@ Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options"
         "X-Title": "ApexEnem"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: "meta-llama/llama-3.1-8b-instruct:free",
         messages: [
           { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
           { role: "user", content: prompt }
@@ -538,7 +538,9 @@ Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options"
     });
 
     if (!response.ok) {
-      return res.status(502).json({ error: `OpenRouter retornou status ${response.status}` });
+      const body = await response.text().catch(() => '');
+      console.error("OpenRouter error:", response.status, body);
+      return res.status(502).json({ error: `OpenRouter retornou status ${response.status}. Verifique se o modelo gratuito está disponível e se a chave OPENROUTER_API_KEY está configurada.` });
     }
 
     const data = await response.json();
