@@ -503,6 +503,42 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
   }
 });
 
+function callOpenRouter(model: string, prompt: string, signal: AbortSignal): Promise<any> {
+  return fetch("https://openrouter.ai/api/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`,
+      "HTTP-Referer": "https://apexenem.vercel.app",
+      "X-Title": "ApexEnem"
+    },
+    body: JSON.stringify({
+      model,
+      messages: [
+        { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
+        { role: "user", content: prompt }
+      ],
+      temperature: 0.7,
+      max_tokens: 1024
+    }),
+    signal
+  });
+}
+
+async function tryModel(model: string, prompt: string, signal: AbortSignal): Promise<any[] | null> {
+  try {
+    const res = await callOpenRouter(model, prompt, signal);
+    if (!res.ok) return null;
+    const data = await res.json();
+    const content = data.choices?.[0]?.message?.content;
+    if (!content) return null;
+    const questions = extractJsonFromText(content);
+    return Array.isArray(questions) && questions.length > 0 ? questions : null;
+  } catch {
+    return null;
+  }
+}
+
 app.post("/api/questions", async (req, res) => {
   const { area, count } = req.body;
   const targetArea = area || "Geral";
@@ -514,53 +550,22 @@ Cada questão deve ter: statement, options (A-E), correctAnswer, explanation.
 Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}]`;
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9000);
+  const timeoutId = setTimeout(() => controller.abort(), 9500);
+
+  const models = [
+    "meta-llama/llama-3.2-3b-instruct:free",
+    "google/gemma-4-26b-a4b:free",
+    "openrouter/free"
+  ];
 
   try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://apexenem.vercel.app",
-        "X-Title": "ApexEnem"
-      },
-      body: JSON.stringify({
-        model: "openrouter/free",
-        messages: [
-          { role: "system", content: "Você é um gerador de questões ENEM. Retorne APENAS JSON." },
-          { role: "user", content: prompt }
-        ],
-        temperature: 0.9
-      }),
-      signal: controller.signal
-    });
+    const results = await Promise.any(
+      models.map(m => tryModel(m, prompt, controller.signal).then(q => q ? { model: m, questions: q } : Promise.reject()))
+    );
 
-    if (!response.ok) {
-      const body = await response.text().catch(() => '');
-      console.error("OpenRouter error:", response.status, body);
-      return res.status(502).json({ error: `OpenRouter retornou status ${response.status}. Verifique se o modelo gratuito está disponível e se a chave OPENROUTER_API_KEY está configurada.` });
-    }
-
-    const data = await response.json();
-    const rawContent = data.choices?.[0]?.message?.content;
-    if (!rawContent) {
-      return res.status(502).json({ error: "OpenRouter retornou resposta vazia." });
-    }
-
-    const questions = extractJsonFromText(rawContent);
-    if (Array.isArray(questions) && questions.length > 0) {
-      return res.json(questions);
-    }
-
-    return res.status(502).json({ error: "IA não gerou questões válidas." });
-  } catch (err: any) {
-    console.error("AI questions error:", err?.message || err);
-    return res.status(502).json({
-      error: err?.name === "AbortError"
-        ? "Tempo limite excedido ao gerar questões (9s). Tente novamente."
-        : `Erro ao gerar questões: ${err?.message || "desconhecido"}`
-    });
+    return res.json(results.questions);
+  } catch {
+    return res.status(502).json({ error: "Todos os modelos gratuitos do OpenRouter falharam ou excederam o tempo limite (9.5s). Tente novamente." });
   } finally {
     clearTimeout(timeoutId);
   }
@@ -568,101 +573,102 @@ Retorne APENAS JSON array sem markdown: [{"id":"q_1","statement":"...","options"
 
 app.post("/api/openrouter-chat", async (req, res) => {
   const { questionText, instructions, correctAnswer } = req.body;
-  const model = FREE_MODELS[0];
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 9500);
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://apexenem.vercel.app",
-        "X-Title": "ApexEnem"
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: "Você é o Cabrito, o tutor inteligente e encorajador tipo cabrito do Duolingo do ENEM. Explique conceitos de modo muito lúdico, conciso e instrutivo." },
-          { role: "user", content: `Por favor, explique de forma motivadora este exercício para mim:\nExercício/Pergunta: "${questionText}"\nTipo do desafio: "${instructions}"\nGabarito Oficial: "${correctAnswer}"\n\nRetorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.` }
-        ]
-      }),
-      signal: controller.signal
-    });
+  const cabritoPrompt = `Por favor, explique de forma motivadora este exercício para mim:\nExercício/Pergunta: "${questionText}"\nTipo do desafio: "${instructions}"\nGabarito Oficial: "${correctAnswer}"\n\nRetorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.`;
 
-    if (response.ok) {
-      const data = await response.json();
-      const text = data.choices?.[0]?.message?.content;
-      if (text) return res.json({ text });
+  async function tryChat(model: string): Promise<string | null> {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://apexenem.vercel.app",
+          "X-Title": "ApexEnem"
+        },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: "system", content: "Você é o Cabrito, o tutor inteligente e encorajador tipo cabrito do Duolingo do ENEM. Explique conceitos de modo muito lúdico, conciso e instrutivo." },
+            { role: "user", content: cabritoPrompt }
+          ],
+          max_tokens: 512
+        }),
+        signal: controller.signal
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      return data.choices?.[0]?.message?.content || null;
+    } catch {
+      return null;
     }
-  } catch {
-    // fallback below
-  } finally {
-    clearTimeout(timeoutId);
   }
 
-  return res.json({ text: "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
+  const models = ["meta-llama/llama-3.2-3b-instruct:free", "openrouter/free"];
+  const text = await Promise.any(models.map(m => tryChat(m).then(t => t ? Promise.resolve(t) : Promise.reject()))).catch(() => null);
+
+  return res.json({ text: text || "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
 });
 
 app.post("/api/generate-learning-exercises", async (req, res) => {
   const { chapterTitle, chapterArea, weakAreas, count } = req.body;
-  const model = FREE_MODELS[0];
 
   const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 8000);
+  const timeoutId = setTimeout(() => controller.abort(), 9500);
 
-  try {
-    const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`,
-        "HTTP-Referer": "https://apexenem.vercel.app",
-        "X-Title": "ApexEnem"
-      },
-      body: JSON.stringify({
-        model,
-        messages: [
-          { role: "system", content: `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
+  const systemMsg = `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
 Os exercícios DEVEM ser variados entre os tipos: 'choice', 'true-false', 'reorder', 'matching'.
 Sempre retorne APENAS o JSON array, sem markdown.
-Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque neles.` },
-          { role: "user", content: `Gere ${count || 3} exercícios sobre "${chapterTitle}" para o ENEM, focando nos pontos fracos: ${weakAreas?.join(', ') || 'nenhum específico'}. Retorne apenas o JSON.` }
-        ]
-      }),
-      signal: controller.signal
-    });
+Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque neles.`;
+  const userMsg = `Gere ${count || 3} exercícios sobre "${chapterTitle}" para o ENEM, focando nos pontos fracos: ${weakAreas?.join(', ') || 'nenhum específico'}. Retorne apenas o JSON.`;
 
-    if (!response.ok) throw new Error(`OpenRouter ${response.status}`);
-
-    const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "[]";
+  function parseExercises(content: string): any[] | null {
     const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
-
-    let exercises;
     try {
-      exercises = JSON.parse(cleaned);
+      const parsed = JSON.parse(cleaned);
+      return Array.isArray(parsed) ? parsed : null;
     } catch {
       const match = cleaned.match(/\[[\s\S]*\]/);
       if (match) {
-        exercises = JSON.parse(match[0]);
-      } else {
-        throw new Error("No JSON found");
+        try {
+          const parsed = JSON.parse(match[0]);
+          return Array.isArray(parsed) ? parsed : null;
+        } catch {}
       }
+      return null;
     }
-
-    if (Array.isArray(exercises) && exercises.length > 0) {
-      return res.json({ exercises });
-    }
-  } catch (err: any) {
-    console.error("Exercises error:", err?.message || err);
-  } finally {
-    clearTimeout(timeoutId);
   }
 
-  return res.json({ exercises: null });
+  async function tryExercises(model: string): Promise<any[] | null> {
+    try {
+      const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${apiKey}`,
+          "HTTP-Referer": "https://apexenem.vercel.app",
+          "X-Title": "ApexEnem"
+        },
+        body: JSON.stringify({ model, messages: [{ role: "system", content: systemMsg }, { role: "user", content: userMsg }], max_tokens: 1536 }),
+        signal: controller.signal
+      });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const content = data.choices?.[0]?.message?.content;
+      if (!content) return null;
+      return parseExercises(content);
+    } catch {
+      return null;
+    }
+  }
+
+  const models = ["meta-llama/llama-3.2-3b-instruct:free", "openrouter/free"];
+  const exercises = await Promise.any(models.map(m => tryExercises(m).then(e => e ? Promise.resolve(e) : Promise.reject()))).catch(() => null);
+
+  return res.json({ exercises: exercises && exercises.length > 0 ? exercises : null });
 });
 
 app.post("/api/supabase/save-progress", async (req, res) => {
