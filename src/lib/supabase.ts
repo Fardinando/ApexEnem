@@ -98,6 +98,9 @@ export async function saveLearningProgress(email: string, progress: { chapters?:
         { email: email.toLowerCase(), progress, updated_at: new Date().toISOString() },
         { onConflict: 'email' }
       );
+    if (retryError && (retryError.message?.includes('relation') || retryError.message?.includes('does not exist'))) {
+      return;
+    }
     if (retryError) throw retryError;
   } else if (error) {
     throw error;
@@ -117,6 +120,9 @@ export async function fetchLearningProgress(email: string) {
       .select('progress')
       .eq('email', email.toLowerCase())
       .maybeSingle();
+    if (retry.error && (retry.error.message?.includes('relation') || retry.error.message?.includes('does not exist'))) {
+      return null;
+    }
     if (retry.error) throw retry.error;
     return retry.data?.progress || null;
   }

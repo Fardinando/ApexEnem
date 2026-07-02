@@ -819,35 +819,52 @@ app.get("/api/supabase/get-progress", async (req, res) => {
 });
 
 app.post("/api/supabase/setup", async (req, res) => {
-  if (!supabaseAdmin) {
-    return res.status(400).json({ error: "SUPABASE_SERVICE_ROLE_KEY não configurado. Adicione ao .env para permitir setup automático." });
-  }
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  try {
-    const { error } = await supabaseAdmin.rpc('setup_ApexEnem_progress');
-    if (error && error.message?.includes('function "setup_ApexEnem_progress" does not exist')) {
-      const testResult = await supabaseAdmin
-        .from("ApexEnem_progress")
-        .upsert(
-          { email: "__setup_test__", progress: { setup: true }, updated_at: new Date().toISOString() },
-          { onConflict: "email" }
-        );
+  const sql = `CREATE TABLE IF NOT EXISTS public."ApexEnem_progress" (
+  email text PRIMARY KEY,
+  progress jsonb DEFAULT '{}'::jsonb,
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE public."ApexEnem_progress" ENABLE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS "all_access" ON public."ApexEnem_progress";
+CREATE POLICY "all_access" ON public."ApexEnem_progress" USING (true) WITH CHECK (true);`;
 
-      if (testResult.error) {
-        console.warn("Supabase setup test failed:", testResult.error.message);
-        return res.status(500).json({ 
-          error: "Erro ao configurar Supabase. Execute o SQL manualmente no Dashboard."
-        });
+  if (supabaseAdmin && supabaseUrl && serviceRoleKey) {
+    try {
+      const { error } = await supabaseAdmin.rpc('setup_ApexEnem_progress');
+      if (!error) {
+        return res.json({ success: true, message: "Supabase configurado com sucesso!" });
       }
+    } catch {}
 
-      await supabaseAdmin.from("ApexEnem_progress").delete().eq("email", "__setup_test__");
+    try {
+      const sqlResp = await fetch(`${supabaseUrl}/rest/v1/rpc/`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'apikey': serviceRoleKey,
+          'Authorization': `Bearer ${serviceRoleKey}`,
+        },
+        body: JSON.stringify({ query: sql })
+      });
+      if (sqlResp.ok) {
+        return res.json({ success: true, message: "Supabase configurado com sucesso!" });
+      }
+    } catch {}
+
+    const testResult = await supabaseAdmin.from("ApexEnem_progress").select("email").limit(1);
+    if (!testResult.error) {
+      return res.json({ success: true, message: "Tabela já existe." });
     }
-
-    return res.json({ success: true, message: "Supabase configurado com sucesso!" });
-  } catch (err: any) {
-    console.error("Supabase setup error:", err.message);
-    return res.status(500).json({ error: "Erro interno ao configurar Supabase." });
   }
+
+  return res.json({
+    success: false,
+    sql,
+    message: "Execute este SQL no Dashboard do Supabase (SQL Editor) para criar a tabela necessária."
+  });
 });
 
 app.get("/api/supabase/keep-alive", async (req, res) => {
