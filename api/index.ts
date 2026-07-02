@@ -135,19 +135,26 @@ const requireAuth = async (req: any, res: any, next: any) => {
 app.use("/api/", requireAuth);
 
 function extractJsonFromText(rawText: string): any {
-  try {
-    return JSON.parse(rawText.trim());
-  } catch {}
-  const match = rawText.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+  const trimmed = rawText.trim();
+  try { return JSON.parse(trimmed); } catch (e: any) { console.error("extract: JSON.parse(raw) failed:", e?.message?.slice(0, 100)); }
+
+  const match = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (match) {
-    try { return JSON.parse(match[1].trim()); } catch {}
+    const extracted = match[1].trim();
+    console.error("extract: regex found content, length=" + extracted.length + ", startsWith=" + extracted[0] + ", endsWith=" + extracted[extracted.length - 1]);
+    try { return JSON.parse(extracted); } catch (e: any) { console.error("extract: JSON.parse(regex) failed:", e?.message?.slice(0, 100)); }
+  } else {
+    console.error("extract: no regex match, raw length=" + trimmed.length + ", startsWith=" + trimmed.slice(0, 50));
   }
+
   for (const ch of ['[', '{']) {
     const end = ch === '[' ? ']' : '}';
-    const startIdx = rawText.indexOf(ch);
-    const endIdx = rawText.lastIndexOf(end);
+    const startIdx = trimmed.indexOf(ch);
+    const endIdx = trimmed.lastIndexOf(end);
     if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
-      try { return JSON.parse(rawText.substring(startIdx, endIdx + 1)); } catch {}
+      const extracted = trimmed.substring(startIdx, endIdx + 1);
+      console.error(`extract: bracket ${ch} found, length=${extracted.length}`);
+      try { return JSON.parse(extracted); } catch (e: any) { console.error(`extract: JSON.parse(${ch}) failed:`, e?.message?.slice(0, 100)); }
     }
   }
   throw new Error("Could not parse JSON from LLM response");
