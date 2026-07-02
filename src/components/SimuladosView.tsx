@@ -386,6 +386,14 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
 
             {/* Statement block */}
             <div className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3 font-sans">
+              {activeQuestion.image && (
+                <img
+                  src={activeQuestion.image}
+                  alt={activeQuestion.imageAlt || 'Questão'}
+                  className="max-w-full h-auto rounded-lg border border-slate-200 dark:border-slate-700"
+                  loading="lazy"
+                />
+              )}
               <p className="whitespace-pre-wrap">{activeQuestion.statement}</p>
             </div>
 
@@ -412,7 +420,17 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                     }`}>
                       {opt.letter}
                     </span>
-                    <span className="leading-relaxed mt-0.5">{opt.text}</span>
+                    <span className="leading-relaxed mt-0.5">
+                      {opt.image && (
+                        <img
+                          src={opt.image}
+                          alt={`Opção ${opt.letter}`}
+                          className="max-w-full h-auto rounded mb-1 border border-slate-200 dark:border-slate-700"
+                          loading="lazy"
+                        />
+                      )}
+                      {opt.text}
+                    </span>
                   </button>
                 );
               })}
@@ -565,6 +583,14 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                         </span>
                       </div>
 
+                      {q.image && (
+                        <img
+                          src={q.image}
+                          alt={q.imageAlt || 'Questão'}
+                          className="max-w-full h-auto rounded-lg border border-slate-200 dark:border-slate-700"
+                          loading="lazy"
+                        />
+                      )}
                       <p className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed italic pr-4 select-all">
                         "{q.statement.substring(0, 160)}..."
                       </p>

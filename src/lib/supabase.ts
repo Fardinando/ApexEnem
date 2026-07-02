@@ -77,6 +77,12 @@ export async function saveLog(log: any) {
   if (error) throw error;
 }
 
+async function ensureProgressTable() {
+  try {
+    await fetch('/api/supabase/setup', { method: 'POST' });
+  } catch {}
+}
+
 export async function saveLearningProgress(email: string, progress: { chapters?: any[]; xpPoints?: number; wrongAnswers?: any[] }) {
   const { error } = await supabase
     .from('ApexEnem_progress')
@@ -84,15 +90,36 @@ export async function saveLearningProgress(email: string, progress: { chapters?:
       { email: email.toLowerCase(), progress, updated_at: new Date().toISOString() },
       { onConflict: 'email' }
     );
-  if (error) throw error;
+  if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
+    await ensureProgressTable();
+    const { error: retryError } = await supabase
+      .from('ApexEnem_progress')
+      .upsert(
+        { email: email.toLowerCase(), progress, updated_at: new Date().toISOString() },
+        { onConflict: 'email' }
+      );
+    if (retryError) throw retryError;
+  } else if (error) {
+    throw error;
+  }
 }
 
 export async function fetchLearningProgress(email: string) {
-  const { data, error } = await supabase
+  let { data, error } = await supabase
     .from('ApexEnem_progress')
     .select('progress')
     .eq('email', email.toLowerCase())
     .maybeSingle();
+  if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
+    await ensureProgressTable();
+    const retry = await supabase
+      .from('ApexEnem_progress')
+      .select('progress')
+      .eq('email', email.toLowerCase())
+      .maybeSingle();
+    if (retry.error) throw retry.error;
+    return retry.data?.progress || null;
+  }
   if (error) throw error;
   return data?.progress || null;
 }

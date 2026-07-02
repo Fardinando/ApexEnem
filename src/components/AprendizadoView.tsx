@@ -454,7 +454,7 @@ export default function AprendizadoView({ essayCorrections, simuladosHistory, cu
                     const finishedFully = chap.level === chap.maxLevel;
                     const percent = Math.round((chap.level / chap.maxLevel) * 100);
                     const hasRequiredWrongs = (wrongCounts[chap.area] || 0) >= 2;
-                    const canAttempt = chap.unlocked && hasRequiredWrongs;
+                    const canAttempt = hasRequiredWrongs || idx === 0;
 
                     return (
                       <div

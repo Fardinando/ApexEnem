@@ -78,7 +78,7 @@ app.use((req, res, next) => {
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline'; frame-src https://*.hcaptcha.com; connect-src 'self' https://*.supabase.co https://openrouter.ai https://enem.dev; img-src 'self' data:;");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline'; frame-src https://*.hcaptcha.com; connect-src 'self' https://*.supabase.co https://openrouter.ai https://enem.dev; img-src 'self' data: https://storage.googleapis.com;");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   next();
 });
@@ -162,6 +162,33 @@ function extractJsonFromText(rawText: string): any {
 }
 
 const apiKey = process.env.OPENROUTER_API_KEY;
+
+const FREE_MODEL = "google/gemini-2.0-flash-exp:free";
+
+let cachedModels: any[] | null = null;
+let modelsCacheTime = 0;
+const MODELS_CACHE_TTL = 300_000;
+
+async function assertModelIsFree(modelName: string): Promise<void> {
+  if (Date.now() - modelsCacheTime > MODELS_CACHE_TTL) {
+    try {
+      const resp = await fetch("https://openrouter.ai/api/v1/models", { signal: AbortSignal.timeout(5000) });
+      if (resp.ok) {
+        const data = await resp.json();
+        cachedModels = data.data || data;
+        modelsCacheTime = Date.now();
+      }
+    } catch {}
+  }
+  if (!cachedModels) return;
+  const model = cachedModels.find((m: any) => m.id === modelName);
+  if (!model) return;
+  const promptPrice = parseFloat(model.pricing?.prompt);
+  const completionPrice = parseFloat(model.pricing?.completion);
+  if (promptPrice > 0 || completionPrice > 0) {
+    throw new Error(`Modelo pago bloqueado: ${modelName} (R$ ${promptPrice}/R$ ${completionPrice} por token). Use apenas modelos gratuitos.`);
+  }
+}
 
 function generateFallbackCorrection(title: string, text: string) {
   return {
@@ -525,6 +552,8 @@ Retorne estritamente o resultado em formato de matriz JSON estruturado exatament
 
 Retorne APENAS o JSON. Não escreva textos adicionais.`;
 
+    await assertModelIsFree(FREE_MODEL);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -534,7 +563,7 @@ Retorne APENAS o JSON. Não escreva textos adicionais.`;
         "X-Title": "ApexEnem ENEM Applet"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: FREE_MODEL,
         messages: [
           {
             role: "system",
@@ -571,6 +600,8 @@ app.post("/api/openrouter-chat", async (req, res) => {
   const { questionText, instructions, correctAnswer } = req.body;
 
   try {
+    await assertModelIsFree(FREE_MODEL);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -580,7 +611,7 @@ app.post("/api/openrouter-chat", async (req, res) => {
         "X-Title": "ApexEnem ENEM Applet"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: FREE_MODEL,
         messages: [
           {
             role: "system",
@@ -616,6 +647,8 @@ app.post("/api/generate-learning-exercises", async (req, res) => {
   const { chapterId, chapterTitle, chapterArea, weakAreas, count } = req.body;
 
   try {
+    await assertModelIsFree(FREE_MODEL);
+
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -625,7 +658,7 @@ app.post("/api/generate-learning-exercises", async (req, res) => {
         "X-Title": "ApexEnem Learning"
       },
       body: JSON.stringify({
-        model: "openrouter/auto",
+        model: FREE_MODEL,
         messages: [
           {
             role: "system",
@@ -922,12 +955,15 @@ app.get("/api/enem-questions", async (req, res) => {
               statement: `(${q.title || `ENEM ${q.year} - Questão ${q.index}`})\n\n${q.context || ""}`,
               options: q.alternatives?.filter((a: any) => a.text).map((a: any) => ({
                 letter: a.letter,
-                text: a.text || ""
+                text: a.text || "",
+                image: a.image || undefined
               })) || [],
               correctAnswer: q.correctAlternative,
-              explanation: `Alternativa correta: ${q.correctAlternative}. ${q.alternatives?.find((a: any) => a.letter === q.correctAlternative)?.text || ""}`,
+              explanation: `Alternativa correta: ${q.correctAlternative}. ${(q.alternatives?.find((a: any) => a.letter === q.correctAlternative)?.text || q.alternatives?.find((a: any) => a.letter === q.correctAlternative)?.image) || ""}`,
               year: q.year,
               index: q.index,
+              image: q.image || undefined,
+              imageAlt: q.title || undefined,
             }));
         } catch (err: any) {
           console.warn(`Failed to fetch year ${year} offset ${offset}:`, err.message);

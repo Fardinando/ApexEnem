@@ -77,10 +77,13 @@ export interface SimuladoQuestion {
   options: {
     letter: 'A' | 'B' | 'C' | 'D' | 'E';
     text: string;
+    image?: string;
   }[];
   correctAnswer: 'A' | 'B' | 'C' | 'D' | 'E';
   explanation: string;
   userAnswer?: 'A' | 'B' | 'C' | 'D' | 'E';
+  image?: string;
+  imageAlt?: string;
 }
 
 export interface SimuladoState {
