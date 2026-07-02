@@ -547,7 +547,9 @@ async function tryGeminiModel(model: string, prompt: string): Promise<any[] | nu
   }
 }
 
-async function tryOpenRouter(model: string, prompt: string, signal: AbortSignal): Promise<any[] | null> {
+async function tryOpenRouter(model: string, prompt: string): Promise<any[] | null> {
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), 9900);
   try {
     const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -566,16 +568,25 @@ async function tryOpenRouter(model: string, prompt: string, signal: AbortSignal)
         temperature: 0.9,
         max_tokens: 2048
       }),
-      signal
+      signal: ctrl.signal
     });
-    if (!res.ok) return null;
+    clearTimeout(tid);
+    if (!res.ok) {
+      console.error(`OpenRouter ${model}: ${res.status}`);
+      return null;
+    }
     const data = await res.json();
     const content = data.choices?.[0]?.message?.content;
-    if (!content) return null;
+    if (!content) { console.error(`OpenRouter ${model}: empty`); return null; }
     const questions = extractJsonFromText(content);
-    return Array.isArray(questions) && questions.length > 0 ? questions : null;
-  } catch {
+    const ok = Array.isArray(questions) && questions.length > 0;
+    console.error(`OpenRouter ${model}: ${ok ? 'OK' : 'invalid'} len=${content.length}`);
+    return ok ? questions : null;
+  } catch (err: any) {
+    console.error(`OpenRouter ${model} error:`, err?.message || err);
     return null;
+  } finally {
+    clearTimeout(tid);
   }
 }
 
@@ -589,20 +600,17 @@ Cada questão deve ter enunciado longo contextualizado (com dados, citação ou 
 Proibido: perguntas factuais, contas simples, conhecimento direto. Exigido: raciocínio, interpretação, análise.
 Retorne APENAS JSON: [{"id":"q_1","statement":"enunciado longo","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}]`;
 
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9900);
-
-  const geminiModels = ["gemini-2.5-flash", "gemini-2.0-flash"];
   const attempts = [
-    ...geminiModels.map(m => tryGeminiModel(m, prompt)),
-    tryOpenRouter("openrouter/free", prompt, controller.signal)
+    tryGeminiModel("gemini-2.5-flash", prompt),
+    tryOpenRouter("meta-llama/llama-3.2-3b-instruct:free", prompt),
+    tryOpenRouter("openrouter/free", prompt),
+    tryGeminiModel("gemini-2.0-flash", prompt),
   ];
 
   const result = await Promise.any(attempts.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))).catch(() => null);
-  clearTimeout(timeoutId);
 
   if (result) return res.json(result);
-  return res.status(502).json({ error: "Gemini e OpenRouter falharam. Verifique os logs do Vercel para detalhes." });
+  return res.status(502).json({ error: "Todos os modelos gratuitos falharam. Verifique os logs do Vercel para detalhes." });
 });
 
 app.post("/api/openrouter-chat", async (req, res) => {
