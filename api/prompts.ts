@@ -20,7 +20,7 @@ const MODELS = {
     modelId: 'gemini-2.5-flash',
     temperature: 0.9,
     maxTokens: 8192,
-    timeout: 7000,
+    timeout: 9500,
   }),
   geminiFlashV2: (): ModelConfig => ({
     provider: 'gemini',

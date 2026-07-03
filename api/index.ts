@@ -601,10 +601,10 @@ app.post("/api/questions", async (req, res) => {
     });
   }
 
-  async function tryGemini(model: string): Promise<any[] | null> {
-    if (!googleApiKey) return null;
+  async function tryGemini(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
+    if (!googleApiKey) { errors.push('Gemini: GOOGLE_API_KEY não configurada'); return null; }
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 7000);
+    const tid = setTimeout(() => ctrl.abort(), timeoutMs);
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
         method: "POST",
@@ -624,7 +624,9 @@ app.post("/api/questions", async (req, res) => {
       clearTimeout(tid);
       if (!res.ok) {
         const errBody = await res.text().catch(() => '');
-        console.error(`Gemini ${model}: ${res.status} ${errBody.slice(0, 200)}`);
+        const msg = `Gemini ${model}: ${res.status} ${errBody.slice(0, 200)}`;
+        console.error(msg);
+        errors.push(msg);
         return null;
       }
       const data = await res.json();
@@ -633,14 +635,20 @@ app.post("/api/questions", async (req, res) => {
       const text = candidate?.content?.parts?.[0]?.text;
       console.error(`Gemini ${model} finishReason=${finishReason} rawLen=${text?.length || 0}`);
       if (!text || finishReason === "SAFETY") {
-        console.error(`Gemini ${model}: blocked (${finishReason})`);
+        const msg = `Gemini ${model}: bloqueado (${finishReason})`;
+        console.error(msg);
+        errors.push(msg);
         return null;
       }
       const raw = extractJsonFromText(text);
       const questions = Array.isArray(raw) ? validateQuestions(raw) : [];
-      return questions.length > 0 ? questions : null;
+      if (questions.length > 0) return questions;
+      errors.push(`Gemini ${model}: JSON inválido ou validação rejeitou`);
+      return null;
     } catch (err: any) {
-      console.error(`Gemini ${model} error:`, err?.message || err);
+      const msg = `Gemini ${model}: ${err?.message || err}`;
+      console.error(msg);
+      errors.push(msg);
       return null;
     } finally {
       clearTimeout(tid);
@@ -707,7 +715,7 @@ app.post("/api/questions", async (req, res) => {
 
   const errors: string[] = [];
   const modelAttempts = PROMPTS.questions.models.map(m => {
-    if (m.provider === 'gemini') return tryGemini(m.modelId);
+    if (m.provider === 'gemini') return tryGemini(m.modelId, m.timeout || 9500, errors);
     if (m.provider === 'openrouter') return tryOpenRouter(m.modelId, m.timeout || 9900, errors);
     return Promise.resolve(null);
   });
