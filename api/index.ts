@@ -613,7 +613,7 @@ app.post("/api/questions", async (req, res) => {
       if (typeof q.explanation !== 'string' || q.explanation.length < 20) { console.error("validate: explanation inválido", typeof q.explanation, q.explanation?.length); return false; }
 
       const texts = q.options.map((o: any) => o?.text || '');
-      if (texts.some((t: string) => t.length < 15)) { console.error("validate: texto de opção muito curto", texts); return false; }
+      if (texts.some((t: string) => t.length < 2)) { console.error("validate: texto de opção muito curto", texts); return false; }
       if (new Set(texts).size !== texts.length) { console.error("validate: textos de opção duplicados", texts); return false; }
 
       return true;
