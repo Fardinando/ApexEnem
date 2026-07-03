@@ -193,21 +193,30 @@ function extractJsonFromText(rawText: string): any {
     if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
       const extracted = trimmed.substring(startIdx, endIdx + 1);
       console.error(`extract: bracket ${ch}, len=${extracted.length}`);
-      const p = tryParse(extracted) || tryParse(repairJson(extracted));
+      let p = tryParse(extracted) || tryParse(repairJson(extracted));
+      if (!p && typeof jsonrepair === 'function') {
+        try { p = tryParse(jsonrepair(extracted)); if (p) console.error("extract: jsonrepair on bracket worked"); } catch {}
+      }
       if (p) return p;
     }
     if (startIdx !== -1) {
-      const p = tryParse(repairJson(trimmed.substring(startIdx)));
+      const sub = trimmed.substring(startIdx);
+      let p = tryParse(repairJson(sub));
+      if (!p && typeof jsonrepair === 'function') {
+        try { p = tryParse(jsonrepair(sub)); if (p) console.error("extract: jsonrepair on substring worked"); } catch {}
+      }
       if (p) { console.error(`extract: repaired from ${ch}`); return p; }
     }
   }
 
   try {
     const repaired = jsonrepair(trimmed);
-    console.error("extract: jsonrepair succeeded, len=" + repaired.length);
-    return JSON.parse(repaired);
+    console.error("extract: jsonrepair full text, len=" + repaired.length);
+    const p = tryParse(repaired);
+    if (p && Array.isArray(p)) { console.error("extract: jsonrepair full text returned array"); return p; }
+    console.error("extract: jsonrepair full text did not return array, type=" + typeof p);
   } catch (e: any) {
-    console.error("extract: jsonrepair also failed:", e?.message?.slice(0, 100));
+    console.error("extract: jsonrepair full text failed:", e?.message?.slice(0, 100));
   }
 
   console.error("extract: ALL FAILED. Content preview:", trimmed.slice(0, 500));
@@ -597,15 +606,15 @@ app.post("/api/questions", async (req, res) => {
 
   function validateQuestions(questions: any[], targetArea?: string): any[] {
     return questions.filter((q: any) => {
-      if (!q) return false;
-      if (typeof q.statement !== 'string' || q.statement.length < 30) return false;
-      if (!Array.isArray(q.options) || q.options.length < 2) return false;
-      if (typeof q.correctAnswer !== 'string' || q.correctAnswer.length !== 1) return false;
-      if (typeof q.explanation !== 'string' || q.explanation.length < 20) return false;
+      if (!q) { console.error("validate: q is null/undefined"); return false; }
+      if (typeof q.statement !== 'string' || q.statement.length < 30) { console.error("validate: statement inválido", typeof q.statement, q.statement?.length); return false; }
+      if (!Array.isArray(q.options) || q.options.length < 2) { console.error("validate: options inválido", Array.isArray(q.options), q.options?.length); return false; }
+      if (typeof q.correctAnswer !== 'string' || q.correctAnswer.length !== 1) { console.error("validate: correctAnswer inválido", typeof q.correctAnswer, q.correctAnswer?.length); return false; }
+      if (typeof q.explanation !== 'string' || q.explanation.length < 20) { console.error("validate: explanation inválido", typeof q.explanation, q.explanation?.length); return false; }
 
       const texts = q.options.map((o: any) => o?.text || '');
-      if (texts.some((t: string) => t.length < 15)) return false;
-      if (new Set(texts).size !== texts.length) return false;
+      if (texts.some((t: string) => t.length < 15)) { console.error("validate: texto de opção muito curto", texts); return false; }
+      if (new Set(texts).size !== texts.length) { console.error("validate: textos de opção duplicados", texts); return false; }
 
       return true;
     });
