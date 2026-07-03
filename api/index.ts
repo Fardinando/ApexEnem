@@ -4,6 +4,7 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import rateLimit from "express-rate-limit";
+import { PROMPTS } from "./prompts";
 
 declare global {
   namespace Express {
@@ -539,10 +540,22 @@ app.post("/api/questions", async (req, res) => {
   const targetArea = area || "Geral";
   const numQuestions = count || 2;
 
-  const prompt = `Crie ${numQuestions} questões de múltipla escolha estilo ENEM de nível avançado sobre "${targetArea}".
-Cada questão deve ter enunciado longo contextualizado (com dados, citação ou situação-problema), 5 alternativas plausíveis, resposta correta não-óbvia.
-Evite perguntas factuais ou contas simples. Exigido: raciocínio, interpretação, análise.
-Retorne APENAS JSON: [{"statement":"enunciado","options":[{"letter":"A","text":"..."}],"correctAnswer":"A","explanation":"..."}].`;
+  const promptDef = PROMPTS.questions;
+  const prompt = promptDef.buildPrompt(numQuestions, targetArea) as string;
+
+  function validateQuestions(questions: any[]): any[] {
+    return questions.filter((q: any) =>
+      q &&
+      typeof q.statement === 'string' &&
+      q.statement.length > 20 &&
+      Array.isArray(q.options) &&
+      q.options.length >= 2 &&
+      q.options.every((o: any) => o && o.letter && o.text) &&
+      typeof q.correctAnswer === 'string' &&
+      q.correctAnswer.length === 1 &&
+      typeof q.explanation === 'string'
+    );
+  }
 
   async function tryGemini(model: string): Promise<any[] | null> {
     if (!googleApiKey) return null;
@@ -579,8 +592,9 @@ Retorne APENAS JSON: [{"statement":"enunciado","options":[{"letter":"A","text":"
         console.error(`Gemini ${model}: blocked (${finishReason})`);
         return null;
       }
-      const questions = extractJsonFromText(text);
-      return Array.isArray(questions) && questions.length > 0 ? questions : null;
+      const raw = extractJsonFromText(text);
+      const questions = Array.isArray(raw) ? validateQuestions(raw) : [];
+      return questions.length > 0 ? questions : null;
     } catch (err: any) {
       console.error(`Gemini ${model} error:`, err?.message || err);
       return null;
@@ -628,8 +642,9 @@ Retorne APENAS JSON: [{"statement":"enunciado","options":[{"letter":"A","text":"
         const content = data?.choices?.[0]?.message?.content;
         if (!content) { console.error(`OpenRouter ${model}: no content`); return null; }
         console.error(`OpenRouter ${model}: len=${content.length} start=${content.slice(0, 80)}`);
-        const questions = extractJsonFromText(content);
-        return Array.isArray(questions) && questions.length > 0 ? questions : null;
+        const raw = extractJsonFromText(content);
+        const questions = Array.isArray(raw) ? validateQuestions(raw) : [];
+        return questions.length > 0 ? questions : null;
       } catch (err: any) {
         clearTimeout(tid);
         console.error(`OpenRouter ${model} error (tentativa ${attempt + 1}):`, err?.message || err);

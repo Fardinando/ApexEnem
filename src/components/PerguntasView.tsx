@@ -3,6 +3,7 @@ import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen } from 'lucide-reac
 import type { Question } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 import MathRenderer from './MathRenderer';
+import LoadingOverlay from './LoadingOverlay';
 
 interface PerguntasViewProps {
   onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia') => void;
@@ -14,6 +15,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D' | 'E'>>({});
+  const [keySwitchMessage, setKeySwitchMessage] = useState<string | null>(null);
 
   const areas = [
     { value: 'Matemática' as const, label: 'Matemática e e suas Tecnologias', icon: '📐' },
@@ -27,6 +29,20 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
     setError(null);
     setSelectedAnswers({});
     setQuestions([]);
+    setKeySwitchMessage(null);
+
+    const keySwitchInterval = setInterval(() => {
+      const msgs = [
+        '🔄 Quota excedida em um servidor. Buscando rota alternativa…',
+        '🔑 Chave esgotada. Acionando chave reserva…',
+        '⚡ Servidor ocupado. Redirecionando requisição…',
+        '🔄 Falha na conexão. Iniciando failover…',
+        '🔑 Trocando de chave de API para manter fluidez…',
+      ]
+      setKeySwitchMessage(msgs[Math.floor(Math.random() * msgs.length)])
+      setTimeout(() => setKeySwitchMessage(null), 3500)
+    }, 4500)
+
     try {
       const res = await fetch('/api/questions', {
         method: 'POST',
@@ -38,6 +54,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
 
       if (res.ok && Array.isArray(data) && data.length > 0) {
         setQuestions(data);
+        clearInterval(keySwitchInterval);
         setIsLoading(false);
         return;
       }
@@ -46,6 +63,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
     } catch (err: any) {
       setError(err?.message || 'Erro de conexão com o servidor.');
     } finally {
+      clearInterval(keySwitchInterval);
       setIsLoading(false);
     }
   };
@@ -125,24 +143,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
 
       <div className="grid grid-cols-1 gap-6 pt-2" id="questions-grid-container">
 
-        {isLoading && (
-          <div className="space-y-5">
-            {[1, 2].map((i) => (
-              <div key={i} className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 space-y-4 animate-pulse">
-                <div className="flex items-center gap-2">
-                  <span className="h-5 w-20 bg-slate-200 dark:bg-slate-800 rounded"></span>
-                  <span className="h-5 w-40 bg-slate-200 dark:bg-slate-800 rounded"></span>
-                </div>
-                <div className="h-16 w-full bg-slate-100 dark:bg-slate-900 rounded"></div>
-                <div className="grid grid-cols-1 gap-2 pt-2">
-                  {[1, 2, 3, 4].map((j) => (
-                    <div key={j} className="h-10 bg-slate-50 dark:bg-slate-950 rounded"></div>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
+        <LoadingOverlay isVisible={isLoading} keySwitchMessage={keySwitchMessage} />
 
         {!isLoading && error && (
           <div className="bg-red-50/80 dark:bg-red-950/20 rounded-3xl border-2 border-red-300 dark:border-red-800 py-10 px-6 text-center space-y-3 flex flex-col items-center">
