@@ -647,12 +647,12 @@ app.post("/api/questions", async (req, res) => {
     }
   }
 
-  async function tryOpenRouter(model: string): Promise<any[] | null> {
-    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
+  async function tryOpenRouter(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
+    for (let attempt = 0; attempt < openRouterKeys.length; attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 9900);
+      const tid = setTimeout(() => ctrl.abort(), timeoutMs);
       try {
         const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -675,40 +675,49 @@ app.post("/api/questions", async (req, res) => {
         });
         clearTimeout(tid);
         if (res.status === 429) {
-          console.error(`OpenRouter ${model}: 429 com chave ${key.slice(-4)}, tentando próxima...`);
+          errors.push(`429: ${model} — quota esgotada na chave ${key.slice(-4)}`);
+          continue;
+        }
+        if (res.status === 402) {
+          errors.push(`402: ${model} — saldo insuficiente na chave ${key.slice(-4)}`);
           continue;
         }
         if (!res.ok) {
-          console.error(`OpenRouter ${model}: ${res.status}`);
+          errors.push(`${res.status}: ${model} — erro na chave ${key.slice(-4)}`);
           return null;
         }
         const data = await res.json();
         const content = data?.choices?.[0]?.message?.content;
-        if (!content) { console.error(`OpenRouter ${model}: no content`); return null; }
-        console.error(`OpenRouter ${model}: len=${content.length} start=${content.slice(0, 80)}`);
+        if (!content) { errors.push(`${model}: resposta vazia`); return null; }
         const raw = extractJsonFromText(content);
         const questions = Array.isArray(raw) ? validateQuestions(raw) : [];
-        return questions.length > 0 ? questions : null;
+        if (questions.length > 0) return questions;
+        errors.push(`${model}: JSON inválido ou validação rejeitou`);
+        return null;
       } catch (err: any) {
         clearTimeout(tid);
-        console.error(`OpenRouter ${model} error (tentativa ${attempt + 1}):`, err?.message || err);
+        const msg = err?.message || err || 'erro desconhecido';
+        errors.push(`${model}: ${msg}`);
         continue;
       }
     }
-    console.error(`OpenRouter ${model}: todas as chaves esgotadas`);
+    errors.push(`${model}: todas as ${openRouterKeys.length} chave(s) esgotaram`);
     return null;
   }
 
-  const attempts = [
-    tryGemini("gemini-2.5-flash"),
-    tryOpenRouter("meta-llama/llama-3.2-3b-instruct:free"),
-    tryOpenRouter("openrouter/free"),
-  ];
+  const errors: string[] = [];
+  const modelAttempts = PROMPTS.questions.models.map(m => {
+    if (m.provider === 'gemini') return tryGemini(m.modelId);
+    if (m.provider === 'openrouter') return tryOpenRouter(m.modelId, m.timeout || 9900, errors);
+    return Promise.resolve(null);
+  });
 
-  const result = await Promise.any(attempts.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))).catch(() => null);
+  const result = await Promise.any(
+    modelAttempts.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))
+  ).catch(() => null);
 
   if (result) return res.json(result);
-  return res.status(502).json({ error: "Todos os modelos gratuitos falharam. Verifique os logs do Vercel para detalhes." });
+  return res.status(502).json({ error: "Todos os modelos falharam.", details: errors.slice(0, 10) });
 });
 
 app.post("/api/openrouter-chat", async (req, res) => {

@@ -47,17 +47,19 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
         return;
       }
 
-      if (res.status === 429 || res.status === 503) {
-        setKeySwitchMessage('🔄 Servidores ocupados. Tentando novamente…');
+      setKeySwitchMessage(null);
+
+      if (data?.details?.length > 0) {
+        setKeySwitchMessage(data.details[0]);
         if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
-        keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 4000);
+        keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 5000);
       }
 
       setError(data?.error || `Erro ${res.status}: não foi possível gerar questões.`);
     } catch (err: any) {
-      setKeySwitchMessage('🔄 Falha de conexão. Tentando novamente…');
+      setKeySwitchMessage('🔄 Falha de conexão com o servidor.');
       if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
-      keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 4000);
+      keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 5000);
       setError(err?.message || 'Erro de conexão com o servidor.');
     } finally {
       setIsLoading(false);

@@ -122,8 +122,6 @@ Retorne exclusivamente o array JSON puro. Não insira textos de saudação, come
     models: [
       MODELS.geminiFlash(),
       MODELS.openRouterFree(),
-      MODELS.openRouterLlama(),
-      MODELS.geminiFlashV2(),
     ],
   },
 
