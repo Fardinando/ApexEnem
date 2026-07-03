@@ -604,13 +604,31 @@ app.post("/api/questions", async (req, res) => {
   const promptDef = PROMPTS.questions;
   const prompt = promptDef.buildPrompt(numQuestions, targetArea) as string;
 
+  function normalizeQuestion(q: any): any {
+    if (!q) return q;
+    q.correctAnswer = q.correctAnswer || q.correct_answer || q.answer || q.gabarito || q.correct || q.correctAnswerLetter || q.rightAnswer;
+    if (typeof q.correctAnswer === 'string') q.correctAnswer = q.correctAnswer.trim().toUpperCase().replace(/[^A-E]/g, '');
+    q.statement = q.statement || q.question || q.questionText || q.enunciado || q.pergunta || q.text;
+    q.explanation = q.explanation || q.explicacao || q.feedback || q.justification || q.resolution || q.comment || q.comentario || q.solution || q.resposta || q.gabarito_comentado || q.resolucao || '';
+    q.options = q.options || q.alternatives || q.choices || q.opcoes || q.items || q.respostas || [];
+    if (Array.isArray(q.options)) {
+      q.options = q.options.map((o: any) => {
+        if (typeof o === 'string') return { letter: '', text: o };
+        return { letter: o.letter || o.letra || o.key || o.id || o.index || '', text: o.text || o.texto || o.value || o.conteudo || o.descricao || o.description || o.label || '' };
+      });
+    }
+    return q;
+  }
+
   function validateQuestions(questions: any[], targetArea?: string): any[] {
     return questions.filter((q: any) => {
+      q = normalizeQuestion(q);
       if (!q) { console.error("validate: q is null/undefined"); return false; }
-      if (typeof q.statement !== 'string' || q.statement.length < 30) { console.error("validate: statement inválido", typeof q.statement, q.statement?.length); return false; }
-      if (!Array.isArray(q.options) || q.options.length < 2) { console.error("validate: options inválido", Array.isArray(q.options), q.options?.length); return false; }
-      if (typeof q.correctAnswer !== 'string' || q.correctAnswer.length !== 1) { console.error("validate: correctAnswer inválido", typeof q.correctAnswer, q.correctAnswer?.length); return false; }
-      if (typeof q.explanation !== 'string' || q.explanation.length < 20) { console.error("validate: explanation inválido", typeof q.explanation, q.explanation?.length); return false; }
+      const keys = Object.keys(q);
+      if (typeof q.statement !== 'string' || q.statement.length < 30) { console.error("validate: statement inválido", "keys:", keys, "statement:", typeof q.statement, q.statement?.length); return false; }
+      if (!Array.isArray(q.options) || q.options.length < 2) { console.error("validate: options inválido", "keys:", keys, Array.isArray(q.options), q.options?.length); return false; }
+      if (typeof q.correctAnswer !== 'string' || q.correctAnswer.length !== 1) { console.error("validate: correctAnswer inválido", "keys:", keys, "val:", q.correctAnswer, "type:", typeof q.correctAnswer); return false; }
+      if (typeof q.explanation !== 'string' || q.explanation.length < 20) { console.error("validate: explanation inválido", "keys:", keys, "len:", q.explanation?.length); return false; }
 
       const texts = q.options.map((o: any) => o?.text || '');
       if (texts.some((t: string) => t.length < 2)) { console.error("validate: texto de opção muito curto", texts); return false; }
