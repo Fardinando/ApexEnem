@@ -136,17 +136,53 @@ const requireAuth = async (req: any, res: any, next: any) => {
 
 app.use("/api/", requireAuth);
 
+function tryParse(text: string): any | null {
+  try { return JSON.parse(text); } catch { return null; }
+}
+
+function repairJson(text: string): string {
+  let t = text.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim();
+  t = t.replace(/,(\s*[}\]])/g, '$1');
+  t = t.replace(/,\s*$/, '');
+  let depth = 0, inStr = false;
+  for (const ch of ['[', '{']) {
+    const start = t.indexOf(ch);
+    if (start === -1) continue;
+    depth = 0; inStr = false;
+    let candidate = t.substring(start);
+    for (let i = 0; i < candidate.length; i++) {
+      const c = candidate[i];
+      if (c === '"' && (i === 0 || candidate[i-1] !== '\\')) { inStr = !inStr; continue; }
+      if (inStr) continue;
+      if (c === '[' || c === '{') depth++;
+      else if (c === ']' || c === '}') { depth--; if (depth === 0) return candidate.substring(0, i + 1); }
+    }
+    if (depth > 0) {
+      for (let i = 0; i < depth; i++) candidate += (ch === '[' ? ']' : '}');
+      return candidate;
+    }
+  }
+  return text;
+}
+
 function extractJsonFromText(rawText: string): any {
   const trimmed = rawText.trim();
-  try { return JSON.parse(trimmed); } catch (e: any) { console.error("extract: JSON.parse(raw) failed:", e?.message?.slice(0, 100)); }
+
+  const parsed = tryParse(trimmed) || tryParse(trimmed.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim());
+  if (parsed) { console.error("extract: parsed OK, len=" + trimmed.length); return parsed; }
+
+  const fixed = repairJson(trimmed);
+  if (fixed !== trimmed) {
+    const p = tryParse(fixed);
+    if (p) { console.error("extract: parsed after repair, len=" + fixed.length); return p; }
+  }
 
   const match = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
   if (match) {
     const extracted = match[1].trim();
-    console.error("extract: regex found content, length=" + extracted.length + ", startsWith=" + extracted[0] + ", endsWith=" + extracted[extracted.length - 1]);
-    try { return JSON.parse(extracted); } catch (e: any) { console.error("extract: JSON.parse(regex) failed:", e?.message?.slice(0, 100)); }
-  } else {
-    console.error("extract: no regex match, raw length=" + trimmed.length + ", startsWith=" + trimmed.slice(0, 50));
+    console.error("extract: regex content, len=" + extracted.length + " start=" + extracted[0] + " end=" + extracted[extracted.length-1]);
+    const p = tryParse(extracted) || tryParse(repairJson(extracted));
+    if (p) { console.error("extract: parsed regex"); return p; }
   }
 
   for (const ch of ['[', '{']) {
@@ -155,10 +191,16 @@ function extractJsonFromText(rawText: string): any {
     const endIdx = trimmed.lastIndexOf(end);
     if (startIdx !== -1 && endIdx !== -1 && endIdx > startIdx) {
       const extracted = trimmed.substring(startIdx, endIdx + 1);
-      console.error(`extract: bracket ${ch} found, length=${extracted.length}`);
-      try { return JSON.parse(extracted); } catch (e: any) { console.error(`extract: JSON.parse(${ch}) failed:`, e?.message?.slice(0, 100)); }
+      console.error(`extract: bracket ${ch}, len=${extracted.length}`);
+      const p = tryParse(extracted) || tryParse(repairJson(extracted));
+      if (p) return p;
+    }
+    if (startIdx !== -1) {
+      const p = tryParse(repairJson(trimmed.substring(startIdx)));
+      if (p) { console.error(`extract: repaired from ${ch}`); return p; }
     }
   }
+
   throw new Error("Could not parse JSON from LLM response");
 }
 
@@ -554,8 +596,6 @@ app.post("/api/questions", async (req, res) => {
       const texts = q.options.map((o: any) => o?.text || '');
       if (texts.some((t: string) => t.length < 15)) return false;
       if (new Set(texts).size !== texts.length) return false;
-
-      if (texts.some((t: string) => !/[a-zA-ZÀ-ÿ]{3,}/.test(t))) return false;
 
       return true;
     });
