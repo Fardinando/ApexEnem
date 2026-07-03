@@ -4,7 +4,7 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import rateLimit from "express-rate-limit";
-import { PROMPTS } from "./prompts";
+import { PROMPTS } from "./prompts.js";
 
 declare global {
   namespace Express {
