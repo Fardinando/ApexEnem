@@ -622,8 +622,10 @@ app.post("/api/questions", async (req, res) => {
 
   async function tryGemini(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
     if (!googleApiKey) { errors.push('Gemini: GOOGLE_API_KEY não configurada'); return null; }
+    if (Date.now() - endpointStart > MAX_TOTAL_TIME) { return null; }
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+    const remaining = Math.max(2000, MAX_TOTAL_TIME - (Date.now() - endpointStart));
+    const tid = setTimeout(() => ctrl.abort(), Math.min(timeoutMs, remaining));
     try {
       const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
         method: "POST",
@@ -674,12 +676,20 @@ app.post("/api/questions", async (req, res) => {
     }
   }
 
+  const endpointStart = Date.now();
+  const MAX_TOTAL_TIME = 9800;
+
   async function tryOpenRouter(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
-    for (let attempt = 0; attempt < openRouterKeys.length; attempt++) {
+    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
+      if (Date.now() - endpointStart > MAX_TOTAL_TIME) {
+        errors.push(`${model}: tempo total excedido`);
+        return null;
+      }
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+      const remaining = Math.max(2000, MAX_TOTAL_TIME - (Date.now() - endpointStart));
+      const tid = setTimeout(() => ctrl.abort(), Math.min(timeoutMs, remaining));
       try {
         const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -696,7 +706,7 @@ app.post("/api/questions", async (req, res) => {
               { role: "user", content: prompt }
             ],
             temperature: 0.9,
-            max_tokens: 2048
+            max_tokens: 4096
           }),
           signal: ctrl.signal
         });
