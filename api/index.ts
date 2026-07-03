@@ -543,18 +543,22 @@ app.post("/api/questions", async (req, res) => {
   const promptDef = PROMPTS.questions;
   const prompt = promptDef.buildPrompt(numQuestions, targetArea) as string;
 
-  function validateQuestions(questions: any[]): any[] {
-    return questions.filter((q: any) =>
-      q &&
-      typeof q.statement === 'string' &&
-      q.statement.length > 20 &&
-      Array.isArray(q.options) &&
-      q.options.length >= 2 &&
-      q.options.every((o: any) => o && o.letter && o.text) &&
-      typeof q.correctAnswer === 'string' &&
-      q.correctAnswer.length === 1 &&
-      typeof q.explanation === 'string'
-    );
+  function validateQuestions(questions: any[], targetArea?: string): any[] {
+    return questions.filter((q: any) => {
+      if (!q) return false;
+      if (typeof q.statement !== 'string' || q.statement.length < 30) return false;
+      if (!Array.isArray(q.options) || q.options.length < 2) return false;
+      if (typeof q.correctAnswer !== 'string' || q.correctAnswer.length !== 1) return false;
+      if (typeof q.explanation !== 'string' || q.explanation.length < 20) return false;
+
+      const texts = q.options.map((o: any) => o?.text || '');
+      if (texts.some((t: string) => t.length < 15)) return false;
+      if (new Set(texts).size !== texts.length) return false;
+
+      if (texts.some((t: string) => !/[a-zA-ZÀ-ÿ]{3,}/.test(t))) return false;
+
+      return true;
+    });
   }
 
   async function tryGemini(model: string): Promise<any[] | null> {
