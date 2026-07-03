@@ -302,13 +302,166 @@ Retorne 2-3 parágrafos curtos, lúdicos e didáticos com emojis de cabrito 🐐
     id: 'correction',
     label: 'Correção de redação ENEM',
     buildPrompt: (title: string, contentToEvaluate: string) => {
-      const system = `Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação.`
-      const user = `Título: "${title || "Sem título"}"
+      const system = `Você é um corretor oficial do ENEM, com vasta experiência na aplicação da matriz de referência para correção de redações. Seu papel é analisar redações de forma rigorosa, justa e profundamente didática, seguindo os mesmos critérios utilizados pelos corretores oficiais do exame.`
 
-Redação:
+      const user = `### REDAÇÃO PARA CORREÇÃO
+
+**Título:** ${title || "Sem título"}
+
+---
+
+**Texto da redação:**
+
 ${contentToEvaluate}
 
-Avalie segundo as 5 competências do ENEM e retorne JSON com score, feedback, competencies, strengths e weaknesses.`
+---
+
+### INSTRUÇÕES DE CORREÇÃO
+
+Avalie a redação de acordo com as **5 competências do ENEM**, atribuindo uma nota de **0 a 200 pontos** para cada uma (totalizando 0 a 1000 pontos). Seja rigoroso(a) e detalhista, seguindo os parâmetros oficiais abaixo.
+
+---
+
+### COMPETÊNCIA 1 — Domínio da modalidade escrita formal da Língua Portuguesa (0–200 pts)
+
+**O que avaliar:**
+- Desvios gramaticais: ortografia, acentuação, regência, concordância (nominal e verbal), crase, pontuação.
+- Estrutura sintática: frases claras e completas, períodos bem construídos.
+- Registro formal: ausência de marcas de oralidade, gírias ou coloquialismos inadequados.
+
+**Faixas de pontuação:**
+- 160–200: Excelente domínio, pouquíssimos ou nenhum desvio.
+- 120–159: Bom domínio, alguns desvios que não comprometem a compreensão.
+- 80–119: Domínio mediano, desvios frequentes mas ainda compreensível.
+- 40–79: Domínio insuficiente, muitos desvios comprometendo a legibilidade.
+- 0–39: Domínio muito precário, erros graves e generalizados.
+
+---
+
+### COMPETÊNCIA 2 — Compreensão da proposta e aplicação dos conceitos das várias áreas de conhecimento (0–200 pts)
+
+**O que avaliar:**
+- Compreensão do tema proposto: a redação aborda o tema central sem tangenciamentos ou fuga?
+- Repertório sociocultural: uso de citações, dados históricos, referências literárias, filosóficas, artísticas, científicas ou culturais.
+- Pertinência: o repertório é legitimamente relacionado ao tema ou é artificial ("coringa")?
+
+**Faixas de pontuação:**
+- 160–200: Excelente desenvolvimento do tema com repertório diverso, pertinente e bem integrado.
+- 120–159: Bom desenvolvimento, repertório adequado mas pouco diverso.
+- 80–119: Desenvolvimento mediano, repertório superficial ou parcialmente pertinente.
+- 40–79: Desenvolvimento insuficiente, tangenciamento do tema ou repertório inadequado.
+- 0–39: Fuga total ao tema ou repertório inexistente/irrelevante.
+
+---
+
+### COMPETÊNCIA 3 — Seleção, relação, organização e interpretação de informações, fatos, opiniões e argumentos em defesa de um ponto de vista (0–200 pts)
+
+**O que avaliar:**
+- Tese clara: há um posicionamento explícito e consistente ao longo do texto?
+- Argumentação: os argumentos são relevantes, bem fundamentados e articulados entre si?
+- Progressão textual: as ideias evoluem de forma lógica, com encadeamento coerente.
+- Relação com o repertório: os argumentos dialogam com as referências apresentadas.
+
+**Faixas de pontuação:**
+- 160–200: Excelente estrutura argumentativa, tese clara, argumentos robustos e progressão lógica impecável.
+- 120–159: Boa argumentação, tese presente, mas com lapsos pontuais de articulação.
+- 80–119: Argumentação mediana, tese frágil ou argumentos pouco desenvolvidos.
+- 40–79: Argumentação insuficiente, predomínio de opiniões sem fundamento ou contradições.
+- 0–39: Ausência de argumentação ou texto meramente opinativo/desorganizado.
+
+---
+
+### COMPETÊNCIA 4 — Conhecimento dos mecanismos linguísticos necessários para a construção da argumentação (0–200 pts)
+
+**O que avaliar:**
+- Coesão textual: uso adequado de conectivos, pronomes, elipses, sinônimos e outros mecanismos de coesão.
+- Progressão referencial: retomada correta de termos, sujeitos e ideias ao longo do texto.
+- Variedade de recursos coesivos: não repete sempre os mesmos conectivos ("além disso", "portanto", "dessa forma").
+
+**Faixas de pontuação:**
+- 160–200: Excelente uso de mecanismos coesivos, variedade e precisão na articulação das ideias.
+- 120–159: Bom uso, coesão presente mas com repetições ou deslizes pontuais.
+- 80–119: Uso mediano, coesão básica com pouca variedade de recursos.
+- 40–79: Uso insuficiente, problemas de coesão que comprometem a fluidez.
+- 0–39: Ausência de coesão, texto fragmentado ou incompreensível.
+
+---
+
+### COMPETÊNCIA 5 — Elaboração de proposta de intervenção para o problema abordado, com respeito aos direitos humanos (0–200 pts)
+
+**O que avaliar:**
+- Presença de proposta de intervenção explícita.
+- Elementos obrigatórios: **agente** (quem executa), **ação** (o que fazer), **meio** (como fazer), **finalidade** (para que fazer), **detalhamento** (modo, contexto ou justificativa).
+- Viabilidade: a proposta é concreta e exequível?
+- Respeito aos Direitos Humanos: a proposta não fere princípios fundamentais (dignidade, liberdade, igualdade).
+
+**Faixas de pontuação:**
+- 160–200: Proposta excelente, com todos os elementos bem desenvolvidos, viável e alinhada aos DH.
+- 120–159: Boa proposta, com a maioria dos elementos presentes, mas carece de detalhamento.
+- 80–119: Proposta mediana, elementos incompletos ou genéricos.
+- 40–79: Proposta insuficiente, mencionada de forma vaga ou sem elementos essenciais.
+- 0–39: Ausência de proposta ou proposta que fere os Direitos Humanos.
+
+---
+
+### FORMATO DE SAÍDA (JSON ESTRITAMENTE VÁLIDO)
+
+Retorne **exclusivamente** um objeto JSON com a seguinte estrutura (sem texto antes ou depois):
+
+\`\`\`json
+{
+  "totalScore": 640,
+  "competencies": {
+    "c1": {
+      "score": 160,
+      "feedback": "Análise detalhada do desempenho na Competência 1, apontando acertos e desvios específicos.",
+      "strengths": ["Pontos fortes observados na C1"],
+      "weaknesses": ["Pontos a melhorar na C1"]
+    },
+    "c2": {
+      "score": 120,
+      "feedback": "Análise detalhada do desempenho na Competência 2.",
+      "strengths": [],
+      "weaknesses": []
+    },
+    "c3": {
+      "score": 120,
+      "feedback": "Análise detalhada do desempenho na Competência 3.",
+      "strengths": [],
+      "weaknesses": []
+    },
+    "c4": {
+      "score": 120,
+      "feedback": "Análise detalhada do desempenho na Competência 4.",
+      "strengths": [],
+      "weaknesses": []
+    },
+    "c5": {
+      "score": 120,
+      "feedback": "Análise detalhada do desempenho na Competência 5.",
+      "strengths": [],
+      "weaknesses": []
+    }
+  },
+  "overallFeedback": "Parecer geral sobre a redação, apontando o que o aluno fez bem e o que precisa melhorar para aumentar a nota. Seja construtivo e específico.",
+  "strengths": [
+    "Resumo dos principais pontos fortes do texto"
+  ],
+  "weaknesses": [
+    "Resumo dos principais pontos fracos do texto"
+  ]
+}
+\`\`\`
+
+### DIRETRIZES FINAIS
+
+1. **Seja rigoroso(a), mas construtivo(a):** Aponte os erros com clareza, mas sempre ofereça uma orientação de como o aluno pode melhorar.
+2. **Feedback específico:** Não use frases genéricas. Mencione trechos ou aspectos concretos da redação.
+3. **Coerência entre as notas:** A soma das 5 competências deve ser igual ao \`totalScore\`.
+4. **Escapes:** Todas as aspas duplas dentro das strings devem ser escapadas com \\".
+5. **Sem texto extra:** Retorne **apenas o objeto JSON**. Sem saudação, comentários, marcadores de código ou texto adicional.
+
+A saída deve ser parseável diretamente por um parser JSON padrão.`
       return { system, user }
     },
     models: [
