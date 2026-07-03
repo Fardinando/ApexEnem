@@ -64,20 +64,61 @@ export const PROMPTS: Record<string, PromptDefinition> = {
     id: 'questions',
     label: 'Gerar questões estilo ENEM',
     buildPrompt: (numQuestions: number, targetArea: string) =>
-      `Crie ${numQuestions} questões de múltipla escolha estilo ENEM de nível avançado sobre "${targetArea}".
+      `Você é um professor especialista em elaboração de itens para o ENEM, com domínio absoluto da matriz de referência, competências e habilidades do exame. Sua tarefa é gerar exatamente ${numQuestions} questões de múltipla escolha **inéditas**, de **nível avançado** (grau de dificuldade 4 ou 5 na escala ENEM), focadas estritamente na área de conhecimento: "${targetArea}".
 
-REGRAS OBRIGATÓRIAS:
-- Cada questão deve ter enunciado longo contextualizado (com dados, citação ou situação-problema)
-- Exatamente 5 alternativas (A, B, C, D, E) por questão, todas plausíveis
-- Resposta correta não-óbvia (não pode ser a primeira que vem à mente)
-- Exigido: raciocínio, interpretação e análise
-- Proibido: perguntas factuais, contas simples ou conhecimento direto
-- Inclua explicação detalhada mostrando o raciocínio passo a passo
+REGRAS DE CONSTRUÇÃO (OBRIGATÓRIAS):
 
-Formato JSON obrigatório:
-[{"statement":"enunciado completo aqui","options":[{"letter":"A","text":"alternativa A"},{"letter":"B","text":"alternativa B"},{"letter":"C","text":"alternativa C"},{"letter":"D","text":"alternativa D"},{"letter":"E","text":"alternativa E"}],"correctAnswer":"A","explanation":"explicação detalhada"}]
+1. Sobre o Enunciado:
 
-IMPORTANTE: Retorne APENAS o array JSON. Sem texto antes ou depois.`,
+O enunciado deve ser longo, contextualizado e auto-suficiente, apresentando obrigatoriamente um recorte da realidade (situação-problema, dado estatístico, trecho de obra literária/filosófica, notícia de jornal, charge descrita textualmente, ou experimento científico hipotético).
+
+Evite perguntas diretas ou factoides. A questão deve exigir interpretação, inferência, análise de dados ou aplicação de conceitos em cenários novos.
+
+2. Sobre as Alternativas (5 alternativas - A, B, C, D, E):
+
+Todas as alternativas devem ser extremamente plausíveis, com extensão e complexidade sintática semelhantes, para não levantar suspeitas pela forma.
+
+Os distratores (alternativas erradas) devem representar erros conceituais comuns ou interpretações equivocadas que um aluno bem-preparado, mas desatento, poderia cometer.
+
+A resposta correta deve ser não-óbvia, exigindo raciocínio crítico para ser identificada.
+
+3. Sobre a Explicação (Resolução Comentada):
+
+A explicação deve ser detalhada e didática, contendo obrigatoriamente duas partes:
+
+Parte 1 (Resolução): Passo a passo do raciocínio lógico-científico para chegar à alternativa correta, citando os conceitos envolvidos.
+
+Parte 2 (Análise dos Distratores): Justificativa específica do porquê cada uma das outras 4 alternativas está errada, apontando a falha de raciocínio ou o equívoco conceitual que leva a cada uma delas.
+
+4. Sobre o Formato de Saída (JSON ESTRITAMENTE VÁLIDO):
+
+Retorne apenas um array JSON válido, seguindo exatamente a estrutura abaixo.
+
+O campo "correctAnswer" deve conter APENAS a letra (A, B, C, D ou E) da alternativa correta.
+
+Atenção: Escapes de caracteres. Todas as aspas duplas (") que aparecerem dentro das strings (especialmente no statement e explanation) devem ser escapadas com barra invertida (\\").
+
+Não utilize vírgulas no final dos objetos (trailing commas).
+
+Estrutura Obrigatória:
+
+json
+[
+  {
+    "statement": "Enunciado completo, contextualizado e com comando claro aqui.",
+    "options": [
+      {"letter": "A", "text": "Texto da alternativa A"},
+      {"letter": "B", "text": "Texto da alternativa B"},
+      {"letter": "C", "text": "Texto da alternativa C"},
+      {"letter": "D", "text": "Texto da alternativa D"},
+      {"letter": "E", "text": "Texto da alternativa E"}
+    ],
+    "correctAnswer": "A",
+    "explanation": "Explicação detalhada contendo a resolução passo a passo e a análise de cada distrator (A, B, C, D, E)."
+  }
+]
+INSTRUÇÃO FINAL E OBRIGATÓRIA:
+Retorne exclusivamente o array JSON puro. Não insira textos de saudação, comentários, marcadores de código (como \`\`\`json) ou qualquer outro caractere fora da estrutura JSON. A saída deve ser parseável diretamente por um parser JSON padrão.`,
     models: [
       MODELS.geminiFlash(),
       MODELS.openRouterFree(),
