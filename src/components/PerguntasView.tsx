@@ -49,13 +49,20 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
 
       setKeySwitchMessage(null);
 
-      if (data?.details?.length > 0) {
-        setKeySwitchMessage(data.details[0]);
-        if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
-        keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 5000);
-      }
+      const errMsg = data?.error || `Erro ${res.status}: não foi possível gerar questões.`;
 
-      setError(data?.error || `Erro ${res.status}: não foi possível gerar questões.`);
+      if (data?.details?.length > 0) {
+        const firstErr = data.details[0];
+        if (firstErr.toLowerCase().includes('429') || firstErr.toLowerCase().includes('402') || firstErr.toLowerCase().includes('quota') || firstErr.toLowerCase().includes('saldo') || firstErr.toLowerCase().includes('timeout') || firstErr.toLowerCase().includes('abort')) {
+          setKeySwitchMessage(firstErr);
+          if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
+          keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 6000);
+        }
+        const detailLines = data.details.slice(0, 5).map((d: string) => `• ${d}`).join('\n');
+        setError(`${errMsg}\n\n${detailLines}`);
+      } else {
+        setError(errMsg);
+      }
     } catch (err: any) {
       setKeySwitchMessage('🔄 Falha de conexão com o servidor.');
       if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);

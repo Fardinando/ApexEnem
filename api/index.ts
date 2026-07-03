@@ -201,6 +201,7 @@ function extractJsonFromText(rawText: string): any {
     }
   }
 
+  console.error("extract: ALL FAILED. Content preview:", trimmed.slice(0, 500));
   throw new Error("Could not parse JSON from LLM response");
 }
 
