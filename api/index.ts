@@ -605,7 +605,7 @@ app.post("/api/questions", async (req, res) => {
   const prompt = promptDef.buildPrompt(numQuestions, targetArea) as string;
 
   function normalizeQuestion(q: any): any {
-    if (!q) return q;
+    if (!q || typeof q !== 'object' || Array.isArray(q)) return q;
     q.correctAnswer = q.correctAnswer || q.correct_answer || q.answer || q.gabarito || q.correct || q.correctAnswerLetter || q.rightAnswer;
     if (typeof q.correctAnswer === 'string') q.correctAnswer = q.correctAnswer.trim().toUpperCase().replace(/[^A-E]/g, '');
     q.statement = q.statement || q.question || q.questionText || q.enunciado || q.pergunta || q.text;
