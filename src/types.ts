@@ -108,7 +108,7 @@ export interface ActivityLog {
 
 export interface WrongAnswer {
   subject: string;
-  source: 'simulado' | 'pergunta-ia';
+  source: 'simulado' | 'pergunta-ia' | 'redacao';
   timestamp: number;
 }
 

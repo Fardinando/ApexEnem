@@ -85,8 +85,8 @@ export default function App() {
     return () => { cancelled = true; };
   }, [session?.user?.id]);
 
-  const handleWrongAnswer = (subject: string, source: 'simulado' | 'pergunta-ia') => {
-    const updated = [{ subject, source, timestamp: Date.now() }, ...wrongAnswers].slice(0, 100);
+  const handleWrongAnswer = (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao') => {
+    const updated = [{ subject, source, timestamp: Date.now() }, ...wrongAnswers];
     setWrongAnswers(updated);
     if (session?.user?.email) {
       saveLearningProgress(session.user.email, { wrongAnswers: updated }).catch(() => {});
@@ -150,6 +150,9 @@ export default function App() {
       setActivityLogs(prev => [log, ...prev]);
       const p = await getProfile(session.user.id);
       if (p) setProfile(p);
+      if ((newCorr.score || 0) < 700) {
+        handleWrongAnswer('Redação', 'redacao');
+      }
     } catch (err) {
       console.error("Failed to save correction:", err);
     }

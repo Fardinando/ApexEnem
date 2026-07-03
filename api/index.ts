@@ -538,7 +538,7 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
 app.post("/api/questions", async (req, res) => {
   const { area, count } = req.body;
   const targetArea = area || "Geral";
-  const numQuestions = count || 2;
+  const numQuestions = count || 1;
 
   const promptDef = PROMPTS.questions;
   const prompt = promptDef.buildPrompt(numQuestions, targetArea) as string;

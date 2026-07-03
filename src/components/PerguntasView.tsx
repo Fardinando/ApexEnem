@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useRef } from 'react';
 import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen } from 'lucide-react';
 import type { Question } from '../types';
 import AdPlaceholder from './AdPlaceholder';
@@ -16,6 +16,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
   const [error, setError] = useState<string | null>(null);
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D' | 'E'>>({});
   const [keySwitchMessage, setKeySwitchMessage] = useState<string | null>(null);
+  const keySwitchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const areas = [
     { value: 'Matemática' as const, label: 'Matemática e e suas Tecnologias', icon: '📐' },
@@ -31,39 +32,34 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
     setQuestions([]);
     setKeySwitchMessage(null);
 
-    const keySwitchInterval = setInterval(() => {
-      const msgs = [
-        '🔄 Quota excedida em um servidor. Buscando rota alternativa…',
-        '🔑 Chave esgotada. Acionando chave reserva…',
-        '⚡ Servidor ocupado. Redirecionando requisição…',
-        '🔄 Falha na conexão. Iniciando failover…',
-        '🔑 Trocando de chave de API para manter fluidez…',
-      ]
-      setKeySwitchMessage(msgs[Math.floor(Math.random() * msgs.length)])
-      setTimeout(() => setKeySwitchMessage(null), 3500)
-    }, 4500)
-
     try {
       const res = await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area: selectedArea, count: 2 }),
+        body: JSON.stringify({ area: selectedArea, count: 1 }),
       });
 
       const data = await res.json();
 
       if (res.ok && Array.isArray(data) && data.length > 0) {
         setQuestions(data);
-        clearInterval(keySwitchInterval);
         setIsLoading(false);
         return;
       }
 
+      if (res.status === 429 || res.status === 503) {
+        setKeySwitchMessage('🔄 Servidores ocupados. Tentando novamente…');
+        if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
+        keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 4000);
+      }
+
       setError(data?.error || `Erro ${res.status}: não foi possível gerar questões.`);
     } catch (err: any) {
+      setKeySwitchMessage('🔄 Falha de conexão. Tentando novamente…');
+      if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
+      keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 4000);
       setError(err?.message || 'Erro de conexão com o servidor.');
     } finally {
-      clearInterval(keySwitchInterval);
       setIsLoading(false);
     }
   };
