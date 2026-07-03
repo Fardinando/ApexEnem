@@ -604,7 +604,6 @@ Retorne APENAS JSON: [{"statement":"enunciado","options":[{"letter":"A","text":"
     tryGemini("gemini-2.5-flash"),
     tryOpenRouter("meta-llama/llama-3.2-3b-instruct:free"),
     tryOpenRouter("openrouter/free"),
-    tryGemini("gemini-2.0-flash"),
   ];
 
   const result = await Promise.any(attempts.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))).catch(() => null);
