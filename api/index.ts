@@ -5,6 +5,7 @@ import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import rateLimit from "express-rate-limit";
 import { PROMPTS } from "./prompts.js";
+import { jsonrepair } from "jsonrepair";
 
 declare global {
   namespace Express {
@@ -199,6 +200,14 @@ function extractJsonFromText(rawText: string): any {
       const p = tryParse(repairJson(trimmed.substring(startIdx)));
       if (p) { console.error(`extract: repaired from ${ch}`); return p; }
     }
+  }
+
+  try {
+    const repaired = jsonrepair(trimmed);
+    console.error("extract: jsonrepair succeeded, len=" + repaired.length);
+    return JSON.parse(repaired);
+  } catch (e: any) {
+    console.error("extract: jsonrepair also failed:", e?.message?.slice(0, 100));
   }
 
   console.error("extract: ALL FAILED. Content preview:", trimmed.slice(0, 500));

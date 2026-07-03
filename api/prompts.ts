@@ -33,7 +33,7 @@ const MODELS = {
     provider: 'openrouter',
     modelId: 'openrouter/free',
     temperature: 0.9,
-    maxTokens: 2048,
+    maxTokens: 4096,
     timeout: 9900,
   }),
   openRouterLlama: (): ModelConfig => ({
