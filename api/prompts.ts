@@ -117,6 +117,16 @@ json
     "explanation": "Explicação detalhada contendo a resolução passo a passo e a análise de cada distrator (A, B, C, D, E)."
   }
 ]
+5. Sobre notação matemática:
+
+Use **símbolos Unicode** em vez de LaTeX para fórmulas e expressões matemáticas.
+
+Correto: "5e²" (usando ² superscript Unicode), "x² + y² = z²", "√4 = 2", "π ≈ 3,14", "x₁ + x₂", "Δ = b² – 4ac"
+
+Errado: "5e^{2}", "x^{2} + y^{2} = z^{2}", "\\sqrt{4} = 2", "x_{1} + x_{2}"
+
+Isso é essencial para que o JSON seja válido (LaTeX usa \\ e {} que quebram o parse) e para que a questão seja legível sem processamento adicional.
+
 INSTRUÇÃO FINAL E OBRIGATÓRIA:
 Retorne exclusivamente o array JSON puro. Não insira textos de saudação, comentários, marcadores de código (como \`\`\`json) ou qualquer outro caractere fora da estrutura JSON. A saída deve ser parseável diretamente por um parser JSON padrão.`,
     models: [

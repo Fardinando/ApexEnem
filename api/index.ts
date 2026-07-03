@@ -604,17 +604,45 @@ app.post("/api/questions", async (req, res) => {
   const promptDef = PROMPTS.questions;
   const prompt = promptDef.buildPrompt(numQuestions, targetArea) as string;
 
+  function stripLatex(text: string): string {
+    if (!text) return text;
+    const supers: Record<string, string> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '(': '⁽', ')': '⁾', 'n': 'ⁿ' };
+    const subs: Record<string, string> = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '+': '₊', '-': '₋' };
+    let s = text;
+    s = s.replace(/\\(?:sqrt|√)\{([^}]*)\}/g, '√$1');
+    s = s.replace(/\\(?:frac)\{([^}]*)\}\{([^}]*)\}/g, '$1/$2');
+    s = s.replace(/\\(?:alpha|α)/g, 'α');
+    s = s.replace(/\\(?:beta|β)/g, 'β');
+    s = s.replace(/\\(?:pi|π)/g, 'π');
+    s = s.replace(/\\(?:Delta|Δ)/g, 'Δ');
+    s = s.replace(/\\(?:theta|θ)/g, 'θ');
+    s = s.replace(/\\(?:infty|∞)/g, '∞');
+    s = s.replace(/\\(?:approx|≈)/g, '≈');
+    s = s.replace(/\\(?:neq|≠)/g, '≠');
+    s = s.replace(/\\(?:leq|≤)/g, '≤');
+    s = s.replace(/\\(?:geq|≥)/g, '≥');
+    s = s.replace(/\\(?:times|×)/g, '×');
+    s = s.replace(/\\(?:div|÷)/g, '÷');
+    s = s.replace(/\\(?:cdot|·)/g, '·');
+    s = s.replace(/\\/g, '');
+    s = s.replace(/\^\{([^}]*)\}/g, (_, inner) => inner.split('').map((c: string) => supers[c] || c).join(''));
+    s = s.replace(/\_\{([^}]*)\}/g, (_, inner) => inner.split('').map((c: string) => subs[c] || c).join(''));
+    s = s.replace(/\^([0-9A-Za-z])/g, (_, c) => supers[c] || c);
+    s = s.replace(/\_([0-9A-Za-z])/g, (_, c) => subs[c] || c);
+    return s;
+  }
+
   function normalizeQuestion(q: any): any {
     if (!q || typeof q !== 'object' || Array.isArray(q)) return q;
     q.correctAnswer = q.correctAnswer || q.correct_answer || q.answer || q.gabarito || q.correct || q.correctAnswerLetter || q.rightAnswer;
     if (typeof q.correctAnswer === 'string') q.correctAnswer = q.correctAnswer.trim().toUpperCase().replace(/[^A-E]/g, '');
-    q.statement = q.statement || q.question || q.questionText || q.enunciado || q.pergunta || q.text;
-    q.explanation = q.explanation || q.explicacao || q.feedback || q.justification || q.resolution || q.comment || q.comentario || q.solution || q.resposta || q.gabarito_comentado || q.resolucao || '';
+    q.statement = stripLatex(q.statement || q.question || q.questionText || q.enunciado || q.pergunta || q.text || '');
+    q.explanation = stripLatex(q.explanation || q.explicacao || q.feedback || q.justification || q.resolution || q.comment || q.comentario || q.solution || q.resposta || q.gabarito_comentado || q.resolucao || '');
     q.options = q.options || q.alternatives || q.choices || q.opcoes || q.items || q.respostas || [];
     if (Array.isArray(q.options)) {
       q.options = q.options.map((o: any) => {
-        if (typeof o === 'string') return { letter: '', text: o };
-        return { letter: o.letter || o.letra || o.key || o.id || o.index || '', text: o.text || o.texto || o.value || o.conteudo || o.descricao || o.description || o.label || '' };
+        if (typeof o === 'string') return { letter: '', text: stripLatex(o) };
+        return { letter: o.letter || o.letra || o.key || o.id || o.index || '', text: stripLatex(o.text || o.texto || o.value || o.conteudo || o.descricao || o.description || o.label || '') };
       });
     }
     return q;
