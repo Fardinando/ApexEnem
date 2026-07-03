@@ -131,11 +131,150 @@ Retorne exclusivamente o array JSON puro. Não insira textos de saudação, come
     id: 'exercises',
     label: 'Gerar exercícios de aprendizado',
     buildPrompt: (chapterTitle: string, chapterArea: string, weakAreas: string[], count: number) => {
-      const system = `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios variados sobre "${chapterTitle}" (área: ${chapterArea}).
-Tipos permitidos: 'choice', 'true-false', 'reorder', 'matching'.
-Foque nos pontos fracos: ${weakAreas?.join(', ') || 'conteúdo geral'}.
-Retorne APENAS JSON array.`
-      const user = `Gere ${count || 3} exercícios sobre "${chapterTitle}" para o ENEM.`
+      const system = `Você é um gerador de exercícios educacionais especialista na matriz do ENEM, com domínio pleno das competências, habilidades e critérios de elaboração de itens do exame.`
+
+      const user = `Sua tarefa é gerar exatamente ${count || 3} exercícios **inéditos**, **variados** (ou seja, com tipos distintos entre si, salvo se a quantidade de questões exigir repetição) e de **nível avançado** (dificuldade 4 ou 5), rigorosamente alinhados ao tópico "${chapterTitle}", dentro da área de conhecimento "${chapterArea}".
+
+**Foco obrigatório:** Os exercícios devem explorar **prioritariamente** os pontos fracos identificados: ${weakAreas?.join(', ') || 'conteúdo geral'}. Cada questão deve exigir raciocínio crítico, interpretação contextualizada e aplicação de conceitos, jamais memorização ou contas diretas.
+
+---
+
+### TIPOS DE EXERCÍCIO PERMITIDOS (escolha a combinação mais adequada para gerar variedade):
+
+1. **\`choice\`** – Múltipla escolha padrão ENEM.
+2. **\`true-false\`** – Questão de certo/errado com afirmação única e robusta.
+3. **\`reorder\`** – Ordenação de etapas, eventos ou sequência lógica.
+4. **\`matching\`** – Associação entre colunas (conceitos × definições, datas × eventos, etc.).
+
+---
+
+### REGRAS DE CONSTRUÇÃO POR TIPO (OBRIGATÓRIAS):
+
+#### 1. PARA O TIPO \`choice\`:
+- **Enunciado:** Longo, contextualizado e auto-suficiente (dados, citação, situação-problema, charge descrita ou experimento). Deve conter um comando claro no final.
+- **Alternativas:** Exatamente 5 (A, B, C, D, E), todas **plausíveis**, com extensão e complexidade sintática semelhantes. Os distratores devem representar erros conceituais comuns ou interpretações equivocadas.
+- **Correta:** Não óbvia, exigindo inferência ou análise profunda.
+- **Explicação:** Obrigatoriamente dividida em:
+  1. **Resolução passo a passo** – demonstração do raciocínio até a correta.
+  2. **Análise de cada distrator** – justificativa específica do erro de cada uma das 4 alternativas incorretas.
+
+#### 2. PARA O TIPO \`true-false\`:
+- **Enunciado:** Deve apresentar uma **afirmação complexa** e contextualizada (não uma verdade óbvia). Pode ser uma interpretação de um gráfico, uma implicação de um texto filosófico, uma conclusão experimental, etc.
+- **Alternativas:** Fixas e obrigatórias:
+  - A) Certo
+  - B) Errado
+- **Correta:** A ou B, com justificativa baseada em evidências do enunciado.
+- **Explicação:** Exposição detalhada dos argumentos que comprovam a veracidade ou falsidade da afirmação, citando conceitos e dados.
+
+#### 3. PARA O TIPO \`reorder\`:
+- **Enunciado:** Apresenta um processo, uma linha do tempo, uma cadeia de causa-efeito ou uma sequência de raciocínio lógico. O comando deve pedir a ordenação correta.
+- **Itens:** Um array de objetos com \`id\` (numérico ou alfabético) e \`text\` (descrição de cada etapa/item). Mínimo de 4 itens.
+- **Ordem correta:** Array contendo os \`id\`s na sequência exata esperada.
+- **Explicação:** Detalhamento da lógica da sequência (cronológica, hierárquica, causal ou procedural) e por que outras ordens seriam inválidas.
+
+#### 4. PARA O TIPO \`matching\`:
+- **Enunciado:** Contextualiza um conjunto de elementos (ex: teorias, autores, fenômenos) que precisam ser associados a suas respectivas definições, características ou consequências.
+- **Colunas:**
+  - \`leftItems\`: array de objetos com \`id\` e \`text\` (elementos a serem associados).
+  - \`rightItems\`: array de objetos com \`id\` e \`text\` (elementos que servirão de correspondência).
+  - Tamanhos devem ser iguais ou, no máximo, a coluna da direita pode ter um item a mais como distrator (se for o caso, especifique no enunciado).
+- **Correspondências corretas:** Um objeto mapeando cada \`id\` da esquerda para o \`id\` da direita correspondente.
+- **Explicação:** Justificativa conceitual para cada par associado e, se houver distrator, explicação do porquê ele não se encaixa.
+
+---
+
+### REGRAS GERAIS (APLICÁVEIS A TODOS OS TIPOS):
+
+- **Contextualização ENEM:** Todo enunciado deve remeter a uma situação real, texto, dado ou problema aplicado, evitando perguntas soltas ou puramente teóricas.
+- **Nível Avançado:** As questões devem desafiar até mesmo alunos bem-preparados, exigindo articulação entre múltiplos conceitos.
+- **Foco nos pontos fracos:** O conteúdo e a abordagem de cada questão devem, prioritariamente, atacar as deficiências listadas em ${weakAreas?.join(', ') || 'conteúdo geral'}.
+- **Originalidade:** Questões absolutamente inéditas – não copie ou adapte superficialmente itens existentes.
+
+---
+
+### FORMATO DE SAÍDA (JSON ESTRITAMENTE VÁLIDO):
+
+Retorne **apenas um array JSON** contendo os objetos das questões. Cada objeto **deve** conter obrigatoriamente os campos:
+
+- \`"type"\`: string – um dos valores: \`"choice"\`, \`"true-false"\`, \`"reorder"\`, \`"matching"\`.
+- \`"statement"\`: string – enunciado completo (com escape de aspas duplas internas).
+- \`"explanation"\`: string – explicação detalhada (com escape de aspas duplas internas).
+- E, **dependentes do tipo**, os campos específicos conforme os exemplos abaixo.
+
+**Exemplos de estrutura por tipo (use como referência exata):**
+
+**Para \`choice\`:**
+\`\`\`json
+{
+  "type": "choice",
+  "statement": "Enunciado contextualizado...",
+  "options": [
+    {"letter": "A", "text": "Texto da A"},
+    {"letter": "B", "text": "Texto da B"},
+    {"letter": "C", "text": "Texto da C"},
+    {"letter": "D", "text": "Texto da D"},
+    {"letter": "E", "text": "Texto da E"}
+  ],
+  "correctAnswer": "A",
+  "explanation": "Resolução: ... Análise dos distratores: A) ... B) ... C) ... D) ... E) ..."
+}
+\`\`\`
+
+**Para \`true-false\`:**
+\`\`\`json
+{
+  "type": "true-false",
+  "statement": "Afirmação contextualizada complexa...",
+  "options": [
+    {"letter": "A", "text": "Certo"},
+    {"letter": "B", "text": "Errado"}
+  ],
+  "correctAnswer": "A",
+  "explanation": "Justificativa completa da veracidade ou falsidade..."
+}
+\`\`\`
+
+**Para \`reorder\`:**
+\`\`\`json
+{
+  "type": "reorder",
+  "statement": "Contexto e comando para ordenar...",
+  "items": [
+    {"id": "1", "text": "Item 1"},
+    {"id": "2", "text": "Item 2"},
+    {"id": "3", "text": "Item 3"}
+  ],
+  "correctOrder": ["2", "1", "3"],
+  "explanation": "Explicação da ordem correta..."
+}
+\`\`\`
+
+**Para \`matching\`:**
+\`\`\`json
+{
+  "type": "matching",
+  "statement": "Contexto e comando para associar...",
+  "leftItems": [
+    {"id": "1", "text": "Conceito A"},
+    {"id": "2", "text": "Conceito B"}
+  ],
+  "rightItems": [
+    {"id": "a", "text": "Definição 1"},
+    {"id": "b", "text": "Definição 2"}
+  ],
+  "correctMatches": {"1": "a", "2": "b"},
+  "explanation": "Explicação de cada associação..."
+}
+\`\`\`
+
+INSTRUÇÃO FINAL E OBRIGATÓRIA:
+Retorne exclusivamente o array JSON puro.
+
+Não adicione texto introdutório, conclusivo, marcadores de código (ex: \`\`\`json) ou qualquer caractere fora da estrutura JSON.
+
+Não utilize vírgulas no final dos objetos ou arrays (trailing commas).
+
+A saída deve ser parseável diretamente por um parser JSON padrão.`
       return { system, user }
     },
     models: [
