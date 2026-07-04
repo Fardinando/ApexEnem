@@ -1385,17 +1385,25 @@ app.get("/api/stats", async (_req, res) => {
   const regionCounts: Record<string, number> = { Norte: 0, Nordeste: 0, "Centro-Oeste": 0, Sudeste: 0, Sul: 0 };
   try {
     if (supabaseAdmin) {
-      const { data, error } = await supabaseAdmin
-        .from("profiles")
-        .select("region");
-      if (!error && data) {
-        totalUsers = data.length;
-        for (const p of data) {
-          if (p.region && regionCounts[p.region] !== undefined) {
-            regionCounts[p.region]++;
+      try {
+        const { data: authUsers, error: authErr } = await supabaseAdmin.auth.admin.listUsers();
+        if (!authErr && authUsers?.users) {
+          totalUsers = authUsers.users.length;
+        }
+      } catch {}
+      try {
+        const { data, error } = await supabaseAdmin
+          .from("profiles")
+          .select("region");
+        if (!error && data) {
+          if (totalUsers === 0) totalUsers = data.length;
+          for (const p of data) {
+            if (p.region && regionCounts[p.region] !== undefined) {
+              regionCounts[p.region]++;
+            }
           }
         }
-      }
+      } catch {}
     }
   } catch {}
   res.json({ totalUsers, regionCounts });
