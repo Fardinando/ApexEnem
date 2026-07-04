@@ -9,7 +9,14 @@ interface Stats {
   regionCounts: Record<string, number>;
 }
 
-function DoughnutChart({ data }: { data: Record<string, number> }) {
+function DoughnutChart({ data }: { data?: Record<string, number> }) {
+  if (!data || typeof data !== 'object') {
+    return (
+      <div className="flex items-center justify-center h-64 text-slate-400 text-sm">
+        Nenhum dado disponível ainda
+      </div>
+    );
+  }
   const total = Object.values(data).reduce((a, b) => a + b, 0);
   if (total === 0) {
     return (
@@ -221,22 +228,27 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium uppercase tracking-wider">Usuários Ativos</p>
               </div>
               <div className="space-y-3">
-                {REGIONS.map((r, i) => (
-                  <div key={r} className="flex items-center gap-3">
-                    <span className="w-3 h-3 rounded-full" style={{ backgroundColor: REGION_COLORS[i] }} />
-                    <span className="text-sm font-medium text-slate-600 dark:text-slate-300 w-28">{r}</span>
-                    <div className="flex-1 h-2 bg-slate-100 dark:bg-[#1e293b] rounded-full overflow-hidden">
-                      <div
-                        className="h-full rounded-full transition-all duration-700"
-                        style={{
-                          width: stats.totalUsers > 0 ? `${((stats.regionCounts[r] || 0) / stats.totalUsers) * 100}%` : '0%',
-                          backgroundColor: REGION_COLORS[i],
-                        }}
-                      />
+                {REGIONS.map((r, i) => {
+                  const rc = stats.regionCounts || {} as Record<string, number>;
+                  const count = rc[r] || 0;
+                  const pct = stats.totalUsers > 0 ? (count / stats.totalUsers) * 100 : 0;
+                  return (
+                    <div key={r} className="flex items-center gap-3">
+                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: REGION_COLORS[i] }} />
+                      <span className="text-sm font-medium text-slate-600 dark:text-slate-300 w-28">{r}</span>
+                      <div className="flex-1 h-2 bg-slate-100 dark:bg-[#1e293b] rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700"
+                          style={{
+                            width: `${pct}%`,
+                            backgroundColor: REGION_COLORS[i],
+                          }}
+                        />
+                      </div>
+                      <span className="text-xs font-mono text-slate-400 w-10 text-right">{count}</span>
                     </div>
-                    <span className="text-xs font-mono text-slate-400 w-10 text-right">{stats.regionCounts[r] || 0}</span>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </div>
           </div>
