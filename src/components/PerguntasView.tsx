@@ -1,5 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen } from 'lucide-react';
+import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen, Bug, Send, ExternalLink } from 'lucide-react';
 import type { Question } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 import MathRenderer from './MathRenderer';
@@ -17,6 +17,29 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
   const [selectedAnswers, setSelectedAnswers] = useState<Record<string, 'A' | 'B' | 'C' | 'D' | 'E'>>({});
   const [keySwitchMessage, setKeySwitchMessage] = useState<string | null>(null);
   const keySwitchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [reportState, setReportState] = useState<{ questionId: string; feedback: string; sent: boolean } | null>(null);
+
+  const APEX_GUARDIAN_URL = import.meta.env.VITE_APEX_GUARDIAN_URL || '';
+
+  const handleReportError = async (q: Question, userAnswer: string, feedback: string) => {
+    if (!APEX_GUARDIAN_URL) return;
+    try {
+      await fetch(`${APEX_GUARDIAN_URL}/webhook/report`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          question: q,
+          userAnswer,
+          feedback,
+          timestamp: Date.now(),
+          source: 'perguntas-ia',
+        }),
+      });
+      setReportState({ questionId: q.id, feedback, sent: true });
+    } catch {
+      setReportState({ questionId: q.id, feedback, sent: false });
+    }
+  };
 
   const areas = [
     { value: 'Matemática' as const, label: 'Matemática e e suas Tecnologias', icon: '📐' },
@@ -253,6 +276,51 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
                   <p className="text-xs text-slate-500 dark:text-slate-300 leading-relaxed">
                     {q.explanation}
                   </p>
+                  {APEX_GUARDIAN_URL && reportState?.questionId !== q.id && (
+                    <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        onClick={() => setReportState({ questionId: q.id, feedback: '', sent: false })}
+                        className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-amber-500 transition cursor-pointer"
+                      >
+                        <Bug className="h-3 w-3" />
+                        Reportar erro na questão
+                      </button>
+                    </div>
+                  )}
+                  {APEX_GUARDIAN_URL && reportState?.questionId === q.id && !reportState.sent && (
+                    <div className="pt-2 space-y-2 border-t border-slate-200 dark:border-slate-700">
+                      <p className="text-[10px] text-slate-400">Descreva o erro encontrado:</p>
+                      <textarea
+                        value={reportState.feedback}
+                        onChange={(e) => setReportState({ ...reportState, feedback: e.target.value })}
+                        placeholder="Ex: O enunciado está confuso, a alternativa X parece incorreta, etc."
+                        className="w-full text-[10px] p-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-[#0f172a] text-slate-700 dark:text-slate-300 resize-none h-16 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => handleReportError(q, userAnswer, reportState.feedback)}
+                          disabled={!reportState.feedback.trim()}
+                          className="flex items-center gap-1 px-3 py-1.5 bg-amber-500 hover:bg-amber-600 disabled:opacity-50 text-white text-[10px] font-semibold rounded-lg transition cursor-pointer"
+                        >
+                          <Send className="h-3 w-3" /> Enviar Reporte
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setReportState(null)}
+                          className="text-[10px] text-slate-400 hover:text-slate-600 transition cursor-pointer px-2"
+                        >
+                          Cancelar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  {APEX_GUARDIAN_URL && reportState?.questionId === q.id && reportState.sent && (
+                    <div className="pt-2 text-[10px] text-green-600 dark:text-green-400 flex items-center gap-1 border-t border-slate-200 dark:border-slate-700">
+                      <Check className="h-3 w-3" /> Reporte enviado com sucesso!
+                    </div>
+                  )}
                 </div>
               )}
 

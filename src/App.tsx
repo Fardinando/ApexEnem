@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress } from './lib/supabase';
+import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress, deleteEssaysByUser, deleteSimuladosByUser, deleteLogsByUser } from './lib/supabase';
 import type { EssayCorrection, ActivityLog, WrongAnswer } from './types';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
@@ -8,6 +8,7 @@ import DashboardView from './components/DashboardView';
 import RedacaoView from './components/RedacaoView';
 import PerguntasView from './components/PerguntasView';
 import SimuladosView from './components/SimuladosView';
+import LandingPage from './components/LandingPage';
 import ConfiguracoesView from './components/ConfiguracoesView';
 import AprendizadoView from './components/AprendizadoView';
 
@@ -28,8 +29,16 @@ export default function App() {
   const [simuladosHistory, setSimuladosHistory] = useState<{ scorePercent: number; date: string; subject: string }[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
+  const [currentPath, setCurrentPath] = useState(window.location.pathname);
+
+  const navigate = (path: string) => {
+    window.history.pushState({}, '', path);
+    setCurrentPath(path);
+  };
 
   useEffect(() => {
+    const onPop = () => setCurrentPath(window.location.pathname);
+    window.addEventListener('popstate', onPop);
     supabase.auth.getSession()
       .then(({ data: { session: s } }) => {
         if (s) setSession(s);
@@ -45,7 +54,10 @@ export default function App() {
       }
     });
 
-    return () => sub.data.subscription.unsubscribe();
+    return () => {
+      window.removeEventListener('popstate', onPop);
+      sub.data.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -204,9 +216,9 @@ export default function App() {
   const handleClearLocalData = async () => {
     if (!session?.user) return;
     try {
-      await supabase.from('essay_corrections').delete().eq('user_id', session.user.id);
-      await supabase.from('simulado_history').delete().eq('user_id', session.user.id);
-      await supabase.from('activity_logs').delete().eq('user_id', session.user.id);
+      await deleteEssaysByUser(session.user.id);
+      await deleteSimuladosByUser(session.user.id);
+      await deleteLogsByUser(session.user.id);
 
       setEssayCorrections([]);
       setSimuladosHistory([]);
@@ -247,7 +259,10 @@ export default function App() {
   }
 
   if (!session?.user) {
-    return <AuthView onSuccess={handleAuthSuccess} />;
+    if (currentPath === '/login' || currentPath === '/signup') {
+      return <AuthView defaultTab={currentPath === '/login' ? 'login' : 'signup'} onSuccess={handleAuthSuccess} onBack={() => navigate('/')} />;
+    }
+    return <LandingPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} />;
   }
 
   if (requireOnboarding) {

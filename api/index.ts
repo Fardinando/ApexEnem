@@ -596,13 +596,52 @@ ${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
   }
 });
 
+const QUESTIONS_SUBJECT_MAP: Record<string, string> = {
+  Matemática: "matematica",
+  Humanas: "ciencias-humanas",
+  Natureza: "ciencias-natureza",
+  Linguagens: "linguagens",
+};
+
+async function fetchReferenceQuestions(area: string, count: number = 3): Promise<any[]> {
+  const discipline = QUESTIONS_SUBJECT_MAP[area];
+  if (!discipline) return [];
+  const years = [2023, 2022];
+  const all: any[] = [];
+  for (const year of years) {
+    if (all.length >= count) break;
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 5000);
+      const res = await fetch(`https://api.enem.dev/v1/exams/${year}/questions?limit=50&offset=0`, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!res.ok) continue;
+      const data = await res.json();
+      const questions = data.questions || [];
+      for (const q of questions) {
+        if (all.length >= count) break;
+        if (q.discipline !== discipline) continue;
+        if (!q.correctAlternative || !["A","B","C","D","E"].includes(q.correctAlternative)) continue;
+        if (!q.alternatives?.some((a: any) => a.text?.trim())) continue;
+        all.push({
+          statement: (q.context || "") + (q.title ? " (" + q.title + ")" : ""),
+          options: q.alternatives.filter((a: any) => a.text).map((a: any) => ({ letter: a.letter, text: a.text })),
+          correctAnswer: q.correctAlternative,
+        });
+      }
+    } catch {}
+  }
+  return all;
+}
+
 app.post("/api/questions", async (req, res) => {
   const { area, count } = req.body;
   const targetArea = area || "Geral";
   const numQuestions = count || 1;
 
   const promptDef = PROMPTS.questions;
-  const prompt = promptDef.buildPrompt(numQuestions, targetArea) as string;
+  const referenceQuestions = await fetchReferenceQuestions(targetArea, 3);
+  const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions) as string;
 
   function stripLatex(text: string): string {
     if (!text) return text;
@@ -799,7 +838,14 @@ app.post("/api/questions", async (req, res) => {
     modelAttempts.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))
   ).catch(() => null);
 
-  if (result) return res.json(result);
+  if (result) {
+    const enriched = (result as any[]).map((q: any, i: number) => ({
+      ...q,
+      id: q.id || `ai-q-${Date.now()}-${i}`,
+      area: q.area || targetArea,
+    }));
+    return res.json(enriched);
+  }
   return res.status(502).json({ error: "Todos os modelos falharam.", details: errors.slice(0, 10) });
 });
 
@@ -995,50 +1041,153 @@ app.post("/api/supabase/setup", async (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
-  const sql = `CREATE TABLE IF NOT EXISTS public."ApexEnem_progress" (
-  email text PRIMARY KEY,
-  progress jsonb DEFAULT '{}'::jsonb,
-  updated_at timestamptz DEFAULT now()
+  if (!supabaseAdmin || !supabaseUrl || !serviceRoleKey) {
+    return res.json({ success: false, message: "SUPABASE_SERVICE_ROLE_KEY não configurada no Vercel." });
+  }
+
+  const tables = ["profiles", "essay_corrections", "simulado_history", "activity_logs", "ApexEnem_progress"];
+  const missing: string[] = [];
+
+  for (const t of tables) {
+    const { error } = await supabaseAdmin.from(t).select("id").limit(1).maybeSingle();
+    if (error?.message?.includes("does not exist") || error?.message?.includes("relation")) missing.push(t);
+  }
+
+  if (missing.length === 0) {
+    return res.json({ success: true, message: "Todas as tabelas existem." });
+  }
+
+  try {
+    const { error: rpcError } = await supabaseAdmin.rpc("exec_sql", {
+      sql: "SELECT 1"
+    });
+    if (!rpcError) {
+      for (const t of missing) {
+        const sql = getTableSql(t);
+        await supabaseAdmin.rpc("exec_sql", { sql });
+      }
+      const recheck = [];
+      for (const t of missing) {
+        const { error } = await supabaseAdmin.from(t).select("id").limit(1).maybeSingle();
+        if (error?.message?.includes("does not exist") || error?.message?.includes("relation")) recheck.push(t);
+      }
+      if (recheck.length === 0) {
+        return res.json({ success: true, message: "Todas as tabelas criadas com sucesso!" });
+      }
+    }
+  } catch {}
+
+  const fullSql = `-- ═══════════════════════════════════════════
+-- Execute este SQL no SQL Editor do Supabase
+-- Dashboard: https://supabase.com/dashboard
+-- ═══════════════════════════════════════════
+
+-- 1. Cria função auxiliar para migrações futuras
+CREATE OR REPLACE FUNCTION public.exec_sql(sql text)
+RETURNS void
+LANGUAGE plpgsql SECURITY DEFINER
+AS $$ BEGIN EXECUTE sql; END; $$;
+
+${missing.map(t => getTableSql(t)).join("\n\n")}`;
+
+  return res.json({
+    success: false,
+    missing,
+    sql: fullSql,
+    message: `Execute o SQL abaixo no Supabase Dashboard para criar as tabelas: ${missing.join(", ")}`
+  });
+});
+
+function getTableSql(table: string): string {
+  switch (table) {
+    case "profiles":
+      return `CREATE TABLE IF NOT EXISTS public.profiles (
+  id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  name TEXT NOT NULL DEFAULT 'Estudante',
+  region TEXT, state TEXT, city TEXT, avatar TEXT,
+  serie TEXT, target_score INTEGER, hard_subjects TEXT[],
+  streak INTEGER DEFAULT 1, last_login_date DATE DEFAULT CURRENT_DATE,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='read') THEN
+    CREATE POLICY "read" ON public.profiles FOR SELECT USING (auth.uid() = id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='insert') THEN
+    CREATE POLICY "insert" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='profiles' AND policyname='update') THEN
+    CREATE POLICY "update" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+  END IF;
+END $$;`;
+
+    case "essay_corrections":
+      return `CREATE TABLE IF NOT EXISTS public.essay_corrections (
+  id TEXT PRIMARY KEY, user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  title TEXT NOT NULL, text TEXT NOT NULL, score INTEGER NOT NULL,
+  general_feedback TEXT, competencies JSONB DEFAULT '[]',
+  strengths TEXT[] DEFAULT '{}', weaknesses TEXT[] DEFAULT '{}',
+  date TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.essay_corrections ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_essay_user ON public.essay_corrections(user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='essay_corrections' AND policyname='read') THEN
+    CREATE POLICY "read" ON public.essay_corrections FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='essay_corrections' AND policyname='insert') THEN
+    CREATE POLICY "insert" ON public.essay_corrections FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;`;
+
+    case "simulado_history":
+      return `CREATE TABLE IF NOT EXISTS public.simulado_history (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  score_percent INTEGER NOT NULL, subject TEXT NOT NULL,
+  date TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.simulado_history ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_simulado_user ON public.simulado_history(user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='simulado_history' AND policyname='read') THEN
+    CREATE POLICY "read" ON public.simulado_history FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='simulado_history' AND policyname='insert') THEN
+    CREATE POLICY "insert" ON public.simulado_history FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;`;
+
+    case "activity_logs":
+      return `CREATE TABLE IF NOT EXISTS public.activity_logs (
+  id TEXT PRIMARY KEY, user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE NOT NULL,
+  type TEXT NOT NULL, title TEXT NOT NULL, description TEXT,
+  time_ago TEXT, date TEXT NOT NULL, created_at TIMESTAMPTZ DEFAULT NOW()
+);
+ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+CREATE INDEX IF NOT EXISTS idx_logs_user ON public.activity_logs(user_id);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='activity_logs' AND policyname='read') THEN
+    CREATE POLICY "read" ON public.activity_logs FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='activity_logs' AND policyname='insert') THEN
+    CREATE POLICY "insert" ON public.activity_logs FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+END $$;`;
+
+    case "ApexEnem_progress":
+      return `CREATE TABLE IF NOT EXISTS public."ApexEnem_progress" (
+  email text PRIMARY KEY, progress jsonb DEFAULT '{}'::jsonb, updated_at timestamptz DEFAULT now()
 );
 ALTER TABLE public."ApexEnem_progress" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "all_access" ON public."ApexEnem_progress";
 CREATE POLICY "all_access" ON public."ApexEnem_progress" USING (true) WITH CHECK (true);`;
 
-  if (supabaseAdmin && supabaseUrl && serviceRoleKey) {
-    try {
-      const { error } = await supabaseAdmin.rpc('setup_ApexEnem_progress');
-      if (!error) {
-        return res.json({ success: true, message: "Supabase configurado com sucesso!" });
-      }
-    } catch {}
-
-    try {
-      const sqlResp = await fetch(`${supabaseUrl}/rest/v1/rpc/`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': serviceRoleKey,
-          'Authorization': `Bearer ${serviceRoleKey}`,
-        },
-        body: JSON.stringify({ query: sql })
-      });
-      if (sqlResp.ok) {
-        return res.json({ success: true, message: "Supabase configurado com sucesso!" });
-      }
-    } catch {}
-
-    const testResult = await supabaseAdmin.from("ApexEnem_progress").select("email").limit(1);
-    if (!testResult.error) {
-      return res.json({ success: true, message: "Tabela já existe." });
-    }
+    default:
+      return "";
   }
-
-  return res.json({
-    success: false,
-    sql,
-    message: "Execute este SQL no Dashboard do Supabase (SQL Editor) para criar a tabela necessária."
-  });
-});
+}
 
 app.get("/api/supabase/keep-alive", async (req, res) => {
   if (!supabase) {
@@ -1229,6 +1378,27 @@ app.get("/api/enem-questions", async (req, res) => {
   }
 
   res.json({ questions: selected });
+});
+
+app.get("/api/stats", async (_req, res) => {
+  let totalUsers = 0;
+  const regionCounts: Record<string, number> = { Norte: 0, Nordeste: 0, "Centro-Oeste": 0, Sudeste: 0, Sul: 0 };
+  try {
+    if (supabaseAdmin) {
+      const { data, error } = await supabaseAdmin
+        .from("profiles")
+        .select("region");
+      if (!error && data) {
+        totalUsers = data.length;
+        for (const p of data) {
+          if (p.region && regionCounts[p.region] !== undefined) {
+            regionCounts[p.region]++;
+          }
+        }
+      }
+    }
+  } catch {}
+  res.json({ totalUsers, regionCounts });
 });
 
 app.get("/api/credentials-status", (req, res) => {

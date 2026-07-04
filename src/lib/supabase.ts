@@ -5,127 +5,182 @@ const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY || '';
 
 export const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
+let _tablesChecked = false;
+let _tablesOk = false;
+
+async function checkTables() {
+  if (_tablesChecked) return _tablesOk;
+  const { error } = await supabase.from('profiles').select('id').limit(1).maybeSingle();
+  _tablesOk = !(error?.message?.includes('does not exist') || error?.message?.includes('relation'));
+  _tablesChecked = true;
+  return _tablesOk;
+}
+
+export async function isSupabaseReady() {
+  const { error } = await supabase.from('profiles').select('id').limit(1).maybeSingle();
+  return !(error?.message?.includes('does not exist') || error?.message?.includes('relation'));
+}
+
 export async function getCurrentUser() {
   const { data: { user } } = await supabase.auth.getUser();
   return user;
 }
 
 export async function getProfile(userId: string) {
-  const { data } = await supabase
-    .from('profiles')
-    .select('*')
-    .eq('id', userId)
-    .maybeSingle();
-  return data;
+  try {
+    const { data } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', userId)
+      .maybeSingle();
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export async function upsertProfile(profile: any) {
-  const { data, error } = await supabase
-    .from('profiles')
-    .upsert(profile, { onConflict: 'id' })
-    .select()
-    .single();
-  if (error) throw error;
-  return data;
+  try {
+    const { data, error } = await supabase
+      .from('profiles')
+      .upsert(profile, { onConflict: 'id' })
+      .select()
+      .single();
+    if (error) return null;
+    return data;
+  } catch {
+    return null;
+  }
 }
 
 export async function fetchEssays(userId: string) {
-  const { data } = await supabase
-    .from('essay_corrections')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-  return data || [];
+  try {
+    const { data } = await supabase
+      .from('essay_corrections')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    return data || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function saveEssay(essay: any) {
-  const { error } = await supabase
-    .from('essay_corrections')
-    .upsert(essay, { onConflict: 'id' });
-  if (error) throw error;
+  try {
+    const { error } = await supabase
+      .from('essay_corrections')
+      .upsert(essay, { onConflict: 'id' });
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteEssaysByUser(userId: string) {
+  try {
+    const { error } = await supabase.from('essay_corrections').delete().eq('user_id', userId);
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
 export async function fetchSimulados(userId: string) {
-  const { data } = await supabase
-    .from('simulado_history')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-  return data || [];
+  try {
+    const { data } = await supabase
+      .from('simulado_history')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    return data || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function saveSimulado(sim: any) {
-  const { error } = await supabase
-    .from('simulado_history')
-    .insert(sim);
-  if (error) throw error;
+  try {
+    const { error } = await supabase
+      .from('simulado_history')
+      .insert(sim);
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function deleteSimuladosByUser(userId: string) {
+  try {
+    const { error } = await supabase.from('simulado_history').delete().eq('user_id', userId);
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
 export async function fetchLogs(userId: string) {
-  const { data } = await supabase
-    .from('activity_logs')
-    .select('*')
-    .eq('user_id', userId)
-    .order('created_at', { ascending: false });
-  return data || [];
+  try {
+    const { data } = await supabase
+      .from('activity_logs')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    return data || [];
+  } catch {
+    return [];
+  }
 }
 
 export async function saveLog(log: any) {
-  const { error } = await supabase
-    .from('activity_logs')
-    .upsert(log, { onConflict: 'id' });
-  if (error) throw error;
+  try {
+    const { error } = await supabase
+      .from('activity_logs')
+      .upsert(log, { onConflict: 'id' });
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
-async function ensureProgressTable() {
+export async function deleteLogsByUser(userId: string) {
   try {
-    await fetch('/api/supabase/setup', { method: 'POST' });
-  } catch {}
+    const { error } = await supabase.from('activity_logs').delete().eq('user_id', userId);
+    return !error;
+  } catch {
+    return false;
+  }
 }
 
 export async function saveLearningProgress(email: string, progress: { chapters?: any[]; xpPoints?: number; wrongAnswers?: any[] }) {
-  const { error } = await supabase
-    .from('ApexEnem_progress')
-    .upsert(
-      { email: email.toLowerCase(), progress, updated_at: new Date().toISOString() },
-      { onConflict: 'email' }
-    );
-  if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
-    await ensureProgressTable();
-    const { error: retryError } = await supabase
+  try {
+    const { error } = await supabase
       .from('ApexEnem_progress')
       .upsert(
         { email: email.toLowerCase(), progress, updated_at: new Date().toISOString() },
         { onConflict: 'email' }
       );
-    if (retryError && (retryError.message?.includes('relation') || retryError.message?.includes('does not exist'))) {
-      return;
+    if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
+      return false;
     }
-    if (retryError) throw retryError;
-  } else if (error) {
-    throw error;
+    return !error;
+  } catch {
+    return false;
   }
 }
 
 export async function fetchLearningProgress(email: string) {
-  let { data, error } = await supabase
-    .from('ApexEnem_progress')
-    .select('progress')
-    .eq('email', email.toLowerCase())
-    .maybeSingle();
-  if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
-    await ensureProgressTable();
-    const retry = await supabase
+  try {
+    const { data, error } = await supabase
       .from('ApexEnem_progress')
       .select('progress')
       .eq('email', email.toLowerCase())
       .maybeSingle();
-    if (retry.error && (retry.error.message?.includes('relation') || retry.error.message?.includes('does not exist'))) {
+    if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
       return null;
     }
-    if (retry.error) throw retry.error;
-    return retry.data?.progress || null;
+    return data?.progress || null;
+  } catch {
+    return null;
   }
-  if (error) throw error;
-  return data?.progress || null;
 }

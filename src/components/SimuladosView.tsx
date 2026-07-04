@@ -692,7 +692,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                         />
                       )}
                       <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed italic pr-4 select-all">
-                        {renderContent(q.statement.substring(0, 160))}
+                        {renderContent(q.statement.length > 300 ? q.statement.substring(0, 300) + '…' : q.statement)}
                       </div>
 
                       <div className="bg-white dark:bg-[#0f172a] p-3.5 border border-slate-200 dark:border-slate-800 text-[11px] rounded-lg text-slate-650 dark:text-slate-350 leading-relaxed font-sans space-y-1.5">

@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Mail, Lock, Eye, EyeOff, GraduationCap, ArrowRight, User, MapPin, Globe, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, GraduationCap, ArrowRight, User, MapPin, Globe, CheckCircle, Database, AlertTriangle, Copy, ExternalLink } from 'lucide-react';
 import type { RegionBR } from '../types';
 
 interface AuthViewProps {
   onSuccess: () => void;
+  defaultTab?: 'login' | 'signup';
+  onBack?: () => void;
 }
 
 const REGIONS: RegionBR[] = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'];
@@ -21,8 +23,8 @@ declare const hcaptcha: any;
 
 const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY || '';
 
-export default function AuthView({ onSuccess }: AuthViewProps) {
-  const [isLoginTab, setIsLoginTab] = useState(true);
+export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProps) {
+  const [isLoginTab, setIsLoginTab] = useState(defaultTab !== 'signup');
   const [step, setStep] = useState<'form' | 'confirm'>('form');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -39,6 +41,27 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
 
   const states = STATES_BY_REGION[region] || [];
   const [hcaptchaReady, setHcaptchaReady] = useState(false);
+  const [supabaseStatus, setSupabaseStatus] = useState<'checking' | 'ok' | 'missing' | 'error'>('checking');
+  const [setupSql, setSetupSql] = useState('');
+  const [showSql, setShowSql] = useState(false);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const res = await fetch('/api/supabase/setup', { method: 'POST' });
+        const data = await res.json();
+        if (data.success) {
+          setSupabaseStatus('ok');
+        } else {
+          setSupabaseStatus('missing');
+          setSetupSql(data.sql || '');
+        }
+      } catch {
+        setSupabaseStatus('error');
+      }
+    })();
+  }, []);
 
   useEffect(() => {
     if (!HCAPTCHA_SITE_KEY) return;
@@ -170,9 +193,16 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
             </div>
             <div className="absolute top-1/4 -left-1/4 w-96 h-96 bg-[#712ae2] rounded-full blur-[120px] opacity-40"></div>
             <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-[#006e4b] rounded-full blur-[120px] opacity-25"></div>
-            <div className="relative z-10 flex items-center gap-3">
-              <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/20"><GraduationCap className="h-6 w-6" /></div>
-              <span className="font-display font-extrabold text-xl tracking-tight">ApexEnem</span>
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/20"><GraduationCap className="h-6 w-6" /></div>
+                <span className="font-display font-extrabold text-xl tracking-tight">ApexEnem</span>
+              </div>
+              {onBack && (
+                <button type="button" onClick={onBack} className="text-white/60 hover:text-white text-xs transition cursor-pointer flex items-center gap-1 bg-white/5 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10">
+                  ← Voltar
+                </button>
+              )}
             </div>
             <div className="relative z-10 max-w-md my-auto">
               <h1 className="font-display text-4xl lg:text-5xl font-extrabold tracking-tight leading-tight space-y-4 mb-6 text-white">
@@ -297,8 +327,52 @@ export default function AuthView({ onSuccess }: AuthViewProps) {
               </div>
 
               <div className="text-center font-mono text-[10px] text-slate-400">
-                Estude com 10 IAs de ponta para a Apex Enem.
+                Estude com IAs de ponta para a Apex Enem.
               </div>
+
+              {supabaseStatus === 'checking' && (
+                <div className="text-center text-[10px] text-slate-400 animate-pulse">Verificando conexão...</div>
+              )}
+              {supabaseStatus === 'ok' && (
+                <div className="text-center text-[10px] text-green-500 flex items-center justify-center gap-1">
+                  <Database className="h-3 w-3" /> Supabase conectado
+                </div>
+              )}
+              {supabaseStatus === 'missing' && !showSql && (
+                <div className="mt-2 p-2.5 bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900/40 rounded-xl text-[10px] text-amber-700 dark:text-amber-400 leading-relaxed flex items-start gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+                  <span>
+                    Tabelas do banco de dados não encontradas.
+                    <button type="button" onClick={() => setShowSql(true)} className="block mt-1 text-amber-800 dark:text-amber-300 font-semibold underline cursor-pointer">Ver SQL para criar tabelas →</button>
+                  </span>
+                </div>
+              )}
+              {supabaseStatus === 'missing' && showSql && (
+                <div className="mt-2 p-3 bg-slate-900 dark:bg-black border border-slate-700 rounded-xl text-[10px] text-green-300 font-mono leading-relaxed max-h-60 overflow-y-auto">
+                  <div className="flex items-center justify-between mb-2 sticky top-0 bg-slate-900 dark:bg-black pb-2">
+                    <span className="text-white font-semibold text-xs">SQL para executar no Supabase Dashboard:</span>
+                    <div className="flex gap-2">
+                      <button type="button" onClick={async () => { await navigator.clipboard.writeText(setupSql); setCopied(true); setTimeout(() => setCopied(false), 2000); }} className="flex items-center gap-1 text-white hover:text-blue-300 cursor-pointer text-[10px]" title="Copiar SQL">
+                        <Copy className="h-3 w-3" /> {copied ? 'Copiado!' : 'Copiar'}
+                      </button>
+                      <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" className="flex items-center gap-1 text-white hover:text-blue-300 text-[10px]" title="Abrir Supabase Dashboard">
+                        <ExternalLink className="h-3 w-3" /> Dashboard
+                      </a>
+                    </div>
+                  </div>
+                  <pre className="whitespace-pre-wrap break-all">{setupSql}</pre>
+                  <ol className="mt-2 text-white text-[10px] space-y-1 list-decimal list-inside">
+                    <li>Clique em "Copiar" acima</li>
+                    <li>Abra o <a href="https://supabase.com/dashboard" target="_blank" rel="noopener" className="text-blue-300 underline">Supabase Dashboard</a></li>
+                    <li>Vá em SQL Editor → New Query</li>
+                    <li>Cole o SQL e execute</li>
+                    <li>Volte e recarregue a página</li>
+                  </ol>
+                </div>
+              )}
+              {supabaseStatus === 'error' && (
+                <div className="text-center text-[10px] text-red-400">Erro ao verificar conexão com Supabase</div>
+              )}
             </div>
           </div>
         </>

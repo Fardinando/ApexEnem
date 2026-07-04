@@ -63,72 +63,26 @@ export const PROMPTS: Record<string, PromptDefinition> = {
   questions: {
     id: 'questions',
     label: 'Gerar questões estilo ENEM',
-    buildPrompt: (numQuestions: number, targetArea: string) =>
-      `Você é um professor especialista em elaboração de itens para o ENEM, com domínio absoluto da matriz de referência, competências e habilidades do exame. Sua tarefa é gerar exatamente ${numQuestions} questões de múltipla escolha **inéditas**, de **nível avançado** (grau de dificuldade 4 ou 5 na escala ENEM), focadas estritamente na área de conhecimento: "${targetArea}".
+    buildPrompt: (numQuestions: number, targetArea: string, referenceQuestions?: any[]) => {
+      let refSection = "";
+      if (referenceQuestions && referenceQuestions.length > 0) {
+        refSection = "\n\n### QUEST\u00d5ES REAIS DO ENEM \u2014 USE COMO REFER\u00caNCIA OBRIGAT\u00d3RIA DE ESTILO, DIFICULDADE E COMPLEXIDADE\nAbaixo est\u00e3o quest\u00f5es reais do ENEM da \u00e1rea \"" + targetArea + "\". Estude cada uma delas e gere quest\u00f5es IN\u00c9DITAS que tenham EXATAMENTE o mesmo n\u00edvel de dificuldade, complexidade de racioc\u00ednio, extens\u00e3o de enunciado e estilo de contextualiza\u00e7\u00e3o.\n\n";
+        for (let i = 0; i < referenceQuestions.length; i++) {
+          const q = referenceQuestions[i];
+          refSection += "--- QUEST\u00c3O REAL ENEM #" + (i + 1) + " ---\nEnunciado: " + q.statement + "\nAlternativas:\n";
+          if (Array.isArray(q.options)) {
+            for (const o of q.options) {
+              refSection += "  " + (o.letter || "") + ") " + (o.text || "") + "\n";
+            }
+          }
+          refSection += "Gabarito: " + (q.correctAnswer || "") + "\n\n";
+        }
+        refSection += "--- FIM DAS QUEST\u00d5ES REAIS ---\n\nIMPORTANTE: As quest\u00f5es que voc\u00ea gerar devem ter EXATAMENTE o mesmo n\u00edvel de dificuldade, complexidade de racioc\u00ednio e estilo de contextualiza\u00e7\u00e3o das quest\u00f5es reais acima.";
+      }
 
-REGRAS DE CONSTRUÇÃO (OBRIGATÓRIAS):
-
-1. Sobre o Enunciado:
-
-O enunciado deve ser longo, contextualizado e auto-suficiente, apresentando obrigatoriamente um recorte da realidade (situação-problema, dado estatístico, trecho de obra literária/filosófica, notícia de jornal, charge descrita textualmente, ou experimento científico hipotético).
-
-Evite perguntas diretas ou factoides. A questão deve exigir interpretação, inferência, análise de dados ou aplicação de conceitos em cenários novos.
-
-2. Sobre as Alternativas (5 alternativas - A, B, C, D, E):
-
-Todas as alternativas devem ser extremamente plausíveis, com extensão e complexidade sintática semelhantes, para não levantar suspeitas pela forma.
-
-Os distratores (alternativas erradas) devem representar erros conceituais comuns ou interpretações equivocadas que um aluno bem-preparado, mas desatento, poderia cometer.
-
-A resposta correta deve ser não-óbvia, exigindo raciocínio crítico para ser identificada.
-
-3. Sobre a Explicação (Resolução Comentada):
-
-A explicação deve ser detalhada e didática, contendo obrigatoriamente duas partes:
-
-Parte 1 (Resolução): Passo a passo do raciocínio lógico-científico para chegar à alternativa correta, citando os conceitos envolvidos.
-
-Parte 2 (Análise dos Distratores): Justificativa específica do porquê cada uma das outras 4 alternativas está errada, apontando a falha de raciocínio ou o equívoco conceitual que leva a cada uma delas.
-
-4. Sobre o Formato de Saída (JSON ESTRITAMENTE VÁLIDO):
-
-Retorne apenas um array JSON válido, seguindo exatamente a estrutura abaixo.
-
-O campo "correctAnswer" deve conter APENAS a letra (A, B, C, D ou E) da alternativa correta.
-
-Atenção: Escapes de caracteres. Todas as aspas duplas (") que aparecerem dentro das strings (especialmente no statement e explanation) devem ser escapadas com barra invertida (\\").
-
-Não utilize vírgulas no final dos objetos (trailing commas).
-
-Estrutura Obrigatória:
-
-json
-[
-  {
-    "statement": "Enunciado completo, contextualizado e com comando claro aqui.",
-    "options": [
-      {"letter": "A", "text": "Texto da alternativa A"},
-      {"letter": "B", "text": "Texto da alternativa B"},
-      {"letter": "C", "text": "Texto da alternativa C"},
-      {"letter": "D", "text": "Texto da alternativa D"},
-      {"letter": "E", "text": "Texto da alternativa E"}
-    ],
-    "correctAnswer": "A",
-    "explanation": "Explicação detalhada contendo a resolução passo a passo e a análise de cada distrator (A, B, C, D, E)."
-  }
-]
-5. Sobre notação matemática:
-
-Use **símbolos Unicode** em vez de LaTeX para fórmulas e expressões matemáticas.
-
-Correto: "5e²" (usando ² superscript Unicode), "x² + y² = z²", "√4 = 2", "π ≈ 3,14", "x₁ + x₂", "Δ = b² – 4ac"
-
-Errado: "5e^{2}", "x^{2} + y^{2} = z^{2}", "\\sqrt{4} = 2", "x_{1} + x_{2}"
-
-Isso é essencial para que o JSON seja válido (LaTeX usa \\ e {} que quebram o parse) e para que a questão seja legível sem processamento adicional.
-
-INSTRUÇÃO FINAL E OBRIGATÓRIA:
-Retorne exclusivamente o array JSON puro. Não insira textos de saudação, comentários, marcadores de código (como \`\`\`json) ou qualquer outro caractere fora da estrutura JSON. A saída deve ser parseável diretamente por um parser JSON padrão.`,
+      const basePrompt = "Voc\u00ea \u00e9 um professor especialista em elabora\u00e7\u00e3o de itens para o ENEM, com dom\u00ednio absoluto da matriz de refer\u00eancia, compet\u00eancias e habilidades do exame. Sua tarefa \u00e9 gerar exatamente " + numQuestions + " quest\u00f5es de m\u00faltipla escolha **in\u00e9ditas**, de **n\u00edvel avan\u00e7ado** (igual ao das quest\u00f5es reais do ENEM fornecidas como refer\u00eancia), focadas estritamente na \u00e1rea de conhecimento: \"" + targetArea + "\"." + refSection + "\n\nREGRAS DE CONSTRU\u00c7\u00c3O (OBRIGAT\u00d3RIAS):\n\n1. Sobre o Enunciado:\nO enunciado deve ser longo, contextualizado e auto-suficiente, apresentando obrigatoriamente um recorte da realidade (situa\u00e7\u00e3o-problema, dado estat\u00edstico, trecho de obra liter\u00e1ria/filos\u00f3fica, not\u00edcia de jornal, charge descrita textualmente, ou experimento cient\u00edfico hipot\u00e9tico).\nEvite perguntas diretas ou factoides. A quest\u00e3o deve exigir interpreta\u00e7\u00e3o, infer\u00eancia, an\u00e1lise de dados ou aplica\u00e7\u00e3o de conceitos em cen\u00e1rios novos.\n\n2. Sobre as Alternativas (5 alternativas - A, B, C, D, E):\nTodas as alternativas devem ser extremamente plaus\u00edveis, com extens\u00e3o e complexidade sint\u00e1tica semelhantes, para n\u00e3o levantar suspeitas pela forma.\nOs distratores (alternativas erradas) devem representar erros conceituais comuns ou interpreta\u00e7\u00f5es equivocadas que um aluno bem-preparado, mas desatento, poderia cometer.\nA resposta correta deve ser n\u00e3o-\u00f3bvia, exigindo racioc\u00ednio cr\u00edtico para ser identificada.\n\n3. Sobre a Explica\u00e7\u00e3o (Resolu\u00e7\u00e3o Comentada):\nA explica\u00e7\u00e3o deve ser detalhada e did\u00e1tica, contendo obrigatoriamente duas partes:\nParte 1 (Resolu\u00e7\u00e3o): Passo a passo do racioc\u00ednio l\u00f3gico-cient\u00edfico para chegar \u00e0 alternativa correta, citando os conceitos envolvidos.\nParte 2 (An\u00e1lise dos Distratores): Justificativa espec\u00edfica do porqu\u00ea cada uma das outras 4 alternativas est\u00e1 errada, apontando a falha de racioc\u00ednio ou o equ\u00edvoco conceitual que leva a cada uma delas.\n\n4. Sobre o Formato de Sa\u00edda (JSON ESTRITAMENTE V\u00c1LIDO):\nRetorne apenas um array JSON v\u00e1lido, seguindo exatamente a estrutura abaixo.\nO campo correctAnswer deve conter APENAS a letra (A, B, C, D ou E) da alternativa correta.\nAten\u00e7\u00e3o: Escapes de caracteres. Todas as aspas duplas que aparecerem dentro das strings (especialmente no statement e explanation) devem ser escapadas com barra invertida (\\\\\").\nN\u00e3o utilize v\u00edrgulas no final dos objetos (trailing commas).\n\nEstrutura Obrigat\u00f3ria:\n[\n  {\n    \"statement\": \"Enunciado completo, contextualizado e com comando claro aqui.\",\n    \"options\": [\n      {\"letter\": \"A\", \"text\": \"Texto da alternativa A\"},\n      {\"letter\": \"B\", \"text\": \"Texto da alternativa B\"},\n      {\"letter\": \"C\", \"text\": \"Texto da alternativa C\"},\n      {\"letter\": \"D\", \"text\": \"Texto da alternativa D\"},\n      {\"letter\": \"E\", \"text\": \"Texto da alternativa E\"}\n    ],\n    \"correctAnswer\": \"A\",\n    \"explanation\": \"Explica\u00e7\u00e3o detalhada contendo a resolu\u00e7\u00e3o passo a passo e a an\u00e1lise de cada distrator (A, B, C, D, E).\"\n  }\n]\n\n5. Sobre nota\u00e7\u00e3o matem\u00e1tica:\nUse **s\u00edmbolos Unicode** em vez de LaTeX para f\u00f3rmulas e express\u00f5es matem\u00e1ticas.\nCorreto: \"5e\u00b2\" (usando \u00b2 superscript Unicode), \"x\u00b2 + y\u00b2 = z\u00b2\", \"\u221a4 = 2\", \"\u03c0 \u2248 3,14\", \"x\u2081 + x\u2082\", \"\u0394 = b\u00b2 \u2013 4ac\"\nErrado: \"5e^{2}\", \"x^{2} + y^{2} = z^{2}\", \"\\\\sqrt{4} = 2\", \"x_{1} + x_{2}\"\nIsso \u00e9 essencial para que o JSON seja v\u00e1lido (LaTeX usa \\\\ e {} que quebram o parse) e para que a quest\u00e3o seja leg\u00edvel sem processamento adicional.\n\nINSTRU\u00c7\u00c3O FINAL E OBRIGAT\u00d3RIA:\nRetorne exclusivamente o array JSON puro. N\u00e3o insira textos de sauda\u00e7\u00e3o, coment\u00e1rios, marcadores de c\u00f3digo (como ```json) ou qualquer outro caractere fora da estrutura JSON. A sa\u00edda deve ser parse\u00e1vel diretamente por um parser JSON padr\u00e3o.";
+      return basePrompt;
+    },
     models: [
       MODELS.geminiFlash(),
       MODELS.openRouterFree(),
