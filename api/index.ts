@@ -603,31 +603,35 @@ const QUESTIONS_SUBJECT_MAP: Record<string, string> = {
   Linguagens: "linguagens",
 };
 
-async function fetchReferenceQuestions(area: string, count: number = 3): Promise<any[]> {
+async function fetchReferenceQuestions(area: string, count: number = 8): Promise<any[]> {
   const discipline = QUESTIONS_SUBJECT_MAP[area];
   if (!discipline) return [];
-  const years = [2023, 2022];
+  const years = [2024, 2023, 2022, 2021, 2020];
   const all: any[] = [];
   for (const year of years) {
     if (all.length >= count) break;
     try {
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 5000);
-      const res = await fetch(`https://api.enem.dev/v1/exams/${year}/questions?limit=50&offset=0`, { signal: ctrl.signal });
-      clearTimeout(tid);
-      if (!res.ok) continue;
-      const data = await res.json();
-      const questions = data.questions || [];
-      for (const q of questions) {
+      const offsets = [0, 25, 50, 75];
+      for (const offset of offsets) {
         if (all.length >= count) break;
-        if (q.discipline !== discipline) continue;
-        if (!q.correctAlternative || !["A","B","C","D","E"].includes(q.correctAlternative)) continue;
-        if (!q.alternatives?.some((a: any) => a.text?.trim())) continue;
-        all.push({
-          statement: (q.context || "") + (q.title ? " (" + q.title + ")" : ""),
-          options: q.alternatives.filter((a: any) => a.text).map((a: any) => ({ letter: a.letter, text: a.text })),
-          correctAnswer: q.correctAlternative,
-        });
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 5000);
+        const res = await fetch(`https://api.enem.dev/v1/exams/${year}/questions?limit=25&offset=${offset}`, { signal: ctrl.signal });
+        clearTimeout(tid);
+        if (!res.ok) continue;
+        const data = await res.json();
+        const questions = data.questions || [];
+        for (const q of questions) {
+          if (all.length >= count) break;
+          if (q.discipline !== discipline) continue;
+          if (!q.correctAlternative || !["A","B","C","D","E"].includes(q.correctAlternative)) continue;
+          if (!q.alternatives?.some((a: any) => a.text?.trim())) continue;
+          all.push({
+            statement: (q.context || "") + (q.title ? " (" + q.title + ")" : ""),
+            options: q.alternatives.filter((a: any) => a.text).map((a: any) => ({ letter: a.letter, text: a.text })),
+            correctAnswer: q.correctAlternative,
+          });
+        }
       }
     } catch {}
   }
@@ -640,7 +644,7 @@ app.post("/api/questions", async (req, res) => {
   const numQuestions = count || 1;
 
   const promptDef = PROMPTS.questions;
-  const referenceQuestions = await fetchReferenceQuestions(targetArea, 3);
+  const referenceQuestions = await fetchReferenceQuestions(targetArea, 8);
   const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions) as string;
 
   function stripLatex(text: string): string {
@@ -791,7 +795,7 @@ app.post("/api/questions", async (req, res) => {
               { role: "user", content: prompt }
             ],
             temperature: 0.9,
-            max_tokens: 4096
+            max_tokens: 8192
           }),
           signal: ctrl.signal
         });
