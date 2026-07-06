@@ -7,6 +7,7 @@ const REGIONS = ['Norte', 'Nordeste', 'Centro-Oeste', 'Sudeste', 'Sul'];
 interface Stats {
   totalUsers: number;
   regionCounts: Record<string, number>;
+  tablesExist?: boolean;
 }
 
 function DoughnutChart({ data }: { data?: Record<string, number> }) {
@@ -85,7 +86,7 @@ function DoughnutChart({ data }: { data?: Record<string, number> }) {
 }
 
 export default function LandingPage({ onStart, onSignup }: { onStart: () => void; onSignup?: () => void }) {
-  const [stats, setStats] = useState<Stats>({ totalUsers: 0, regionCounts: { Norte: 0, Nordeste: 0, 'Centro-Oeste': 0, Sudeste: 0, Sul: 0 } });
+  const [stats, setStats] = useState<Stats>({ totalUsers: 0, regionCounts: { Norte: 0, Nordeste: 0, 'Centro-Oeste': 0, Sudeste: 0, Sul: 0 }, tablesExist: false });
   const [statsLoading, setStatsLoading] = useState(true);
 
   useEffect(() => {

@@ -1382,12 +1382,14 @@ app.get("/api/enem-questions", async (req, res) => {
 
 app.get("/api/stats", async (_req, res) => {
   let totalUsers = 0;
+  let tablesExist = false;
   const regionCounts: Record<string, number> = { Norte: 0, Nordeste: 0, "Centro-Oeste": 0, Sudeste: 0, Sul: 0 };
 
   if (supabaseAdmin) {
     try {
       const { data, error } = await supabaseAdmin.from("profiles").select("region");
       if (!error && data) {
+        tablesExist = true;
         totalUsers = data.length;
         for (const p of data) {
           if (p.region && regionCounts[p.region] !== undefined) {
@@ -1396,19 +1398,9 @@ app.get("/api/stats", async (_req, res) => {
         }
       }
     } catch {}
-
-    if (totalUsers === 0) {
-      try {
-        const admin = (supabaseAdmin.auth as any).admin;
-        if (admin?.listUsers) {
-          const { data, error: ue } = await admin.listUsers();
-          if (!ue && data?.users?.length > 0) totalUsers = data.users.length;
-        }
-      } catch {}
-    }
   }
 
-  res.json({ totalUsers, regionCounts });
+  res.json({ totalUsers, regionCounts, tablesExist });
 });
 
 app.get("/api/credentials-status", (req, res) => {
