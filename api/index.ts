@@ -1383,15 +1383,26 @@ app.get("/api/enem-questions", async (req, res) => {
 app.get("/api/stats", async (_req, res) => {
   let totalUsers = 0;
   const regionCounts: Record<string, number> = { Norte: 0, Nordeste: 0, "Centro-Oeste": 0, Sudeste: 0, Sul: 0 };
-  try {
-    if (supabaseAdmin) {
-      try {
-        const { data: authUsers, error: authErr } = await supabaseAdmin.auth.admin.listUsers();
-        if (!authErr && authUsers?.users) {
-          totalUsers = authUsers.users.length;
+
+  const supabaseUrl = process.env.SUPABASE_URL;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (supabaseUrl && serviceRoleKey) {
+    try {
+      const resp = await fetch(`${supabaseUrl}/auth/v1/admin/users?perPage=1000000`, {
+        headers: {
+          'apikey': serviceRoleKey,
+          'Authorization': `Bearer ${serviceRoleKey}`
         }
-      } catch {}
-      try {
+      });
+      if (resp.ok) {
+        const body = await resp.json();
+        totalUsers = body.users?.length || 0;
+      }
+    } catch {}
+
+    try {
+      if (supabaseAdmin) {
         const { data, error } = await supabaseAdmin
           .from("profiles")
           .select("region");
@@ -1403,9 +1414,10 @@ app.get("/api/stats", async (_req, res) => {
             }
           }
         }
-      } catch {}
-    }
-  } catch {}
+      }
+    } catch {}
+  }
+
   res.json({ totalUsers, regionCounts });
 });
 
