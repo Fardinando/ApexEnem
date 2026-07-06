@@ -627,7 +627,7 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
           if (!q.correctAlternative || !["A","B","C","D","E"].includes(q.correctAlternative)) continue;
           if (!q.alternatives?.some((a: any) => a.text?.trim())) continue;
           all.push({
-            statement: (q.context || "") + (q.title ? " (" + q.title + ")" : ""),
+            statement: ((q.context || "") + "\n" + (q.alternativesIntroduction || "")).trim() + (q.title ? " (" + q.title + ")" : ""),
             options: q.alternatives.filter((a: any) => a.text).map((a: any) => ({ letter: a.letter, text: a.text })),
             correctAnswer: q.correctAlternative,
           });
@@ -1061,25 +1061,42 @@ app.post("/api/supabase/setup", async (req, res) => {
     return res.json({ success: true, message: "Todas as tabelas existem." });
   }
 
-  try {
-    const { error: rpcError } = await supabaseAdmin.rpc("exec_sql", {
-      sql: "SELECT 1"
-    });
-    if (!rpcError) {
-      for (const t of missing) {
-        const sql = getTableSql(t);
-        await supabaseAdmin.rpc("exec_sql", { sql });
-      }
-      const recheck = [];
-      for (const t of missing) {
-        const { error } = await supabaseAdmin.from(t).select("id").limit(1).maybeSingle();
-        if (error?.message?.includes("does not exist") || error?.message?.includes("relation")) recheck.push(t);
-      }
-      if (recheck.length === 0) {
-        return res.json({ success: true, message: "Todas as tabelas criadas com sucesso!" });
-      }
+  // Helper to run SQL via various methods
+  async function runSql(sql: string): Promise<boolean> {
+    // Method 1: exec_sql RPC
+    try {
+      const { error } = await supabaseAdmin!.rpc("exec_sql", { sql });
+      if (!error) return true;
+    } catch {}
+    // Method 2: Management API (if key is configured)
+    const mgmtKey = process.env.SUPABASE_MANAGEMENT_KEY;
+    if (mgmtKey && supabaseUrl) {
+      try {
+        const ref = supabaseUrl.replace("https://", "").split(".")[0];
+        const mgmtRes = await fetch(`https://api.supabase.com/v1/projects/${ref}/sql`, {
+          method: "POST",
+          headers: { "Authorization": `Bearer ${mgmtKey}`, "Content-Type": "application/json" },
+          body: JSON.stringify({ query: sql })
+        });
+        if (mgmtRes.ok) return true;
+      } catch {}
     }
-  } catch {}
+    return false;
+  }
+
+  // Try to create exec_sql function first, then tables
+  const allSql = `CREATE OR REPLACE FUNCTION public.exec_sql(sql text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN EXECUTE sql; END; $$;\n\n${missing.map(t => getTableSql(t)).join("\n\n")}`;
+  const created = await runSql(allSql);
+  if (created) {
+    const recheck = [];
+    for (const t of missing) {
+      const { error } = await supabaseAdmin.from(t).select("id").limit(1).maybeSingle();
+      if (error?.message?.includes("does not exist") || error?.message?.includes("relation")) recheck.push(t);
+    }
+    if (recheck.length === 0) {
+      return res.json({ success: true, message: "Todas as tabelas criadas com sucesso!" });
+    }
+  }
 
   const fullSql = `-- ═══════════════════════════════════════════
 -- Execute este SQL no SQL Editor do Supabase
@@ -1092,7 +1109,7 @@ RETURNS void
 LANGUAGE plpgsql SECURITY DEFINER
 AS $$ BEGIN EXECUTE sql; END; $$;
 
-${missing.map(t => getTableSql(t)).join("\n\n")}`;
+${missing.map(t => getTableSql(t)).join("\n\n")}\n\n-- 3. Cria perfis para usuários existentes sem perfil\nINSERT INTO public.profiles (id, name, region, state, city)\nSELECT id, COALESCE(raw_user_meta_data ->> 'name', 'Estudante'), raw_user_meta_data ->> 'region', raw_user_meta_data ->> 'state', raw_user_meta_data ->> 'city' FROM auth.users ON CONFLICT DO NOTHING;`;
 
   return res.json({
     success: false,
@@ -1341,7 +1358,7 @@ app.get("/api/enem-questions", async (req, res) => {
             })
             .map((q: any) => ({
               id: `enem-${q.year}-${q.index}`,
-              statement: `(${q.title || `ENEM ${q.year} - Questão ${q.index}`})\n\n${q.context || ""}`,
+              statement: ((q.title || `ENEM ${q.year} - Questão ${q.index}`) + "\n\n" + (q.context || "") + "\n" + (q.alternativesIntroduction || "")).trim(),
               options: q.alternatives?.filter((a: any) => a.text).map((a: any) => ({
                 letter: a.letter,
                 text: a.text || "",
@@ -1389,6 +1406,7 @@ app.get("/api/stats", async (_req, res) => {
   let tablesExist = false;
   const regionCounts: Record<string, number> = { Norte: 0, Nordeste: 0, "Centro-Oeste": 0, Sudeste: 0, Sul: 0 };
 
+  // Try profiles table first
   if (supabaseAdmin) {
     try {
       const { data, error } = await supabaseAdmin.from("profiles").select("region");
@@ -1399,6 +1417,36 @@ app.get("/api/stats", async (_req, res) => {
           if (p.region && regionCounts[p.region] !== undefined) {
             regionCounts[p.region]++;
           }
+        }
+        return res.json({ totalUsers, regionCounts, tablesExist });
+      }
+    } catch {}
+  }
+
+  // Fallback: try GoTrue Admin API to count users with their metadata
+  if (supabaseAdmin) {
+    try {
+      const supabaseUrl = process.env.SUPABASE_URL;
+      if (supabaseUrl) {
+        const authRes = await fetch(`${supabaseUrl}/auth/v1/admin/users`, {
+          headers: {
+            "Authorization": `Bearer ${process.env.SUPABASE_SERVICE_ROLE_KEY}`,
+            "apikey": process.env.SUPABASE_SERVICE_ROLE_KEY || "",
+          }
+        });
+        if (authRes.ok) {
+          const authData = await authRes.json();
+          const users = authData.users || [];
+          totalUsers = users.length;
+          for (const u of users) {
+            const meta = u.user_metadata || {};
+            const region = meta.region || meta.state || "";
+            if (region && regionCounts[region] !== undefined) {
+              regionCounts[region]++;
+            }
+          }
+          tablesExist = true;
+          return res.json({ totalUsers, regionCounts, tablesExist });
         }
       }
     } catch {}
