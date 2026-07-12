@@ -7,9 +7,10 @@ import LoadingOverlay from './LoadingOverlay';
 
 interface PerguntasViewProps {
   onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia') => void;
+  hardSubjects?: string[];
 }
 
-export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
+export default function PerguntasView({ onWrongAnswer, hardSubjects = [] }: PerguntasViewProps) {
   const [selectedArea, setSelectedArea] = useState<'Matemática' | 'Humanas' | 'Natureza' | 'Linguagens'>('Matemática');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);
@@ -18,8 +19,9 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
   const [keySwitchMessage, setKeySwitchMessage] = useState<string | null>(null);
   const keySwitchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reportState, setReportState] = useState<{ questionId: string; feedback: string; sent: boolean } | null>(null);
+  const [revealedQuestions, setRevealedQuestions] = useState(1);
 
-  const APEX_GUARDIAN_URL = import.meta.env.VITE_APEX_GUARDIAN_URL || '';
+  const APEX_GUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || '';
 
   const handleReportError = async (q: Question, userAnswer: string, feedback: string) => {
     if (!APEX_GUARDIAN_URL) return;
@@ -54,12 +56,21 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
     setSelectedAnswers({});
     setQuestions([]);
     setKeySwitchMessage(null);
+    setRevealedQuestions(1);
+
+    const areaHardSubjects = hardSubjects.filter(s => {
+      if (selectedArea === 'Matemática') return s === 'Matemática';
+      if (selectedArea === 'Humanas') return s === 'Humanas';
+      if (selectedArea === 'Natureza') return s === 'Natureza';
+      if (selectedArea === 'Linguagens') return s === 'Linguagens';
+      return false;
+    });
 
     try {
       const res = await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area: selectedArea, count: 1 }),
+        body: JSON.stringify({ area: selectedArea, count: 3, hardSubjects: areaHardSubjects }),
       });
 
       const data = await res.json();
@@ -193,9 +204,10 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
           </div>
         )}
 
-        {!isLoading && questions.length > 0 && questions.map((q, idx) => {
+        {!isLoading && questions.length > 0 && questions.slice(0, revealedQuestions).map((q, idx) => {
           const userAnswer = selectedAnswers[q.id];
           const hasAnswered = !!userAnswer;
+          const isLastRevealed = idx === revealedQuestions - 1;
 
           return (
             <div
@@ -207,7 +219,7 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
               <div className="flex justify-between items-center pb-3 border-b border-slate-200 dark:border-slate-800">
                 <div className="flex items-center gap-2">
                   <span className="text-[10px] font-mono px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded font-bold uppercase">
-                    QUESTÃO {idx + 1}
+                    QUESTÃO {idx + 1} de {questions.length}
                   </span>
                   <span className="text-[10px] font-mono px-2 py-0.5 bg-purple-50 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400 rounded font-semibold">
                     {q.area}
@@ -276,6 +288,29 @@ export default function PerguntasView({ onWrongAnswer }: PerguntasViewProps) {
                   <p className="text-xs text-slate-500 dark:text-slate-300 leading-relaxed">
                     {q.explanation}
                   </p>
+
+                  {/* Botão próxima questão (só na última revelada, se houver mais) */}
+                  {isLastRevealed && revealedQuestions < questions.length && (
+                    <div className="pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <button
+                        type="button"
+                        onClick={() => setRevealedQuestions(prev => prev + 1)}
+                        className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl transition cursor-pointer"
+                      >
+                        Próxima Questão →
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Progresso */}
+                  {isLastRevealed && (
+                    <div className="flex justify-center gap-1.5 pt-1">
+                      {Array.from({ length: questions.length }).map((_, i) => (
+                        <div key={i} className={`w-2 h-2 rounded-full ${i <= idx ? 'bg-blue-600' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                      ))}
+                    </div>
+                  )}
+
                   {APEX_GUARDIAN_URL && reportState?.questionId !== q.id && (
                     <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
                       <button

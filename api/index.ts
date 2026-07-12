@@ -632,13 +632,13 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
 }
 
 app.post("/api/questions", async (req, res) => {
-  const { area, count } = req.body;
+  const { area, count, hardSubjects } = req.body;
   const targetArea = area || "Geral";
   const numQuestions = count || 1;
 
   const promptDef = PROMPTS.questions;
   const referenceQuestions = await fetchReferenceQuestions(targetArea, 8);
-  const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions) as string;
+  const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions, hardSubjects) as string;
 
   function stripLatex(text: string): string {
     if (!text) return text;

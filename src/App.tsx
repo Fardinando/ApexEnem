@@ -321,7 +321,7 @@ export default function App() {
           />
         )}
         {activeTab === 'perguntas' && (
-          <PerguntasView onWrongAnswer={handleWrongAnswer} />
+          <PerguntasView onWrongAnswer={handleWrongAnswer} hardSubjects={profile?.hard_subjects || []} />
         )}
         {activeTab === 'simulados' && (
           <SimuladosView
