@@ -518,8 +518,9 @@ export default function DashboardView({
           </div>
         </div>
 
-        <div className="md:col-span-12">
-          <AdPlaceholder slot="dashboard-sidebar" format="rectangle" className="my-4" user={currentUser} />
+        <div className="md:col-span-12 flex flex-wrap items-start justify-center gap-4">
+          <AdPlaceholder slot="dashboard-conteudo" format="skyscraper" user={currentUser} />
+          <AdPlaceholder slot="dashboard-sidebar" format="rectangle" user={currentUser} />
         </div>
 
         {/* Bento Card 6: Shortcuts & Motivation - Column */}

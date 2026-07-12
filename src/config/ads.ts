@@ -6,13 +6,6 @@ export interface AdSlot {
 
 export const AD_SLOTS: Record<string, AdSlot> = {
 
-  // ── POPUNDER (carrega uma vez no app) ──────────────────────────
-  popunder: {
-    code: `<script src="https://pl30323977.effectivecpmnetwork.com/9b/d7/3c/9bd73ca4b5a9df6c161eb2362674ee52.js"></script>`,
-    width: 0,
-    height: 0,
-  },
-
   // ── SOCIAL BAR (carrega uma vez no app) ────────────────────────
   socialbar: {
     code: `<script src="https://pl30323980.effectivecpmnetwork.com/f0/52/e9/f052e9422084a69205d7decf041aabab.js"></script>`,
@@ -45,6 +38,11 @@ export const AD_SLOTS: Record<string, AdSlot> = {
     width: 300,
     height: 250,
   },
+  'dashboard-conteudo': {
+    code: `<script>atOptions={'key':'26dac0f773defb16adff327a1f6b73be','format':'iframe','height':300,'width':160,'params':{}};</script><script src="https://www.highperformanceformat.com/26dac0f773defb16adff327a1f6b73be/invoke.js"></script>`,
+    width: 160,
+    height: 300,
+  },
   'dashboard-rodape': {
     code: `<script>atOptions={'key':'9cbbb203f3ef751f5b5187b626853850','format':'iframe','height':60,'width':468,'params':{}};</script><script src="https://www.highperformanceformat.com/9cbbb203f3ef751f5b5187b626853850/invoke.js"></script>`,
     width: 468,
@@ -56,6 +54,11 @@ export const AD_SLOTS: Record<string, AdSlot> = {
     code: `<script>atOptions={'key':'6ebafb4bb07f31c30bdc90eda41e1134','format':'iframe','height':90,'width':728,'params':{}};</script><script src="https://www.highperformanceformat.com/6ebafb4bb07f31c30bdc90eda41e1134/invoke.js"></script>`,
     width: 728,
     height: 90,
+  },
+  'redacao-conteudo': {
+    code: `<script>atOptions={'key':'9e4ef98b32e0667423ec5db23f15094e','format':'iframe','height':600,'width':160,'params':{}};</script><script src="https://www.highperformanceformat.com/9e4ef98b32e0667423ec5db23f15094e/invoke.js"></script>`,
+    width: 160,
+    height: 600,
   },
   'redacao-rodape': {
     code: `<script>atOptions={'key':'9cbbb203f3ef751f5b5187b626853850','format':'iframe','height':60,'width':468,'params':{}};</script><script src="https://www.highperformanceformat.com/9cbbb203f3ef751f5b5187b626853850/invoke.js"></script>`,
@@ -85,6 +88,11 @@ export const AD_SLOTS: Record<string, AdSlot> = {
     code: `<script>atOptions={'key':'6ebafb4bb07f31c30bdc90eda41e1134','format':'iframe','height':90,'width':728,'params':{}};</script><script src="https://www.highperformanceformat.com/6ebafb4bb07f31c30bdc90eda41e1134/invoke.js"></script>`,
     width: 728,
     height: 90,
+  },
+  'simulados-conteudo': {
+    code: `<script>atOptions={'key':'b6a8ab78e77171caf21881c02c58f5c0','format':'iframe','height':50,'width':320,'params':{}};</script><script src="https://www.highperformanceformat.com/b6a8ab78e77171caf21881c02c58f5c0/invoke.js"></script>`,
+    width: 320,
+    height: 50,
   },
   'simulados-rodape': {
     code: `<script>atOptions={'key':'9cbbb203f3ef751f5b5187b626853850','format':'iframe','height':60,'width':468,'params':{}};</script><script src="https://www.highperformanceformat.com/9cbbb203f3ef751f5b5187b626853850/invoke.js"></script>`,
@@ -127,7 +135,7 @@ export const AD_SLOTS: Record<string, AdSlot> = {
   },
 };
 
-export const SPECIAL_ADS = ['popunder', 'socialbar'];
+export const SPECIAL_ADS = ['socialbar'];
 export const SMARTLINK_SLOT = 'smartlink_url';
 
 export function hasAdSlotsConfigured(): boolean {

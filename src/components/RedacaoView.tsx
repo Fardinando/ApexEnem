@@ -638,7 +638,10 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
       </div>
 
-      <AdPlaceholder slot="redacao-rodape" format="banner" className="mt-6" />
+      <div className="flex flex-wrap items-start justify-center gap-4 mt-6">
+        <AdPlaceholder slot="redacao-conteudo" format="skyscraper" />
+        <AdPlaceholder slot="redacao-rodape" format="banner" />
+      </div>
 
       {showRewardAd && (
         <RewardAdOverlay

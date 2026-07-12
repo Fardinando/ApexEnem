@@ -797,7 +797,10 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
         </div>
       )}
 
-      <AdPlaceholder slot="simulados-rodape" format="banner" className="mt-6" />
+      <div className="flex flex-wrap items-start justify-center gap-4 mt-6">
+        <AdPlaceholder slot="simulados-conteudo" format="banner" />
+        <AdPlaceholder slot="simulados-rodape" format="banner" />
+      </div>
 
     </div>
 
