@@ -16,7 +16,7 @@ ALTER TABLE public.ApexEnem_progress ENABLE ROW LEVEL SECURITY;
 
 -- 4. Criar políticas de acesso (com verificação para evitar erro se já existirem)
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ApexEnem_progress' AND policyname='Usuarios podem inserir seu proprio progresso') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='apexenem_progress' AND policyname='Usuarios podem inserir seu proprio progresso') THEN
     CREATE POLICY "Usuarios podem inserir seu proprio progresso"
       ON public.ApexEnem_progress
       FOR INSERT
@@ -25,7 +25,7 @@ DO $$ BEGIN
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ApexEnem_progress' AND policyname='Usuarios podem atualizar seu proprio progresso') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='apexenem_progress' AND policyname='Usuarios podem atualizar seu proprio progresso') THEN
     CREATE POLICY "Usuarios podem atualizar seu proprio progresso"
       ON public.ApexEnem_progress
       FOR UPDATE
@@ -34,7 +34,7 @@ DO $$ BEGIN
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ApexEnem_progress' AND policyname='Usuarios podem ler seu proprio progresso') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='apexenem_progress' AND policyname='Usuarios podem ler seu proprio progresso') THEN
     CREATE POLICY "Usuarios podem ler seu proprio progresso"
       ON public.ApexEnem_progress
       FOR SELECT
@@ -43,7 +43,7 @@ DO $$ BEGIN
 END $$;
 
 DO $$ BEGIN
-  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ApexEnem_progress' AND policyname='Permitir upsert anonimo para service role') THEN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='apexenem_progress' AND policyname='Permitir upsert anonimo para service role') THEN
     CREATE POLICY "Permitir upsert anonimo para service role"
       ON public.ApexEnem_progress
       FOR ALL
