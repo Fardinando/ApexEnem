@@ -21,20 +21,19 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [] }: Perg
   const [reportState, setReportState] = useState<{ questionId: string; feedback: string; sent: boolean } | null>(null);
   const [revealedQuestions, setRevealedQuestions] = useState(1);
 
-  const APEX_GUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || '';
+  const APEXGUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
 
   const handleReportError = async (q: Question, userAnswer: string, feedback: string) => {
-    if (!APEX_GUARDIAN_URL) return;
     try {
-      await fetch(`${APEX_GUARDIAN_URL}/webhook/report`, {
+      const userId = 'anon_perguntas';
+      const hashHex = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(userId + q.id)).then(h => Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join(''));
+      await fetch(`${APEXGUARDIAN_URL}/webhook/report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          question: q,
-          userAnswer,
-          feedback,
-          timestamp: Date.now(),
-          source: 'perguntas-ia',
+          description: `Erro na pergunta ${q.id} (${q.area || 'N/A'}): ${feedback}. Resposta do usuário: ${userAnswer}`,
+          timestamp_frontend: Math.floor(Date.now() / 1000),
+          user_id_anon: hashHex,
         }),
       });
       setReportState({ questionId: q.id, feedback, sent: true });
