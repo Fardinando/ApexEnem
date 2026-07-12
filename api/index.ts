@@ -273,21 +273,7 @@ async function assertModelIsFree(modelName: string): Promise<void> {
   }
 }
 
-function generateFallbackCorrection(title: string, text: string) {
-  return {
-    score: 680,
-    generalFeedback: "Sua redação apresenta boa estrutura, mas não foi possível conectar ao servidor de IAs para a correção paralela de consenso.",
-    competencies: [
-      { id: 1, name: "Competência 1: Domínio da escrita formal", description: "Demonstrar domínio da modalidade escrita formal da língua portuguesa.", score: 120, feedback: "Atenção a pequenos desvios gramaticais de concordância e a acentuação." },
-      { id: 2, name: "Competência 2: Compreensão do tema e desenvolvimento", description: "Compreender a proposta de redação e aplicar conceitos das várias áreas de conhecimento.", score: 160, feedback: "Excelente abordagem do tema e escolha adequada do gênero dissertativo-argumentativo." },
-      { id: 3, name: "Competência 3: Projeto de texto e argumentação", description: "Selecionar, relacionar, organizar e interpretar informações em defesa de um ponto de vista.", score: 120, feedback: "Seus argumentos são claros, mas a articulação entre as ideias poderia ser fortalecida." },
-      { id: 4, name: "Competência 4: Coesão e coerência", description: "Demonstrar conhecimento dos mecanismos linguísticos necessários para a construção da argumentação.", score: 160, feedback: "Boa coesão interparágrafos e intraparágrafos." },
-      { id: 5, name: "Competência 5: Proposta de intervenção", description: "Elaborar proposta de intervenção para o problema abordado, respeitando os direitos humanos.", score: 120, feedback: "A sua proposta inclui agente e ação, mas faltou detalhar o meio/modo." }
-    ],
-    strengths: ["Boa estruturação em introdução, desenvolvimento e conclusão."],
-    weaknesses: ["Carece de detalhamento minucioso do quinto elemento da proposta de intervenção."]
-  };
-}
+
 
 async function fetchCorrectionFromModel(modelName: string, prompt: string) {
   for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
@@ -498,7 +484,7 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
           model: models[idx],
           data: res.value
         });
-      } else {
+      } else if (res.status === 'rejected') {
         errorsList.push(`${models[idx]}: ${res.reason?.message || res.reason}`);
       }
     });
@@ -510,11 +496,11 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
         if (backupData) {
           successfulCorrections.push({ model: "openrouter/free", data: backupData });
         } else {
-          return res.json(generateFallbackCorrection(title || "Sem título", contentToEvaluate));
+          return res.status(503).json({ error: "Todos os modelos de IA falharam ao processar sua redação.", details: errorsList.slice(0, 5) });
         }
-      } catch (backupErr) {
+      } catch (backupErr: any) {
         console.error("Backup model call failed too:", backupErr);
-        return res.json(generateFallbackCorrection(title || "Sem título", contentToEvaluate));
+        return res.status(503).json({ error: "Serviço de correção por IA indisponível no momento.", details: errorsList.slice(0, 5) });
       }
     }
 
