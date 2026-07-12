@@ -1,6 +1,6 @@
 import React from 'react';
 import { isAnyAdConfigured, getHouseAdContent, markHouseAdSeen, shouldShowHouseAd } from '../lib/ads';
-import { AD_SLOTS } from '../config/ads';
+import { AD_SLOTS, SPECIAL_ADS } from '../config/ads';
 import type { UserProfile } from '../types';
 
 interface AdPlaceholderProps {
@@ -19,14 +19,26 @@ const FORMAT_CLASSES: Record<string, string> = {
 
 export default function AdPlaceholder({ slot, format = 'banner', className = '', user, setActiveTab }: AdPlaceholderProps) {
   const adsConfigured = isAnyAdConfigured();
-  const adCode = AD_SLOTS[slot];
+  const adSlot = AD_SLOTS[slot];
 
-  if (adsConfigured && adCode) {
+  if (adsConfigured && adSlot && !SPECIAL_ADS.includes(slot)) {
+    const frameHtml = `<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;overflow:hidden">${adSlot.code}</body></html>`;
+
     return (
-      <div
-        className={`relative flex justify-center items-start overflow-hidden ${FORMAT_CLASSES[format]} ${className}`}
-        dangerouslySetInnerHTML={{ __html: adCode }}
-      />
+      <div className={`relative flex justify-center items-start overflow-hidden ${FORMAT_CLASSES[format]} ${className}`}>
+        {adSlot.width > 0 && adSlot.height > 0 ? (
+          <iframe
+            srcDoc={frameHtml}
+            width={adSlot.width}
+            height={adSlot.height}
+            style={{ border: 'none', overflow: 'hidden' }}
+            scrolling="no"
+            title={`ad-${slot}`}
+          />
+        ) : (
+          <div className="text-[10px] text-slate-400 italic p-1">anúncio</div>
+        )}
+      </div>
     );
   }
 

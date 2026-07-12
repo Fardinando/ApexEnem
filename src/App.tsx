@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress, deleteEssaysByUser, deleteSimuladosByUser, deleteLogsByUser } from './lib/supabase';
 import type { EssayCorrection, ActivityLog, WrongAnswer } from './types';
+import { loadSpecialAds } from './lib/ads';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
 import Sidebar from './components/Sidebar';
@@ -113,6 +114,11 @@ export default function App() {
     }
     localStorage.setItem('ApexEnem_dark_theme', String(isDarkMode));
   }, [isDarkMode]);
+
+  useEffect(() => {
+    const cleanup = loadSpecialAds();
+    return cleanup;
+  }, []);
 
 
 

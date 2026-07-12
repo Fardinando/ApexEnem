@@ -30,7 +30,7 @@ export function incrementRewardCounter(action: string): void {
 
 export default function RewardAdOverlay({ action, onContinue, onClose }: RewardAdOverlayProps) {
   const [countdown, setCountdown] = useState(7);
-  const adCode = AD_SLOTS['rewarded'];
+  const adSlot = AD_SLOTS['nativo'];
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
@@ -68,8 +68,15 @@ export default function RewardAdOverlay({ action, onContinue, onClose }: RewardA
         </div>
 
         <div className="bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden mb-4 min-h-[200px] flex items-center justify-center">
-          {isAnyAdConfigured() && adCode ? (
-            <div dangerouslySetInnerHTML={{ __html: adCode }} />
+          {isAnyAdConfigured() && adSlot?.code ? (
+            <iframe
+              srcDoc={`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><style>body{margin:0;overflow:hidden;display:flex;align-items:center;justify-content:center;min-height:200px}</style></head><body>${adSlot.code}</body></html>`}
+              width={adSlot.width || 300}
+              height={adSlot.height || 250}
+              style={{ border: 'none', overflow: 'hidden' }}
+              scrolling="no"
+              title="reward-ad"
+            />
           ) : (
             <div className="text-center px-4 py-8">
               <p className="text-sm font-bold text-indigo-600 dark:text-indigo-400">ApexEnem</p>

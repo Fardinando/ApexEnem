@@ -1,18 +1,40 @@
 import type { UserProfile } from '../types';
-import { AD_SLOTS, hasAdSlotsConfigured } from '../config/ads';
+import { AD_SLOTS, SPECIAL_ADS, SMARTLINK_SLOT, hasAdSlotsConfigured as configHasAds } from '../config/ads';
 
 export function isAnyAdConfigured(): boolean {
-  return hasAdSlotsConfigured();
+  return configHasAds();
 }
 
-export function executePopunder(): void {
-  const code = AD_SLOTS['popunder'];
-  if (!code) return;
-  try {
-    const el = document.createElement('div');
-    el.innerHTML = code;
-    document.body.appendChild(el);
-  } catch { /* silent */ }
+export function loadSpecialAds(): () => void {
+  const cleanups: (() => void)[] = [];
+
+  for (const name of SPECIAL_ADS) {
+    const slot = AD_SLOTS[name];
+    if (!slot?.code) continue;
+
+    const temp = document.createElement('div');
+    temp.innerHTML = slot.code;
+    const scripts = temp.querySelectorAll('script');
+
+    scripts.forEach((oldScript) => {
+      const newScript = document.createElement('script');
+      if (oldScript.src) {
+        newScript.src = oldScript.src;
+        newScript.async = oldScript.async;
+      } else {
+        newScript.textContent = oldScript.textContent;
+      }
+      document.body.appendChild(newScript);
+      cleanups.push(() => { try { document.body.removeChild(newScript); } catch {} });
+    });
+  }
+
+  return () => cleanups.forEach(fn => fn());
+}
+
+export function getSmartlinkUrl(): string | null {
+  const slot = AD_SLOTS[SMARTLINK_SLOT];
+  return slot?.code?.startsWith('http') ? slot.code : null;
 }
 
 const STORAGE_KEY = 'ApexEnem_house_ad_seen';
