@@ -1,5 +1,5 @@
-import React, { useEffect, useRef } from 'react';
-import { pushAd, isAdsenseConfigured, getHouseAdContent, markHouseAdSeen, shouldShowHouseAd } from '../lib/ads';
+import React from 'react';
+import { isAnyAdConfigured, getHouseAdContent, markHouseAdSeen, shouldShowHouseAd } from '../lib/ads';
 import { AD_SLOTS } from '../config/ads';
 import type { UserProfile } from '../types';
 
@@ -18,40 +18,18 @@ const FORMAT_CLASSES: Record<string, string> = {
 };
 
 export default function AdPlaceholder({ slot, format = 'banner', className = '', user, setActiveTab }: AdPlaceholderProps) {
-  const pushedRef = useRef(false);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const adsenseEnabled = isAdsenseConfigured();
+  const adsConfigured = isAnyAdConfigured();
   const adCode = AD_SLOTS[slot];
 
-  useEffect(() => {
-    if (!adsenseEnabled || !adCode) return;
-    // Wait for DOM insertion then push ad
-    const timer = setTimeout(() => {
-      if (!pushedRef.current) {
-        pushAd();
-        pushedRef.current = true;
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [slot, adsenseEnabled, adCode]);
-
-  // Repush on slot change
-  useEffect(() => {
-    pushedRef.current = false;
-  }, [slot]);
-
-  // AdSense mode — render the <ins> code from config
-  if (adsenseEnabled && adCode) {
+  if (adsConfigured && adCode) {
     return (
       <div
-        ref={containerRef}
         className={`relative flex justify-center items-start overflow-hidden ${FORMAT_CLASSES[format]} ${className}`}
         dangerouslySetInnerHTML={{ __html: adCode }}
       />
     );
   }
 
-  // Fallback: personalized house ads
   if (!shouldShowHouseAd()) return null;
   markHouseAdSeen();
 

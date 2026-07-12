@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState } from 'react';
-import { pushAd, isAdsenseConfigured } from '../lib/ads';
+import React, { useEffect, useState } from 'react';
+import { isAnyAdConfigured } from '../lib/ads';
 import { AD_SLOTS } from '../config/ads';
 
 const STORAGE_PREFIX = 'ApexEnem_reward_';
@@ -30,19 +30,11 @@ export function incrementRewardCounter(action: string): void {
 
 export default function RewardAdOverlay({ action, onContinue, onClose }: RewardAdOverlayProps) {
   const [countdown, setCountdown] = useState(7);
-  const pushedRef = useRef(false);
   const adCode = AD_SLOTS['rewarded'];
 
   useEffect(() => {
     document.body.style.overflow = 'hidden';
     return () => { document.body.style.overflow = ''; };
-  }, []);
-
-  useEffect(() => {
-    if (!pushedRef.current && isAdsenseConfigured()) {
-      pushAd();
-      pushedRef.current = true;
-    }
   }, []);
 
   useEffect(() => {
@@ -76,7 +68,7 @@ export default function RewardAdOverlay({ action, onContinue, onClose }: RewardA
         </div>
 
         <div className="bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden mb-4 min-h-[200px] flex items-center justify-center">
-          {isAdsenseConfigured() && adCode ? (
+          {isAnyAdConfigured() && adCode ? (
             <div dangerouslySetInnerHTML={{ __html: adCode }} />
           ) : (
             <div className="text-center px-4 py-8">

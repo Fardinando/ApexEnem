@@ -1,23 +1,18 @@
 import type { UserProfile } from '../types';
-import { ADSENSE_PUBLISHER_ID } from '../config/ads';
+import { AD_SLOTS, hasAdSlotsConfigured } from '../config/ads';
 
-declare global {
-  interface Window {
-    adsbygoogle: any[];
-  }
+export function isAnyAdConfigured(): boolean {
+  return hasAdSlotsConfigured();
 }
 
-export function pushAd(): void {
+export function executePopunder(): void {
+  const code = AD_SLOTS['popunder'];
+  if (!code) return;
   try {
-    (window.adsbygoogle = window.adsbygoogle || []).push({});
-  } catch {
-    /* ad blocker or not loaded */
-  }
-}
-
-export function isAdsenseConfigured(): boolean {
-  const envId = typeof import.meta.env !== 'undefined' ? (import.meta.env as any).VITE_ADSENSE_PUBLISHER_ID : undefined;
-  return !!(envId || ADSENSE_PUBLISHER_ID);
+    const el = document.createElement('div');
+    el.innerHTML = code;
+    document.body.appendChild(el);
+  } catch { /* silent */ }
 }
 
 const STORAGE_KEY = 'ApexEnem_house_ad_seen';

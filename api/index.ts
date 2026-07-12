@@ -109,7 +109,6 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/supabase/keep-alive", "/supabase/setup",
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
-    "/adsense-status",
     "/stats"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
@@ -1457,9 +1456,6 @@ app.get("/api/credentials-status", (req, res) => {
   });
 });
 
-app.get("/api/adsense-status", (_req, res) => {
-  res.json({ configured: !!process.env.VITE_ADSENSE_PUBLISHER_ID });
-});
 
 if (!process.env.VERCEL) {
   async function startServer() {
