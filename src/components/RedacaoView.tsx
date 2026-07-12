@@ -22,7 +22,7 @@ import { supabase } from '../lib/supabase';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd } from './RewardAdOverlay';
 
-const APEXGUARDIAN_URL = 'https://apexguardian.onrender.com';
+const APEXGUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
 
 interface RedacaoViewProps {
   onAddCorrection: (correction: EssayCorrection, log: ActivityLog) => void;
