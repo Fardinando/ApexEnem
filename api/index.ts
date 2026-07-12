@@ -227,6 +227,7 @@ function extractJsonFromText(rawText: string): any {
 const googleApiKey = process.env.GOOGLE_API_KEY;
 
 const openRouterKeys = [
+  process.env.OPENROUTER_API_KEY,
   process.env.OPENROUTER_API_KEY_V1,
   process.env.OPENROUTER_API_KEY_V2,
   process.env.OPENROUTER_API_KEY_V3,
@@ -492,7 +493,7 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
     const errorsList: string[] = [];
 
     results.forEach((res, idx) => {
-      if (res.status === "fulfilled") {
+      if (res.status === "fulfilled" && res.value != null) {
         successfulCorrections.push({
           model: models[idx],
           data: res.value
@@ -506,7 +507,11 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
       console.warn("All parallel models failed. Attempting single backup with openrouter/free...");
       try {
         const backupData = await fetchCorrectionFromModel("openrouter/free", prompt);
-        successfulCorrections.push({ model: "openrouter/free", data: backupData });
+        if (backupData) {
+          successfulCorrections.push({ model: "openrouter/free", data: backupData });
+        } else {
+          return res.json(generateFallbackCorrection(title || "Sem título", contentToEvaluate));
+        }
       } catch (backupErr) {
         console.error("Backup model call failed too:", backupErr);
         return res.json(generateFallbackCorrection(title || "Sem título", contentToEvaluate));
@@ -523,7 +528,8 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
       let compDesc = "";
 
       successfulCorrections.forEach(suc => {
-        const comp = suc.data.competencies?.find((c: any) => c.id === compId) || suc.data.competencies?.[compId - 1];
+        if (!suc?.data?.competencies) return;
+        const comp = suc.data.competencies.find((c: any) => c.id === compId) || suc.data.competencies[compId - 1];
         if (comp) {
           compName = comp.name || `Competência ${compId}`;
           compDesc = comp.description || "";
@@ -532,7 +538,7 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
           compSum += scoreVal;
           scoreCount++;
 
-          const modelNameClean = suc.model.split('/')[1] || suc.model;
+          const modelNameClean = (suc.model || '').split('/')[1] || suc.model;
           if (comp.feedback) {
             feedbacks.push(`🤖 **${modelNameClean}**: ${comp.feedback}`);
           }
