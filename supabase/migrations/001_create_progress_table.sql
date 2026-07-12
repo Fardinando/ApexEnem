@@ -14,31 +14,43 @@ CREATE INDEX IF NOT EXISTS idx_ApexEnem_progress_email ON public.ApexEnem_progre
 -- 3. Habilitar Row Level Security
 ALTER TABLE public.ApexEnem_progress ENABLE ROW LEVEL SECURITY;
 
--- 4. Criar políticas de acesso para a chave anônima (anon key)
--- Permite INSERT/UPDATE apenas do próprio email
-CREATE POLICY "Usuarios podem inserir seu proprio progresso"
-  ON public.ApexEnem_progress
-  FOR INSERT
-  WITH CHECK (auth.jwt() ->> 'email' = email);
+-- 4. Criar políticas de acesso (com verificação para evitar erro se já existirem)
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ApexEnem_progress' AND policyname='Usuarios podem inserir seu proprio progresso') THEN
+    CREATE POLICY "Usuarios podem inserir seu proprio progresso"
+      ON public.ApexEnem_progress
+      FOR INSERT
+      WITH CHECK (auth.jwt() ->> 'email' = email);
+  END IF;
+END $$;
 
-CREATE POLICY "Usuarios podem atualizar seu proprio progresso"
-  ON public.ApexEnem_progress
-  FOR UPDATE
-  USING (auth.jwt() ->> 'email' = email);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ApexEnem_progress' AND policyname='Usuarios podem atualizar seu proprio progresso') THEN
+    CREATE POLICY "Usuarios podem atualizar seu proprio progresso"
+      ON public.ApexEnem_progress
+      FOR UPDATE
+      USING (auth.jwt() ->> 'email' = email);
+  END IF;
+END $$;
 
-CREATE POLICY "Usuarios podem ler seu proprio progresso"
-  ON public.ApexEnem_progress
-  FOR SELECT
-  USING (auth.jwt() ->> 'email' = email);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ApexEnem_progress' AND policyname='Usuarios podem ler seu proprio progresso') THEN
+    CREATE POLICY "Usuarios podem ler seu proprio progresso"
+      ON public.ApexEnem_progress
+      FOR SELECT
+      USING (auth.jwt() ->> 'email' = email);
+  END IF;
+END $$;
 
--- 5. Política para permitir upsert anônimo (para quando não há autenticação)
--- Isso permite que o backend com service_role key possa operar livremente
--- E também permite que usuários anônimos (sem auth) salvem seu progresso
-CREATE POLICY "Permitir upsert anonimo para service role"
-  ON public.ApexEnem_progress
-  FOR ALL
-  USING (true)
-  WITH CHECK (true);
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='ApexEnem_progress' AND policyname='Permitir upsert anonimo para service role') THEN
+    CREATE POLICY "Permitir upsert anonimo para service role"
+      ON public.ApexEnem_progress
+      FOR ALL
+      USING (true)
+      WITH CHECK (true);
+  END IF;
+END $$;
 
 -- Nota: Se quiser mais segurança, remova a política acima e use apenas
 -- as políticas baseadas em JWT. Para um app estudantil, a política aberta
