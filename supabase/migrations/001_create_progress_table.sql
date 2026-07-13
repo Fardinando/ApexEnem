@@ -37,8 +37,8 @@ DROP POLICY IF EXISTS "Permitir upsert anonimo para service role" ON public.Apex
 CREATE POLICY "Permitir upsert anonimo para service role"
   ON public.ApexEnem_progress
   FOR ALL
-  USING (true)
-  WITH CHECK (true);
+  USING (auth.jwt() ->> 'email' = email)
+  WITH CHECK (auth.jwt() ->> 'email' = email);
 
 -- Nota: Se quiser mais segurança, remova a política acima e use apenas
 -- as políticas baseadas em JWT. Para um app estudantil, a política aberta

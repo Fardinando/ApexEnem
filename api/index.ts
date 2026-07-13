@@ -106,7 +106,7 @@ app.use((req, res, next) => {
 const requireAuth = async (req: any, res: any, next: any) => {
   const publicRoutes = [
     "/confirm-email", "/send-confirmation", "/credentials-status",
-    "/supabase/keep-alive", "/supabase/setup",
+    "/supabase/keep-alive",
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
     "/stats"
@@ -975,7 +975,7 @@ app.post("/api/supabase/save-progress", async (req, res) => {
     return res.status(400).json({ error: "Progresso é necessário." });
   }
 
-  if (!supabase) {
+  if (!supabaseAdmin) {
     return res.json({ success: false, message: "Supabase não está inicializado." });
   }
 
@@ -985,7 +985,7 @@ app.post("/api/supabase/save-progress", async (req, res) => {
   };
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("ApexEnem_progress")
       .upsert(
         { email, progress: safeProgress, updated_at: new Date().toISOString() },
@@ -1010,12 +1010,12 @@ app.get("/api/supabase/get-progress", async (req, res) => {
     return res.status(400).json({ error: "Usuário não autenticado." });
   }
 
-  if (!supabase) {
+  if (!supabaseAdmin) {
     return res.json({ success: false, message: "Supabase não está configurado." });
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("ApexEnem_progress")
       .select("progress")
       .eq("email", email.toLowerCase())
@@ -1053,14 +1053,8 @@ app.post("/api/supabase/setup", async (req, res) => {
     return res.json({ success: true, message: "Todas as tabelas existem." });
   }
 
-  // Helper to run SQL via various methods
+  // Helper to run SQL via Management API
   async function runSql(sql: string): Promise<boolean> {
-    // Method 1: exec_sql RPC
-    try {
-      const { error } = await supabaseAdmin!.rpc("exec_sql", { sql });
-      if (!error) return true;
-    } catch {}
-    // Method 2: Management API (if key is configured)
     const mgmtKey = process.env.SUPABASE_MANAGEMENT_KEY;
     if (mgmtKey && supabaseUrl) {
       try {
@@ -1076,8 +1070,8 @@ app.post("/api/supabase/setup", async (req, res) => {
     return false;
   }
 
-  // Try to create exec_sql function first, then tables
-  const allSql = `CREATE OR REPLACE FUNCTION public.exec_sql(sql text) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$ BEGIN EXECUTE sql; END; $$;\n\n${missing.map(t => getTableSql(t)).join("\n\n")}`;
+  // Try to create tables via Management API
+  const allSql = missing.map(t => getTableSql(t)).join("\n\n");
   const created = await runSql(allSql);
   if (created) {
     const recheck = [];
@@ -1095,13 +1089,7 @@ app.post("/api/supabase/setup", async (req, res) => {
 -- Dashboard: https://supabase.com/dashboard
 -- ═══════════════════════════════════════════
 
--- 1. Cria função auxiliar para migrações futuras
-CREATE OR REPLACE FUNCTION public.exec_sql(sql text)
-RETURNS void
-LANGUAGE plpgsql SECURITY DEFINER
-AS $$ BEGIN EXECUTE sql; END; $$;
-
-${missing.map(t => getTableSql(t)).join("\n\n")}\n\n-- 3. Cria perfis para usuários existentes sem perfil\nINSERT INTO public.profiles (id, name, region, state, city)\nSELECT id, COALESCE(raw_user_meta_data ->> 'name', 'Estudante'), raw_user_meta_data ->> 'region', raw_user_meta_data ->> 'state', raw_user_meta_data ->> 'city' FROM auth.users ON CONFLICT DO NOTHING;`;
+${missing.map(t => getTableSql(t)).join("\n\n")}\n\n-- 2. Cria perfis para usuários existentes sem perfil\nINSERT INTO public.profiles (id, name, region, state, city)\nSELECT id, COALESCE(raw_user_meta_data ->> 'name', 'Estudante'), raw_user_meta_data ->> 'region', raw_user_meta_data ->> 'state', raw_user_meta_data ->> 'city' FROM auth.users ON CONFLICT DO NOTHING;`;
 
   return res.json({
     success: false,
@@ -1195,7 +1183,9 @@ END $$;`;
 );
 ALTER TABLE public."ApexEnem_progress" ENABLE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS "all_access" ON public."ApexEnem_progress";
-CREATE POLICY "all_access" ON public."ApexEnem_progress" USING (true) WITH CHECK (true);`;
+CREATE POLICY "all_access" ON public."ApexEnem_progress"
+  USING (auth.jwt() ->> 'email' = email)
+  WITH CHECK (auth.jwt() ->> 'email' = email);`;
 
     default:
       return "";
@@ -1203,12 +1193,12 @@ CREATE POLICY "all_access" ON public."ApexEnem_progress" USING (true) WITH CHECK
 }
 
 app.get("/api/supabase/keep-alive", async (req, res) => {
-  if (!supabase) {
+  if (!supabaseAdmin) {
     return res.json({ status: "supabase_not_configured" });
   }
 
   try {
-    const { data, error } = await supabase
+    const { data, error } = await supabaseAdmin
       .from("ApexEnem_progress")
       .select("email")
       .limit(1);
