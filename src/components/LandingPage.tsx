@@ -417,6 +417,15 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
 }
 
 export default function LandingPage({ onStart, onSignup }: { onStart: () => void; onSignup?: () => void }) {
+  const [stats, setStats] = useState<{ totalUsers: number } | null>(null);
+
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(setStats)
+      .catch(() => {});
+  }, []);
+
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -503,6 +512,26 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </motion.div>
         </div>
       </section>
+
+      {stats && stats.totalUsers > 0 && (
+        <section className="py-12 border-y border-slate-100 dark:border-slate-800/50 bg-white dark:bg-[#0a0814]">
+          <div className="max-w-4xl mx-auto px-4 flex flex-col items-center gap-3">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-950/40 rounded-xl">
+                <Users className="h-6 w-6 text-blue-600 dark:text-blue-400" />
+              </div>
+              <div className="text-center">
+                <p className="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                  {stats.totalUsers.toLocaleString('pt-BR')}
+                </p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
+                  {stats.totalUsers === 1 ? 'aluno cadastrado' : 'alunos cadastrados'}
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+      )}
 
       <section id="features" className="py-20 md:py-28 bg-slate-50/50 dark:bg-[#0f0a1e]/50">
         <div className="max-w-6xl mx-auto px-4">
