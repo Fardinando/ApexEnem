@@ -1437,6 +1437,33 @@ app.get("/api/stats", async (_req, res) => {
   res.json({ totalUsers, regionCounts, tablesExist });
 });
 
+app.post("/api/delete-account", async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.status(500).json({ error: "Serviço de autenticação indisponível." });
+  }
+
+  const userId = req.user?.id;
+  if (!userId) {
+    return res.status(401).json({ error: "Usuário não autenticado." });
+  }
+
+  const tables = ["essay_corrections", "simulado_history", "activity_logs", "profiles"];
+  for (const table of tables) {
+    const { error } = await supabaseAdmin.from(table).delete().eq(table === "profiles" ? "id" : "user_id", userId);
+    if (error) {
+      console.error(`delete-account: failed to delete from ${table}:`, error.message);
+    }
+  }
+
+  const { error } = await supabaseAdmin.auth.admin.deleteUser(userId);
+  if (error) {
+    console.error("delete-account: failed to delete auth user:", error.message);
+    return res.status(500).json({ error: "Erro ao excluir conta." });
+  }
+
+  return res.json({ success: true });
+});
+
 app.get("/api/credentials-status", (req, res) => {
   res.json({
     openRouter: openRouterKeys.length > 0,

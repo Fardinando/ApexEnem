@@ -14,9 +14,13 @@ import {
   Sparkles, 
   CheckCircle,
   HelpCircle,
-  Clock
+  Clock,
+  Trophy,
+  Zap,
+  Star
 } from 'lucide-react';
 import { UserProfile, EssayCorrection, ActivityLog } from '../types';
+import { getLevelFromXp, getLevelTitle, type GamificationStats, type Achievement } from '../lib/gamification';
 import AdPlaceholder from './AdPlaceholder';
 
 interface DashboardViewProps {
@@ -25,6 +29,8 @@ interface DashboardViewProps {
   essayCorrections: EssayCorrection[];
   simuladosHistory: { scorePercent: number; date: string; subject: string }[];
   activityLogs: ActivityLog[];
+  gamificationStats: GamificationStats;
+  achievements: Achievement[];
 }
 
 export default function DashboardView({ 
@@ -32,9 +38,26 @@ export default function DashboardView({
   setActiveTab, 
   essayCorrections, 
   simuladosHistory,
-  activityLogs
+  activityLogs,
+  gamificationStats,
+  achievements,
 }: DashboardViewProps) {
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
+
+  const levelInfo = getLevelFromXp(currentUser.totalXp || 0);
+  const levelTitle = getLevelTitle(levelInfo.level);
+
+  // Subject breakdown from simulados
+  const subjectBreakdown: Record<string, { count: number; avgScore: number }> = {};
+  simuladosHistory.forEach(s => {
+    if (!subjectBreakdown[s.subject]) subjectBreakdown[s.subject] = { count: 0, avgScore: 0 };
+    subjectBreakdown[s.subject].count++;
+    subjectBreakdown[s.subject].avgScore += s.scorePercent;
+  });
+  Object.keys(subjectBreakdown).forEach(k => {
+    subjectBreakdown[k].avgScore = Math.round(subjectBreakdown[k].avgScore / subjectBreakdown[k].count);
+  });
+  const sortedSubjects = Object.entries(subjectBreakdown).sort((a, b) => b[1].count - a[1].count);
 
   // Initialize stats with real data
   const totalEssays = essayCorrections.length;
@@ -133,7 +156,7 @@ export default function DashboardView({
         <div id="bento-streak" className="md:col-span-4 !bg-gradient-to-br !from-[#F59E0B] !to-[#D97706] text-white border-none p-5 rounded-3xl flex flex-col justify-between items-center text-center min-h-[220px] relative overflow-hidden shadow-lg transition-all hover:scale-[1.02] duration-300">
           
           <div className="relative z-10">
-            <span className="text-[10px] uppercase tracking-wider font-mono font-extrabold opacity-80 text-amber-50">Sua Ofensiva</span>
+            <span className="text-[10px] uppercase tracking-wider font-mono font-extrabold opacity-80 text-amber-50">Nível {levelInfo.level} — {levelTitle}</span>
             <h3 className="font-display font-black text-xl mt-0.5 text-white">Foco Diário</h3>
           </div>
 
@@ -152,7 +175,7 @@ export default function DashboardView({
             {/* Number of days inside the flame */}
             <div className="absolute inset-0 flex flex-col justify-center items-center z-20">
               <span className="text-4xl font-extrabold font-display text-white drop-shadow-[0_2px_5px_rgba(0,0,0,0.55)] flex items-center justify-center leading-none">
-                {currentUser.streak || 3}
+                {currentUser.streak || 1}
               </span>
               <span className="text-[9px] uppercase tracking-wider font-mono font-black text-amber-50 drop-shadow-sm leading-none mt-0.5 block">
                 Dias
@@ -162,11 +185,24 @@ export default function DashboardView({
 
           <div className="relative z-10 space-y-1">
             <div>
-              <span className="text-sm font-display font-bold tracking-tight text-white">{currentUser.streak || 3} dias de garra</span>
+              <span className="text-sm font-display font-bold tracking-tight text-white">{currentUser.streak || 1} dias de garra</span>
             </div>
             <p className="text-[10px] opacity-90 leading-relaxed text-amber-50 max-w-[90%] mx-auto">
               Complete simulados e redações para expandir seu fogo!
             </p>
+            {/* XP Progress Bar */}
+            <div className="mt-2">
+              <div className="flex justify-between text-[9px] font-mono text-amber-100 mb-0.5">
+                <span>{levelInfo.currentXp} XP</span>
+                <span>{levelInfo.nextThreshold} XP</span>
+              </div>
+              <div className="h-1.5 bg-white/20 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-white rounded-full transition-all duration-700"
+                  style={{ width: `${levelInfo.progress}%` }}
+                />
+              </div>
+            </div>
           </div>
         </div>
 
@@ -582,6 +618,97 @@ export default function DashboardView({
 
           <div className="absolute -bottom-4 -right-4 w-20 h-20 bg-blue-500 opacity-20 blur-2xl"></div>
         </div>
+
+        {/* Bento Card 7: Achievements / Conquistas */}
+        <div id="bento-achievements" className="md:col-span-6 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
+          <div className="flex justify-between items-center mb-4">
+            <div>
+              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
+                <Trophy className="h-4.5 w-4.5 text-amber-500" />
+                Conquistas Desbloqueadas
+              </h3>
+              <p className="text-slate-450 text-[10px] mt-0.5">{achievements.length} de 18 conquistas</p>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded font-mono font-bold">
+              {Math.round((achievements.length / 18) * 100)}%
+            </span>
+          </div>
+
+          {achievements.length === 0 ? (
+            <div className="py-6 text-center">
+              <Trophy className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+              <p className="text-xs text-slate-400">Complete atividades para desbloquear conquistas!</p>
+            </div>
+          ) : (
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+              {achievements.slice(0, 6).map((ach) => (
+                <div
+                  key={ach.id}
+                  className="p-3 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-center space-y-1 transition hover:scale-[1.03]"
+                >
+                  <span className="text-xl">{ach.icon}</span>
+                  <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-tight">{ach.title}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Progress bar towards next achievement */}
+          <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+            <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+              <span>Progresso Geral</span>
+              <span>{achievements.length}/18</span>
+            </div>
+            <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-all duration-700"
+                style={{ width: `${(achievements.length / 18) * 100}%` }}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Bento Card 8: Subject Performance Breakdown */}
+        {sortedSubjects.length > 0 && (
+          <div id="bento-subject-breakdown" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
+            <div className="flex justify-between items-center mb-4">
+              <div>
+                <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
+                  <BarChart2 className="h-4.5 w-4.5 text-purple-500" />
+                  Desempenho por Matéria
+                </h3>
+                <p className="text-slate-450 text-[10px] mt-0.5">Média de acertos nos simulados por área de conhecimento</p>
+              </div>
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+              {sortedSubjects.map(([subject, data]) => {
+                const colors: Record<string, string> = {
+                  'Matemática': 'from-blue-500 to-blue-600',
+                  'Humanas': 'from-purple-500 to-purple-600',
+                  'Natureza': 'from-emerald-500 to-emerald-600',
+                  'Linguagens': 'from-amber-500 to-amber-600',
+                  'Geral': 'from-slate-500 to-slate-600',
+                };
+                const barColor = colors[subject] || 'from-slate-500 to-slate-600';
+                return (
+                  <div key={subject} className="p-4 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-mono text-slate-500 uppercase font-bold">{subject}</span>
+                      <span className="text-xs font-bold text-slate-700 dark:text-slate-200">{data.avgScore}%</span>
+                    </div>
+                    <div className="h-2 bg-slate-200 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full bg-gradient-to-r ${barColor} rounded-full transition-all duration-700`}
+                        style={{ width: `${data.avgScore}%` }}
+                      />
+                    </div>
+                    <p className="text-[9px] text-slate-400">{data.count} simulado{data.count > 1 ? 's' : ''}</p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
       </div>
 

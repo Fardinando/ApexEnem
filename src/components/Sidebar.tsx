@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
 import {
   GraduationCap, LayoutDashboard, FileText, HelpCircle, BookOpen,
-  Settings, Flame, LogOut, Target, Sun, Moon, Trophy, X, Plus, User
+  Settings, Flame, LogOut, Target, Sun, Moon, Trophy, X, Plus, User, Zap
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import { getLevelFromXp, getLevelTitle } from '../lib/gamification';
 
 interface SidebarProps {
   currentUser: UserProfile;
@@ -31,6 +32,8 @@ const getInitials = (nameStr: string) => {
 
 export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout, isDarkMode, toggleDarkMode }: SidebarProps) {
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const levelInfo = getLevelFromXp((currentUser as any).totalXp || 0);
+  const levelTitle = getLevelTitle(levelInfo.level);
 
   return (
     <>
@@ -90,6 +93,9 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
               <div className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1.5 rounded-full font-bold text-amber-700 dark:text-amber-400">
                 <Flame className="h-3.5 w-3.5 fill-amber-500" />{currentUser.streak || 1}d
               </div>
+              <div className="flex items-center gap-1 bg-purple-50 dark:bg-purple-950/30 px-2.5 py-1.5 rounded-full font-bold text-purple-600 dark:text-purple-400">
+                <Zap className="h-3.5 w-3.5" />Nv.{levelInfo.level}
+              </div>
               <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1.5 rounded-full font-bold text-blue-600 dark:text-blue-400">
                 <Target className="h-3.5 w-3.5" />Meta: {currentUser.targetScore || 750}
               </div>
@@ -128,11 +134,17 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
               <p className="text-[10px] text-slate-500 font-mono truncate">{currentUser.email}</p>
             </div>
           </div>
-          <div className="grid grid-cols-2 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 text-center">
+          <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60 text-center">
             <div>
               <span className="text-[9px] uppercase tracking-wider text-slate-400 font-mono block">Ofensiva</span>
               <div className="flex items-center justify-center gap-1 text-xs font-extrabold text-amber-600 dark:text-amber-400">
                 <Flame className="h-3.5 w-3.5 fill-amber-500" /><span>{currentUser.streak || 1}d</span>
+              </div>
+            </div>
+            <div className="border-l border-slate-200/60 dark:border-slate-800/60">
+              <span className="text-[9px] uppercase tracking-wider text-slate-400 font-mono block">Nível</span>
+              <div className="flex items-center justify-center gap-0.5 text-xs font-extrabold text-purple-600 dark:text-purple-400">
+                <Zap className="h-3.5 w-3.5" /><span>{levelInfo.level}</span>
               </div>
             </div>
             <div className="border-l border-slate-200/60 dark:border-slate-800/60">

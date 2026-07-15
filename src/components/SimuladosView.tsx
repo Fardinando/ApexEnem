@@ -153,6 +153,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
   const [showFinishModal, setShowFinishModal] = useState(false);
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [showRewardAd, setShowRewardAd] = useState(false);
+  const [resultsSaved, setResultsSaved] = useState(false);
 
   
   const timerRef = useRef<NodeJS.Timeout | null>(null);
@@ -189,8 +190,9 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
   }, [simulado?.isActive]);
 
   useEffect(() => {
-    if (timerExpired && simulado && !simulado.isActive && simulado.scorePercent !== undefined) {
+    if (timerExpired && simulado && !simulado.isActive && simulado.scorePercent !== undefined && !resultsSaved) {
       setTimerExpired(false);
+      setResultsSaved(true);
       onSaveSimuladoResult(simulado.scorePercent, simulado.config.subject);
       if (onWrongAnswer && simulado.config.subject !== 'Geral') {
         simulado.questions.forEach(q => {
@@ -233,6 +235,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
         isActive: true,
         dateStarted: new Date().toLocaleDateString('pt-BR')
       });
+      setResultsSaved(false);
       setShowGabarito(false);
     } catch (err) {
       alert('Erro ao carregar questões. Tente novamente.');
@@ -310,7 +313,10 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
       ...results
     });
 
-    onSaveSimuladoResult(results.scorePercent, simulado.config.subject);
+    if (!resultsSaved) {
+      setResultsSaved(true);
+      onSaveSimuladoResult(results.scorePercent, simulado.config.subject);
+    }
 
     if (onWrongAnswer && simulado.config.subject !== 'Geral') {
       simulado.questions.forEach(q => {

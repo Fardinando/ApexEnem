@@ -21,13 +21,13 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [] }: Perg
   const [reportState, setReportState] = useState<{ questionId: string; feedback: string; sent: boolean } | null>(null);
   const [revealedQuestions, setRevealedQuestions] = useState(1);
 
-  const APEXGUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
+  const APEX_GUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
 
   const handleReportError = async (q: Question, userAnswer: string, feedback: string) => {
     try {
       const userId = 'anon_perguntas';
       const hashHex = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(userId + q.id)).then(h => Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join(''));
-      await fetch(`${APEXGUARDIAN_URL}/webhook/report`, {
+      await fetch(`${APEX_GUARDIAN_URL}/webhook/report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

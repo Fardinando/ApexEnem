@@ -143,3 +143,10 @@ export function hasAdSlotsConfigured(): boolean {
     ([key, slot]) => !SPECIAL_ADS.includes(key) && key !== SMARTLINK_SLOT && slot.code.trim().length > 0
   );
 }
+
+export const VIDEO_AD_CONFIG = {
+  enabled: true,
+  intervalActions: 3,
+  duration: 10,
+  tagUrl: '',
+};

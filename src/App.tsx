@@ -1,17 +1,30 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, lazy, Suspense } from 'react';
 import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress, deleteEssaysByUser, deleteSimuladosByUser, deleteLogsByUser } from './lib/supabase';
 import type { EssayCorrection, ActivityLog, WrongAnswer } from './types';
+import { calculateStreak, XP_REWARDS, getUnlockedAchievements, computeGamificationStats, type GamificationStats } from './lib/gamification';
 import { loadSpecialAds } from './lib/ads';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
 import Sidebar from './components/Sidebar';
-import DashboardView from './components/DashboardView';
-import RedacaoView from './components/RedacaoView';
-import PerguntasView from './components/PerguntasView';
-import SimuladosView from './components/SimuladosView';
 import LandingPage from './components/LandingPage';
-import ConfiguracoesView from './components/ConfiguracoesView';
-import AprendizadoView from './components/AprendizadoView';
+
+const DashboardView = lazy(() => import('./components/DashboardView'));
+const RedacaoView = lazy(() => import('./components/RedacaoView'));
+const PerguntasView = lazy(() => import('./components/PerguntasView'));
+const SimuladosView = lazy(() => import('./components/SimuladosView'));
+const ConfiguracoesView = lazy(() => import('./components/ConfiguracoesView'));
+const AprendizadoView = lazy(() => import('./components/AprendizadoView'));
+
+function ViewSpinner() {
+  return (
+    <div className="flex items-center justify-center py-24">
+      <div className="text-center space-y-3">
+        <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto" />
+        <p className="text-xs text-slate-400">Carregando módulo...</p>
+      </div>
+    </div>
+  );
+}
 
 
 
@@ -30,6 +43,14 @@ export default function App() {
   const [simuladosHistory, setSimuladosHistory] = useState<{ scorePercent: number; date: string; subject: string }[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
+  const [totalXp, setTotalXp] = useState(() => {
+    const saved = localStorage.getItem('ApexEnem_total_xp');
+    return saved ? parseInt(saved, 10) : 0;
+  });
+  const [longestStreak, setLongestStreak] = useState(() => {
+    const saved = localStorage.getItem('ApexEnem_longest_streak');
+    return saved ? parseInt(saved, 10) : 0;
+  });
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   const navigate = (path: string) => {
@@ -78,6 +99,23 @@ export default function App() {
         if (cancelled) return;
         setProfile(p);
         setRequireOnboarding(!p?.serie);
+
+        // Calculate and update streak
+        if (p) {
+          const { newStreak, isNewDay } = calculateStreak(p.last_login_date);
+          if (isNewDay && newStreak > 0) {
+            const updatedStreak = (p.streak || 0) + newStreak;
+            const newLongest = Math.max(updatedStreak, longestStreak);
+            setLongestStreak(newLongest);
+            localStorage.setItem('ApexEnem_longest_streak', String(newLongest));
+            await upsertProfile({
+              id: session.user.id,
+              streak: updatedStreak,
+              last_login_date: new Date().toISOString().split('T')[0],
+            }).catch(() => {});
+            setProfile((prev: any) => ({ ...prev, streak: updatedStreak, last_login_date: new Date().toISOString().split('T')[0] }));
+          }
+        }
 
         const [essays, sims, logs, progress] = await Promise.all([
           fetchEssays(session.user.id),
@@ -171,6 +209,11 @@ export default function App() {
       if ((newCorr.score || 0) < 700) {
         handleWrongAnswer('Redação', 'redacao');
       }
+      // Award XP for essay
+      const xpEarned = XP_REWARDS.ESSAY_CORRECTION;
+      const newXp = totalXp + xpEarned;
+      setTotalXp(newXp);
+      localStorage.setItem('ApexEnem_total_xp', String(newXp));
     } catch (err) {
       console.error("Failed to save correction:", err);
     }
@@ -196,6 +239,13 @@ export default function App() {
       setActivityLogs(prev => [log, ...prev]);
       const p = await getProfile(session.user.id);
       if (p) setProfile(p);
+      // Award XP for simulado
+      let xpEarned = XP_REWARDS.SIMULADO_PASS;
+      if (scorePercent >= 80) xpEarned = XP_REWARDS.SIMULADO_HIGH_SCORE;
+      if (scorePercent === 100) xpEarned = XP_REWARDS.SIMULADO_PERFECT;
+      const newXp = totalXp + xpEarned;
+      setTotalXp(newXp);
+      localStorage.setItem('ApexEnem_total_xp', String(newXp));
     } catch (err) {
       console.error("Failed to save simulado result:", err);
     }
@@ -242,11 +292,28 @@ export default function App() {
     if (!session?.user || !confirm('Tem certeza? Esta ação é irreversível.')) return;
 
     try {
-      await supabase.from('essay_corrections').delete().eq('user_id', session.user.id);
-      await supabase.from('simulado_history').delete().eq('user_id', session.user.id);
-      await supabase.from('activity_logs').delete().eq('user_id', session.user.id);
-      await supabase.from('profiles').delete().eq('id', session.user.id);
-      await supabase.auth.admin.deleteUser(session.user.id);
+      const { data: { session: activeSession } } = await supabase.auth.getSession();
+      const token = activeSession?.access_token;
+
+      if (!token) {
+        console.error("No access token found");
+        return;
+      }
+
+      const res = await fetch('/api/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`,
+        },
+      });
+
+      if (!res.ok) {
+        const body = await res.json().catch(() => ({}));
+        console.error("Delete account failed:", body.error || res.statusText);
+        return;
+      }
+
       await supabase.auth.signOut();
     } catch (err) {
       console.error("Failed to delete account:", err);
@@ -298,7 +365,19 @@ export default function App() {
     streak: profile?.streak || 1,
     lastLoginDate: profile?.last_login_date,
     confirmed: true,
+    totalXp,
+    longestStreak: Math.max(longestStreak, profile?.streak || 1),
   };
+
+  const gamificationStats = computeGamificationStats({
+    essays: essayCorrections,
+    simulados: simuladosHistory,
+    streak: profile?.streak || 1,
+    longestStreak: Math.max(longestStreak, profile?.streak || 1),
+    totalXp,
+  });
+
+  const unlockedAchievements = getUnlockedAchievements(gamificationStats);
 
   return (
     <div id="app-workspace" className="min-h-screen lg:h-screen bg-slate-50 dark:bg-[#0f172a] text-[#1b1b24] dark:text-[#f3effc] flex flex-col lg:flex-row transition-colors duration-300 pb-16 lg:pb-0 lg:overflow-hidden">
@@ -311,51 +390,55 @@ export default function App() {
         toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
       />
       <main id="view-pane" className="flex-grow p-6 md:p-10 lg:p-12 max-w-7xl mx-auto w-full lg:overflow-y-auto lg:h-screen">
-        {activeTab === 'dashboard' && (
-          <DashboardView
-            currentUser={currentUser as any}
-            setActiveTab={setActiveTab}
-            essayCorrections={essayCorrections}
-            simuladosHistory={simuladosHistory}
-            activityLogs={activityLogs}
-          />
-        )}
-        {activeTab === 'redacao' && (
-          <RedacaoView
-            onAddCorrection={handleAddCorrection}
-            essayCorrections={essayCorrections}
-          />
-        )}
-        {activeTab === 'perguntas' && (
-          <PerguntasView onWrongAnswer={handleWrongAnswer} hardSubjects={profile?.hard_subjects || []} />
-        )}
-        {activeTab === 'simulados' && (
-          <SimuladosView
-            onSaveSimuladoResult={handleSaveSimuladoResult}
-            onWrongAnswer={handleWrongAnswer}
-            accessToken={session.access_token}
-          />
-        )}
-        {activeTab === 'aprendizado' && (
-          <AprendizadoView
-            essayCorrections={essayCorrections}
-            simuladosHistory={simuladosHistory}
-            currentUser={currentUser as any}
-            accessToken={session.access_token}
-            wrongAnswers={wrongAnswers}
-          />
-        )}
-        {activeTab === 'configuracoes' && (
-          <ConfiguracoesView
-            currentUser={currentUser as any}
-            isDarkMode={isDarkMode}
-            toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
-            onLogout={handleLogout}
-            onClearLocalData={handleClearLocalData}
-            onDeleteAccount={handleDeleteAccount}
-            onUpdateProfile={handleUpdateProfile}
-          />
-        )}
+        <Suspense fallback={<ViewSpinner />}>
+          {activeTab === 'dashboard' && (
+            <DashboardView
+              currentUser={currentUser as any}
+              setActiveTab={setActiveTab}
+              essayCorrections={essayCorrections}
+              simuladosHistory={simuladosHistory}
+              activityLogs={activityLogs}
+              gamificationStats={gamificationStats}
+              achievements={unlockedAchievements}
+            />
+          )}
+          {activeTab === 'redacao' && (
+            <RedacaoView
+              onAddCorrection={handleAddCorrection}
+              essayCorrections={essayCorrections}
+            />
+          )}
+          {activeTab === 'perguntas' && (
+            <PerguntasView onWrongAnswer={handleWrongAnswer} hardSubjects={profile?.hard_subjects || []} />
+          )}
+          {activeTab === 'simulados' && (
+            <SimuladosView
+              onSaveSimuladoResult={handleSaveSimuladoResult}
+              onWrongAnswer={handleWrongAnswer}
+              accessToken={session.access_token}
+            />
+          )}
+          {activeTab === 'aprendizado' && (
+            <AprendizadoView
+              essayCorrections={essayCorrections}
+              simuladosHistory={simuladosHistory}
+              currentUser={currentUser as any}
+              accessToken={session.access_token}
+              wrongAnswers={wrongAnswers}
+            />
+          )}
+          {activeTab === 'configuracoes' && (
+            <ConfiguracoesView
+              currentUser={currentUser as any}
+              isDarkMode={isDarkMode}
+              toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
+              onLogout={handleLogout}
+              onClearLocalData={handleClearLocalData}
+              onDeleteAccount={handleDeleteAccount}
+              onUpdateProfile={handleUpdateProfile}
+            />
+          )}
+        </Suspense>
       </main>
     </div>
   );

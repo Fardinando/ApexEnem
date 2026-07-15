@@ -21,6 +21,8 @@ export interface UserProfile {
   streak?: number;
   lastLoginDate?: string;
   avatar?: string;
+  totalXp?: number;
+  longestStreak?: number;
 }
 
 export interface PendingUser {

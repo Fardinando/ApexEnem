@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useMemo } from 'react';
 import { 
   FileText, 
   Upload, 
@@ -15,14 +15,16 @@ import {
   BookOpen,
   X,
   Target,
-  Bug
+  Bug,
+  TrendingUp,
+  BarChart2
 } from 'lucide-react';
 import { EssayCorrection, ActivityLog } from '../types';
 import { supabase } from '../lib/supabase';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd } from './RewardAdOverlay';
 
-const APEXGUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
+const APEX_GUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
 
 interface RedacaoViewProps {
   onAddCorrection: (correction: EssayCorrection, log: ActivityLog) => void;
@@ -209,7 +211,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       const { data: { user } } = await supabase.auth.getUser();
       const userId = user?.id || 'anon';
       const hashHex = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(userId)).then(h => Array.from(new Uint8Array(h)).map(b => b.toString(16).padStart(2, '0')).join(''));
-      await fetch(`${APEXGUARDIAN_URL}/webhook/report`, {
+      await fetch(`${APEX_GUARDIAN_URL}/webhook/report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -345,6 +347,30 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                   <label className="font-bold text-slate-800 dark:text-slate-200" htmlFor="essay-textarea">Conteúdo do Texto</label>
                   <span>{text.length} caracteres ({Math.round(text.length / 5.5)} palavras estimadas)</span>
                 </div>
+                
+                {/* Word count progress bar (ENEM target: ~300 words / 1650 chars) */}
+                {text.length > 0 && (
+                  <div className="space-y-1">
+                    <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                      <span>{Math.round(text.length / 5.5)} palavras</span>
+                      <span className={Math.round(text.length / 5.5) >= 250 ? 'text-green-500 font-bold' : ''}>
+                        {Math.round(text.length / 5.5) >= 250 ? '✓ Tamanho ideal' : `Meta: ~300 palavras`}
+                      </span>
+                    </div>
+                    <div className="h-1 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                      <div
+                        className={`h-full rounded-full transition-all duration-500 ${
+                          Math.round(text.length / 5.5) >= 300
+                            ? 'bg-green-500'
+                            : Math.round(text.length / 5.5) >= 250
+                            ? 'bg-blue-500'
+                            : 'bg-amber-500'
+                        }`}
+                        style={{ width: `${Math.min((Math.round(text.length / 5.5) / 300) * 100, 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
                 
                 {/* Simulated ENEM lined paper effect */}
                 <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-inner">
@@ -630,6 +656,45 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                 </div>
 
               </div>
+
+              {/* Score Evolution Mini Chart */}
+              {essayCorrections.length > 1 && (
+                <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-3">
+                  <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 font-mono flex items-center gap-1.5">
+                    <TrendingUp className="h-4 w-4" />
+                    Evolução de Notas
+                  </h4>
+                  <div className="flex items-end gap-1.5 h-20">
+                    {essayCorrections.slice(0, 10).reverse().map((essay, idx) => {
+                      const height = Math.max((essay.score / 1000) * 100, 5);
+                      const isCurrent = essay.id === activeCorrection.id;
+                      return (
+                        <div key={essay.id} className="flex-1 flex flex-col items-center gap-1">
+                          <span className={`text-[8px] font-mono ${isCurrent ? 'text-blue-600 font-bold' : 'text-slate-400'}`}>
+                            {essay.score}
+                          </span>
+                          <div
+                            className={`w-full rounded-t transition-all duration-500 ${
+                              isCurrent
+                                ? 'bg-blue-600 dark:bg-blue-400'
+                                : essay.score >= 800
+                                ? 'bg-green-400 dark:bg-green-500'
+                                : essay.score >= 600
+                                ? 'bg-amber-400 dark:bg-amber-500'
+                                : 'bg-red-400 dark:bg-red-500'
+                            }`}
+                            style={{ height: `${height}%` }}
+                          />
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <div className="flex justify-between text-[9px] font-mono text-slate-400">
+                    <span> Mais antiga</span>
+                    <span>Mais recente →</span>
+                  </div>
+                </div>
+              )}
 
             </div>
           )}
