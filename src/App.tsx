@@ -337,6 +337,33 @@ export default function App() {
     }
   };
 
+  const currentUser = useMemo(() => ({
+    name: profile?.name || 'Estudante',
+    email: session?.user?.email || '',
+    region: profile?.region,
+    state: profile?.state,
+    city: profile?.city,
+    avatar: profile?.avatar,
+    serie: profile?.serie,
+    targetScore: profile?.target_score,
+    hardSubjects: profile?.hard_subjects,
+    streak: profile?.streak || 1,
+    lastLoginDate: profile?.last_login_date,
+    confirmed: true,
+    totalXp,
+    longestStreak: Math.max(longestStreak, profile?.streak || 1),
+  }), [profile, session, totalXp, longestStreak]);
+
+  const gamificationStats = useMemo(() => computeGamificationStats({
+    essays: essayCorrections,
+    simulados: simuladosHistory,
+    streak: profile?.streak || 1,
+    longestStreak: Math.max(longestStreak, profile?.streak || 1),
+    totalXp,
+  }), [essayCorrections, simuladosHistory, profile, longestStreak, totalXp]);
+
+  const unlockedAchievements = useMemo(() => getUnlockedAchievements(gamificationStats), [gamificationStats]);
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-[#fcf8ff] dark:bg-[#0a0814]">
@@ -368,33 +395,6 @@ export default function App() {
     };
     return <OnboardingView currentUser={userProfile as any} onCompleted={handleOnboardingCompleted} />;
   }
-
-  const currentUser = useMemo(() => ({
-    name: profile?.name || 'Estudante',
-    email: session.user.email || '',
-    region: profile?.region,
-    state: profile?.state,
-    city: profile?.city,
-    avatar: profile?.avatar,
-    serie: profile?.serie,
-    targetScore: profile?.target_score,
-    hardSubjects: profile?.hard_subjects,
-    streak: profile?.streak || 1,
-    lastLoginDate: profile?.last_login_date,
-    confirmed: true,
-    totalXp,
-    longestStreak: Math.max(longestStreak, profile?.streak || 1),
-  }), [profile, session, totalXp, longestStreak]);
-
-  const gamificationStats = useMemo(() => computeGamificationStats({
-    essays: essayCorrections,
-    simulados: simuladosHistory,
-    streak: profile?.streak || 1,
-    longestStreak: Math.max(longestStreak, profile?.streak || 1),
-    totalXp,
-  }), [essayCorrections, simuladosHistory, profile, longestStreak, totalXp]);
-
-  const unlockedAchievements = useMemo(() => getUnlockedAchievements(gamificationStats), [gamificationStats]);
 
   return (
     <div id="app-workspace" className="min-h-screen lg:h-screen bg-slate-50 dark:bg-[#0f172a] text-[#1b1b24] dark:text-[#f3effc] flex flex-col lg:flex-row transition-colors duration-300 pb-16 lg:pb-0 lg:overflow-hidden">

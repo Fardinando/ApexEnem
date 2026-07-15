@@ -1387,11 +1387,13 @@ app.get("/api/stats", async (_req, res) => {
   let totalUsers = 0;
   let tablesExist = false;
   const regionCounts: Record<string, number> = { Norte: 0, Nordeste: 0, "Centro-Oeste": 0, Sudeste: 0, Sul: 0 };
+  const stateCounts: Record<string, number> = {};
+  const cityCounts: Record<string, number> = {};
 
   // Try profiles table first
   if (supabaseAdmin) {
     try {
-      const { data, error } = await supabaseAdmin.from("profiles").select("region");
+      const { data, error } = await supabaseAdmin.from("profiles").select("region, state, city");
       if (!error && data) {
         tablesExist = true;
         totalUsers = data.length;
@@ -1399,8 +1401,14 @@ app.get("/api/stats", async (_req, res) => {
           if (p.region && regionCounts[p.region] !== undefined) {
             regionCounts[p.region]++;
           }
+          if (p.state) {
+            stateCounts[p.state] = (stateCounts[p.state] || 0) + 1;
+          }
+          if (p.city) {
+            cityCounts[p.city] = (cityCounts[p.city] || 0) + 1;
+          }
         }
-        return res.json({ totalUsers, regionCounts, tablesExist });
+        return res.json({ totalUsers, regionCounts, stateCounts, cityCounts, tablesExist });
       }
     } catch {}
   }
@@ -1428,7 +1436,7 @@ app.get("/api/stats", async (_req, res) => {
             }
           }
           tablesExist = true;
-          return res.json({ totalUsers, regionCounts, tablesExist });
+          return res.json({ totalUsers, regionCounts, stateCounts, cityCounts, tablesExist });
         }
       }
     } catch {}

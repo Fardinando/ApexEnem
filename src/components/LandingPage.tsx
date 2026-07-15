@@ -1,105 +1,54 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GraduationCap, Sparkles, BookOpen, PenLine, BarChart3, Users, ArrowRight, ChevronDown, Brain, Shield, Zap, MapPin, ChevronRight, X } from 'lucide-react';
 import { REGIONS, REGION_COLORS, STATES, getStatesByRegion, getCitiesByState, type RegionBR } from '../data/brazil-locations';
-
-interface Stats {
-  totalUsers: number;
-  regionCounts: Record<string, number>;
-  tablesExist?: boolean;
-}
-
-function AnimatedCounter({ value, duration = 1.5 }: { value: number; duration?: number }) {
-  const [display, setDisplay] = useState(0);
-  useEffect(() => {
-    if (value === 0) return;
-    let start = 0;
-    const startTime = Date.now();
-    const tick = () => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / (duration * 1000), 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      setDisplay(Math.round(eased * value));
-      if (progress < 1) requestAnimationFrame(tick);
-    };
-    requestAnimationFrame(tick);
-  }, [value, duration]);
-  return <>{display}</>;
-}
-
-function DoughnutChart({ data }: { data?: Record<string, number> }) {
-  if (!data || typeof data !== 'object') {
-    return <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Nenhum dado disponível ainda</div>;
-  }
-  const total = Object.values(data).reduce((a, b) => a + b, 0);
-  if (total === 0) {
-    return <div className="flex items-center justify-center h-64 text-slate-400 text-sm">Nenhum dado disponível ainda</div>;
-  }
-  const values = REGIONS.map(r => data[r] || 0);
-  const totalVal = values.reduce((a, b) => a + b, 0);
-  let cumulativePercent = 0;
-  const slices = values.map((v, i) => {
-    const percent = v / totalVal;
-    const startPercent = cumulativePercent;
-    cumulativePercent += percent;
-    return { percent, startPercent, color: REGION_COLORS[REGIONS[i]], label: REGIONS[i], value: v };
-  });
-  const cx = 120, cy = 120, r = 90, strokeWidth = 28;
-  const circumference = 2 * Math.PI * r;
-  return (
-    <div className="flex flex-col items-center gap-4">
-      <div className="relative flex items-center justify-center">
-        <svg width="240" height="240" viewBox="0 0 240 240" className="-rotate-90">
-          {slices.map((slice, i) => {
-            if (slice.percent === 0) return null;
-            const offset = circumference * (1 - slice.startPercent);
-            const len = circumference * slice.percent;
-            return (
-              <motion.circle
-                key={i}
-                cx={cx} cy={cy} r={r}
-                fill="none" stroke={slice.color} strokeWidth={strokeWidth}
-                strokeDasharray={`${len} ${circumference - len}`}
-                strokeDashoffset={offset}
-                initial={{ strokeDasharray: `0 ${circumference}` }}
-                animate={{ strokeDasharray: `${len} ${circumference - len}` }}
-                transition={{ duration: 1, delay: i * 0.15, ease: 'easeOut' }}
-              />
-            );
-          })}
-          <circle cx={cx} cy={cy} r={r - strokeWidth / 2} fill="white" className="dark:fill-[#0a0814]" />
-        </svg>
-        <div className="absolute flex flex-col items-center pointer-events-none">
-          <span className="text-3xl font-extrabold text-slate-800 dark:text-white"><AnimatedCounter value={totalVal} /></span>
-          <span className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Usuários</span>
-        </div>
-      </div>
-      <div className="grid grid-cols-5 gap-3 w-full max-w-md">
-        {slices.map((s, i) => (
-          <div key={i} className="text-center">
-            <div className="flex items-center justify-center gap-1">
-              <span className="w-2 h-2 rounded-full inline-block" style={{ backgroundColor: s.color }} />
-              <span className="text-[10px] font-bold text-slate-600 dark:text-slate-300">{s.label}</span>
-            </div>
-            <span className="text-xs font-mono text-slate-400">{s.value}</span>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
+import { REGION_MAP_DATA, BRAZIL_VIEWBOX } from '../data/brazil-map-paths';
 
 function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string, c: string) => void }) {
-  const [hoveredRegion, setHoveredRegion] = useState<RegionBR | null>(null);
-  const [selectedRegion, setSelectedRegion] = useState<RegionBR | null>(null);
+  const [hoveredElement, setHoveredElement] = useState<string | null>(null);
+  const [selectedRegion, setSelectedRegion] = useState<string | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
+  const [stats, setStats] = useState<{ totalUsers: number; regionCounts: Record<string, number>; stateCounts: Record<string, number>; cityCounts: Record<string, number> } | null>(null);
 
-  const statesInRegion = useMemo(() => selectedRegion ? getStatesByRegion(selectedRegion) : [], [selectedRegion]);
-  const selectedStateObj = useMemo(() => selectedState ? STATES.find(s => s.code === selectedState) : null, [selectedState]);
-  const citiesInState = useMemo(() => selectedStateObj ? selectedStateObj.cities : [], [selectedStateObj]);
+  useEffect(() => {
+    fetch('/api/stats')
+      .then(r => r.json())
+      .then(setStats)
+      .catch(() => {});
+  }, []);
 
-  const handleRegionClick = (region: RegionBR) => {
+  const statesInRegion = useMemo(
+    () => selectedRegion ? getStatesByRegion(selectedRegion) : [],
+    [selectedRegion]
+  );
+  const selectedStateObj = useMemo(
+    () => selectedState ? STATES.find(s => s.code === selectedState) : null,
+    [selectedState]
+  );
+  const citiesInState = useMemo(
+    () => selectedStateObj ? selectedStateObj.cities : [],
+    [selectedStateObj]
+  );
+
+  const currentViewBox = useMemo(() => {
+    if (selectedState && selectedRegion) {
+      const regionData = REGION_MAP_DATA[selectedRegion];
+      const stateData = regionData?.states.find(s => s.code === selectedState);
+      if (stateData && regionData) {
+        const [x, y, w, h] = regionData.viewBox.split(' ').map(Number);
+        const sx = stateData.labelX - 40;
+        const sy = stateData.labelY - 35;
+        return `${Math.max(x, sx)} ${Math.max(y, sy)} 85 75`;
+      }
+    }
+    if (selectedRegion && REGION_MAP_DATA[selectedRegion]) {
+      return REGION_MAP_DATA[selectedRegion].viewBox;
+    }
+    return BRAZIL_VIEWBOX;
+  }, [selectedRegion, selectedState]);
+
+  const handleRegionClick = (region: string) => {
     setSelectedRegion(region);
     setSelectedState(null);
     setSelectedCity(null);
@@ -121,20 +70,12 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
     else if (selectedRegion) { setSelectedRegion(null); }
   };
 
-  const regionPaths: Record<RegionBR, string> = {
-    Norte: 'M 120 20 L 180 15 L 220 25 L 240 50 L 230 80 L 200 95 L 170 90 L 140 85 L 110 70 L 100 45 Z',
-    Nordeste: 'M 200 95 L 240 80 L 280 85 L 310 100 L 320 130 L 300 155 L 270 160 L 240 150 L 220 130 L 210 110 Z',
-    'Centro-Oeste': 'M 140 85 L 170 90 L 200 95 L 210 110 L 220 130 L 210 160 L 180 170 L 150 165 L 120 150 L 110 120 L 115 95 Z',
-    Sudeste: 'M 210 160 L 240 150 L 270 160 L 280 180 L 270 200 L 250 210 L 230 205 L 215 190 L 200 175 Z',
-    Sul: 'M 180 170 L 210 160 L 200 175 L 215 190 L 230 205 L 225 225 L 210 240 L 190 245 L 175 235 L 170 215 L 165 195 Z',
-  };
-
-  const regionLabels: Record<RegionBR, { x: number; y: number }> = {
-    Norte: { x: 165, y: 55 },
-    Nordeste: { x: 265, y: 120 },
-    'Centro-Oeste': { x: 165, y: 130 },
-    Sudeste: { x: 245, y: 185 },
-    Sul: { x: 195, y: 215 },
+  const regionColors: Record<string, string> = {
+    Norte: '#22c55e',
+    Nordeste: '#f59e0b',
+    'Centro-Oeste': '#3b82f6',
+    Sudeste: '#ef4444',
+    Sul: '#8b5cf6',
   };
 
   return (
@@ -143,7 +84,16 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-blue-600" />
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-            {!selectedRegion ? 'Explore o Brasil' : !selectedState ? `Região ${selectedRegion}` : !selectedCity ? `${selectedStateObj?.name} — Escolha uma cidade` : `${selectedCity}, ${selectedStateObj?.name}`}
+            {!selectedRegion
+              ? 'Explore o Brasil'
+              : !selectedState
+                ? `${selectedRegion} — Clique em um estado`
+                : !selectedCity
+                  ? `${selectedStateObj?.name} — Escolha uma cidade`
+                  : `${selectedCity}, ${selectedStateObj?.name}`}
+            {stats && stats.totalUsers > 0 && (
+              <span className="ml-2 text-[10px] font-normal text-slate-400">({stats.totalUsers} {stats.totalUsers === 1 ? 'aluno' : 'alunos'})</span>
+            )}
           </span>
         </div>
         {(selectedRegion || selectedState || selectedCity) && (
@@ -153,200 +103,288 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
         )}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+      <div className="flex flex-col items-center gap-6">
         {/* SVG Map */}
-        <div className="flex justify-center">
-          <svg viewBox="0 0 360 270" className="w-full max-w-md" xmlns="http://www.w3.org/2000/svg">
+        <div className="w-full flex justify-center">
+          <svg
+            viewBox={currentViewBox}
+            className="w-full max-w-2xl transition-[viewBox] duration-700 ease-in-out"
+            xmlns="http://www.w3.org/2000/svg"
+            style={{ aspectRatio: '4/3' }}
+          >
             <defs>
-              <filter id="glow">
-                <feGaussianBlur stdDeviation="3" result="blur" />
+              <filter id="map-glow">
+                <feGaussianBlur stdDeviation="2" result="blur" />
                 <feMerge>
                   <feMergeNode in="blur" />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
-              <filter id="shadow">
-                <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" />
-              </filter>
             </defs>
 
-            {REGIONS.map((region) => {
-              const isHovered = hoveredRegion === region;
-              const isSelected = selectedRegion === region;
-              const isActive = isHovered || isSelected;
-              const baseColor = REGION_COLORS[region];
-              const fillOpacity = isActive ? 0.5 : 0.25;
-              const strokeW = isActive ? 2.5 : 1.5;
-
+            {!selectedRegion && REGIONS.map((region) => {
+              const data = REGION_MAP_DATA[region];
+              if (!data) return null;
+              const isHovered = hoveredElement === region;
               return (
                 <g
                   key={region}
-                  onMouseEnter={() => setHoveredRegion(region)}
-                  onMouseLeave={() => setHoveredRegion(null)}
+                  onMouseEnter={() => setHoveredElement(region)}
+                  onMouseLeave={() => setHoveredElement(null)}
                   onClick={() => handleRegionClick(region)}
-                  className="cursor-pointer transition-all"
-                  style={{ filter: isActive ? 'url(#glow)' : 'none' }}
+                  className="cursor-pointer"
+                  style={{ filter: isHovered ? 'url(#map-glow)' : 'none' }}
                 >
-                  <path
-                    d={regionPaths[region]}
-                    fill={baseColor}
-                    fillOpacity={fillOpacity}
-                    stroke={baseColor}
-                    strokeWidth={strokeW}
-                    strokeLinejoin="round"
-                    className="transition-all duration-200"
-                  />
+                  {data.states.map((state) => (
+                    <path
+                      key={state.code}
+                      d={state.path}
+                      fill={data.color}
+                      fillOpacity={isHovered ? 0.55 : 0.3}
+                      stroke={data.color}
+                      strokeWidth={isHovered ? 1.2 : 0.6}
+                      strokeOpacity={0.7}
+                      strokeLinejoin="round"
+                      className="transition-all duration-300"
+                    />
+                  ))}
                   <text
-                    x={regionLabels[region].x}
-                    y={regionLabels[region].y}
+                    x={data.states.reduce((a, s) => a + s.labelX, 0) / data.states.length}
+                    y={data.states.reduce((a, s) => a + s.labelY, 0) / data.states.length - 5}
                     textAnchor="middle"
-                    className="pointer-events-none select-none"
-                    fill={isActive ? baseColor : '#64748b'}
-                    fontSize={isActive ? '11' : '9'}
-                    fontWeight={isActive ? '800' : '600'}
+                    fill={isHovered ? data.color : '#64748b'}
+                    fontSize={isHovered ? '12' : '9'}
+                    fontWeight="700"
                     fontFamily="system-ui, sans-serif"
+                    className="pointer-events-none select-none transition-all duration-300"
                   >
                     {region}
                   </text>
+                  {stats && (
+                    <text
+                      x={data.states.reduce((a, s) => a + s.labelX, 0) / data.states.length}
+                      y={data.states.reduce((a, s) => a + s.labelY, 0) / data.states.length + 6}
+                      textAnchor="middle"
+                      fill={isHovered ? data.color : '#94a3b8'}
+                      fontSize="6"
+                      fontWeight="600"
+                      fontFamily="system-ui, sans-serif"
+                      className="pointer-events-none select-none"
+                    >
+                      {stats.regionCounts?.[region] || 0} alunos
+                    </text>
+                  )}
                 </g>
               );
             })}
 
-            {/* Brazil outline hint */}
-            <text x="180" y="262" textAnchor="middle" fill="#94a3b8" fontSize="8" fontFamily="monospace">
-              {selectedRegion ? 'Clique em "Voltar" para ver o mapa' : 'Clique em uma região para explorar'}
-            </text>
-          </svg>
-        </div>
-
-        {/* Drill-down panel */}
-        <div className="min-h-[280px]">
-          <AnimatePresence mode="wait">
-            {!selectedRegion && (
-              <motion.div
-                key="overview"
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="space-y-3"
-              >
-                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Clique em uma região no mapa para ver os estados</p>
-                {REGIONS.map((region) => (
-                  <motion.button
-                    key={region}
-                    whileHover={{ x: 4 }}
-                    onClick={() => handleRegionClick(region)}
-                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 transition-all cursor-pointer text-left group"
-                  >
-                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: REGION_COLORS[region] }} />
-                    <div className="flex-1">
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{region}</span>
-                      <span className="text-[10px] text-slate-400 ml-2">{getStatesByRegion(region).length} estados</span>
-                    </div>
-                    <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-500 transition" />
-                  </motion.button>
-                ))}
-              </motion.div>
-            )}
-
-            {selectedRegion && !selectedState && (
-              <motion.div
-                key="states"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-2"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REGION_COLORS[selectedRegion] }} />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{selectedRegion}</span>
-                  <span className="text-[10px] text-slate-400">— {statesInRegion.length} estados</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2">
-                  {statesInRegion.map((state) => (
-                    <motion.button
+            {selectedRegion && !selectedState && REGION_MAP_DATA[selectedRegion] && (
+              <>
+                {REGION_MAP_DATA[selectedRegion].states.map((state) => {
+                  const isHovered = hoveredElement === state.code;
+                  const regionColor = REGION_MAP_DATA[selectedRegion].color;
+                  return (
+                    <g
                       key={state.code}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      onMouseEnter={() => setHoveredElement(state.code)}
+                      onMouseLeave={() => setHoveredElement(null)}
                       onClick={() => handleStateClick(state.code)}
-                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-left hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all cursor-pointer"
+                      className="cursor-pointer"
+                      style={{ filter: isHovered ? 'url(#map-glow)' : 'none' }}
                     >
-                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">{state.name}</span>
-                      <span className="text-[10px] text-slate-400">{state.cities.length} cidades</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
+                      <path
+                        d={state.path}
+                        fill={regionColor}
+                        fillOpacity={isHovered ? 0.6 : 0.35}
+                        stroke={regionColor}
+                        strokeWidth={isHovered ? 2 : 1}
+                        strokeOpacity={0.8}
+                        strokeLinejoin="round"
+                        className="transition-all duration-300"
+                      />
+                      <text
+                        x={state.labelX}
+                        y={state.labelY - 4}
+                        textAnchor="middle"
+                        fill={isHovered ? regionColor : '#334155'}
+                        fontSize={isHovered ? '8' : '6'}
+                        fontWeight="700"
+                        fontFamily="system-ui, sans-serif"
+                        className="pointer-events-none select-none transition-all duration-300"
+                      >
+                        {state.code}
+                      </text>
+                      <text
+                        x={state.labelX}
+                        y={state.labelY + 5}
+                        textAnchor="middle"
+                        fill={isHovered ? '#1e293b' : '#94a3b8'}
+                        fontSize="3.5"
+                        fontFamily="system-ui, sans-serif"
+                        className="pointer-events-none select-none transition-all duration-300"
+                      >
+                        {state.name}
+                      </text>
+                      {stats && (
+                        <text
+                          x={state.labelX}
+                          y={state.labelY + 10}
+                          textAnchor="middle"
+                          fill={regionColor}
+                          fontSize="3"
+                          fontWeight="600"
+                          fontFamily="system-ui, sans-serif"
+                          className="pointer-events-none select-none"
+                        >
+                          {stats.stateCounts?.[state.code] || 0}
+                        </text>
+                      )}
+                    </g>
+                  );
+                })}
+              </>
             )}
 
             {selectedRegion && selectedState && selectedStateObj && (
-              <motion.div
-                key="cities"
-                initial={{ opacity: 0, x: 20 }}
-                animate={{ opacity: 1, x: 0 }}
-                exit={{ opacity: 0, x: -20 }}
-                className="space-y-2"
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REGION_COLORS[selectedRegion] }} />
-                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{selectedStateObj.name}</span>
-                  <span className="text-[10px] text-slate-400">— {citiesInState.length} cidades</span>
-                </div>
-                <div className="grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto pr-1">
-                  {citiesInState.map((city) => (
-                    <motion.button
+              <>
+                {(() => {
+                  const regionColor = REGION_MAP_DATA[selectedRegion]?.color || '#3b82f6';
+                  const statePathData = REGION_MAP_DATA[selectedRegion]?.states.find(s => s.code === selectedState);
+                  if (statePathData) {
+                    return (
+                      <path
+                        d={statePathData.path}
+                        fill={regionColor}
+                        fillOpacity={0.25}
+                        stroke={regionColor}
+                        strokeWidth={2}
+                        strokeLinejoin="round"
+                      />
+                    );
+                  }
+                  return null;
+                })()}
+                {citiesInState.map((city, i) => {
+                  const stateData = REGION_MAP_DATA[selectedRegion]?.states.find(s => s.code === selectedState);
+                  const cx = stateData ? stateData.labelX : 0;
+                  const cy = stateData ? stateData.labelY : 0;
+                  const angle = (i / citiesInState.length) * 2 * Math.PI - Math.PI / 2;
+                  const radius = 12 + (i % 3) * 4;
+                  const px = cx + Math.cos(angle) * radius;
+                  const py = cy + Math.sin(angle) * radius;
+                  const isSelected = selectedCity === city;
+                  const isHov = hoveredElement === city;
+                  return (
+                    <g
                       key={city}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
+                      onMouseEnter={() => setHoveredElement(city)}
+                      onMouseLeave={() => setHoveredElement(null)}
                       onClick={() => handleCityClick(city)}
-                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                        selectedCity === city
-                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-500/20'
-                          : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/20'
-                      }`}
+                      className="cursor-pointer"
                     >
-                      <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100">{city}</span>
-                    </motion.button>
-                  ))}
-                </div>
-              </motion.div>
+                      <circle
+                        cx={px}
+                        cy={py}
+                        r={isSelected ? 2.5 : isHov ? 2 : 1.5}
+                        fill={isSelected ? REGION_MAP_DATA[selectedRegion]?.color : isHov ? '#3b82f6' : '#64748b'}
+                        className="transition-all duration-200"
+                      />
+                      <text
+                        x={px}
+                        y={py - 3}
+                        textAnchor="middle"
+                        fill={isSelected ? REGION_MAP_DATA[selectedRegion]?.color : '#475569'}
+                        fontSize={isSelected ? '4.5' : '3.5'}
+                        fontWeight={isSelected ? '700' : '500'}
+                        fontFamily="system-ui, sans-serif"
+                        className="pointer-events-none select-none"
+                      >
+                        {city}
+                      </text>
+                    </g>
+                  );
+                })}
+              </>
             )}
-          </AnimatePresence>
-
-          {selectedCity && selectedStateObj && (
-            <motion.div
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-2xl border border-blue-200/50 dark:border-blue-800/30 text-center"
-            >
-              <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
-                {selectedCity}, {selectedStateObj.name} · {selectedRegion}
-              </p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cadastre-se e comece a estudar!</p>
-            </motion.div>
-          )}
+          </svg>
         </div>
+
+        {/* City list below map when in city view */}
+        {selectedRegion && selectedState && selectedStateObj && (
+          <div className="w-full max-w-md">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: regionColors[selectedRegion] || '#3b82f6' }} />
+              <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{selectedStateObj.name}</span>
+              <span className="text-[10px] text-slate-400">— {citiesInState.length} cidades</span>
+            </div>
+            <div className="grid grid-cols-2 gap-2 max-h-[200px] overflow-y-auto pr-1">
+              {citiesInState.map((city) => (
+                <motion.button
+                  key={city}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => handleCityClick(city)}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    selectedCity === city
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-500/20'
+                      : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/20'
+                  }`}
+                >
+                  <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100">{city}</span>
+                  {stats && stats.cityCounts?.[city] != null && stats.cityCounts[city] > 0 && (
+                    <span className="text-[9px] text-blue-500 font-mono ml-1">{stats.cityCounts[city]}</span>
+                  )}
+                </motion.button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Region list when no region selected */}
+        {!selectedRegion && (
+          <div className="grid grid-cols-5 gap-2 w-full max-w-lg">
+            {REGIONS.map((region) => {
+              const isHov = hoveredElement === region;
+              return (
+                <button
+                  key={region}
+                  onMouseEnter={() => setHoveredElement(region)}
+                  onMouseLeave={() => setHoveredElement(null)}
+                  onClick={() => handleRegionClick(region)}
+                  className={`p-2 rounded-xl text-center transition-all cursor-pointer border ${
+                    isHov ? 'shadow-md scale-105' : ''
+                  }`}
+                  style={{
+                    borderColor: isHov ? regionColors[region] : 'transparent',
+                    backgroundColor: isHov ? `${regionColors[region]}15` : `${regionColors[region]}08`,
+                  }}
+                >
+                  <div className="w-3 h-3 rounded-full mx-auto mb-1" style={{ backgroundColor: regionColors[region] }} />
+                  <span className="text-[10px] font-bold text-slate-700 dark:text-slate-200 block leading-tight">{region}</span>
+                </button>
+              );
+            })}
+          </div>
+        )}
+
+        {selectedCity && selectedStateObj && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="w-full max-w-md p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-2xl border border-blue-200/50 dark:border-blue-800/30 text-center"
+          >
+            <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
+              {selectedCity}, {selectedStateObj.name} · {selectedRegion}
+            </p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cadastre-se e comece a estudar!</p>
+          </motion.div>
+        )}
       </div>
     </div>
   );
 }
 
 export default function LandingPage({ onStart, onSignup }: { onStart: () => void; onSignup?: () => void }) {
-  const [stats, setStats] = useState<Stats>({ totalUsers: 0, regionCounts: { Norte: 0, Nordeste: 0, 'Centro-Oeste': 0, Sudeste: 0, Sul: 0 }, tablesExist: false });
-  const [statsLoading, setStatsLoading] = useState(true);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const res = await fetch('/api/stats');
-        const data = await res.json();
-        setStats(data);
-      } catch {} finally {
-        setStatsLoading(false);
-      }
-    })();
-  }, []);
-
   const scrollTo = (id: string) => {
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -373,7 +411,6 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
             <button type="button" onClick={() => scrollTo('features')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Recursos</button>
             <button type="button" onClick={() => scrollTo('map-section')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Mapa</button>
-            <button type="button" onClick={() => scrollTo('stats-section')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Estatísticas</button>
           </nav>
           <div className="flex items-center gap-3">
             <button type="button" onClick={onStart} className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 transition cursor-pointer">Entrar</button>
@@ -463,58 +500,6 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </motion.div>
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
             <CascataMap />
-          </motion.div>
-        </div>
-      </section>
-
-      <section id="stats-section" className="py-20 md:py-28 bg-slate-50/50 dark:bg-[#0f0a1e]/50">
-        <div className="max-w-6xl mx-auto px-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-16">
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Impacto em Todo o Brasil</h2>
-            <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Estudantes de todas as regiões usando a plataforma para alcançar o ápice no ENEM.</p>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="flex flex-col md:flex-row items-center justify-center gap-12 md:gap-24">
-            <div className="relative flex items-center justify-center">
-              {statsLoading ? (
-                <div className="w-60 h-60 rounded-full bg-slate-100 dark:bg-[#1e293b] animate-pulse flex items-center justify-center text-slate-400 text-sm">Carregando...</div>
-              ) : (
-                <div className="relative">
-                  <DoughnutChart data={stats.regionCounts} />
-                </div>
-              )}
-            </div>
-            <div className="text-center md:text-left space-y-6">
-              <div>
-                <span className="text-5xl md:text-6xl font-extrabold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  {statsLoading ? '...' : <AnimatedCounter value={stats.totalUsers} />}
-                </span>
-                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 font-medium uppercase tracking-wider">Usuários Ativos</p>
-              </div>
-              <div className="space-y-3">
-                {REGIONS.map((r, i) => {
-                  const rc = stats.regionCounts || {} as Record<string, number>;
-                  const count = rc[r] || 0;
-                  const pct = stats.totalUsers > 0 ? (count / stats.totalUsers) * 100 : 0;
-                  return (
-                    <div key={r} className="flex items-center gap-3">
-                      <span className="w-3 h-3 rounded-full" style={{ backgroundColor: REGION_COLORS[r] }} />
-                      <span className="text-sm font-medium text-slate-600 dark:text-slate-300 w-28">{r}</span>
-                      <div className="flex-1 h-2 bg-slate-100 dark:bg-[#1e293b] rounded-full overflow-hidden">
-                        <motion.div
-                          className="h-full rounded-full"
-                          style={{ backgroundColor: REGION_COLORS[r] }}
-                          initial={{ width: 0 }}
-                          whileInView={{ width: `${pct}%` }}
-                          viewport={{ once: true }}
-                          transition={{ duration: 1, delay: i * 0.1 }}
-                        />
-                      </div>
-                      <span className="text-xs font-mono text-slate-400 w-10 text-right">{count}</span>
-                    </div>
-                  );
-                })}
-              </div>
-            </div>
           </motion.div>
         </div>
       </section>
