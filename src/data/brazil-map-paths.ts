@@ -93,3 +93,31 @@ export function getRegionForState(code: string): string | null {
   }
   return null;
 }
+
+export interface BBox { minX: number; minY: number; maxX: number; maxY: number }
+
+const bboxCache = new Map<string, BBox>();
+
+export function getStateBBox(code: string): BBox | null {
+  if (bboxCache.has(code)) return bboxCache.get(code)!;
+  for (const region of Object.values(REGION_MAP_DATA)) {
+    const state = region.states.find(s => s.code === code);
+    if (state) {
+      const nums = state.path.match(/-?\d+\.?\d*/g);
+      if (!nums) return null;
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (let i = 0; i < nums.length; i += 2) {
+        const x = parseFloat(nums[i]);
+        const y = parseFloat(nums[i + 1]);
+        if (x < minX) minX = x;
+        if (y < minY) minY = y;
+        if (x > maxX) maxX = x;
+        if (y > maxY) maxY = y;
+      }
+      const bbox = { minX, minY, maxX, maxY };
+      bboxCache.set(code, bbox);
+      return bbox;
+    }
+  }
+  return null;
+}

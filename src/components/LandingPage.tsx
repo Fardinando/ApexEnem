@@ -2,7 +2,26 @@ import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { GraduationCap, Sparkles, BookOpen, PenLine, BarChart3, Users, ArrowRight, ChevronDown, Brain, Shield, Zap, MapPin, ChevronRight, X } from 'lucide-react';
 import { REGIONS, REGION_COLORS, STATES, getStatesByRegion, getCitiesByState, type RegionBR } from '../data/brazil-locations';
-import { REGION_MAP_DATA, BRAZIL_VIEWBOX } from '../data/brazil-map-paths';
+import { REGION_MAP_DATA, BRAZIL_VIEWBOX, getStateBBox } from '../data/brazil-map-paths';
+import { CITY_COORDINATES } from '../data/brazil-city-coordinates';
+
+function projectCityToSVG(lat: number, lon: number, stateCode: string): { x: number; y: number } | null {
+  const bbox = getStateBBox(stateCode);
+  if (!bbox) return null;
+  const pad = 4;
+  const xMin = bbox.minX + pad;
+  const xMax = bbox.maxX - pad;
+  const yMin = bbox.minY + pad;
+  const yMax = bbox.maxY - pad;
+  const lonMin = -74.0, lonMax = -34.8;
+  const latMin = -33.7, latMax = 5.3;
+  const nx = (lon - lonMin) / (lonMax - lonMin);
+  const yMercTop = Math.log(Math.tan((Math.PI / 2) + (latMax * Math.PI / 360)));
+  const yMercBot = Math.log(Math.tan((Math.PI / 2) + (latMin * Math.PI / 360)));
+  const yMercCur = Math.log(Math.tan((Math.PI / 2) + (lat * Math.PI / 360)));
+  const ny = (yMercTop - yMercCur) / (yMercTop - yMercBot);
+  return { x: xMin + nx * (xMax - xMin), y: yMin + ny * (yMax - yMin) };
+}
 
 function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string, c: string) => void }) {
   const [hoveredElement, setHoveredElement] = useState<string | null>(null);
@@ -33,10 +52,17 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
 
   const currentViewBox = useMemo(() => {
     if (selectedState && selectedRegion) {
+      const bbox = getStateBBox(selectedState);
+      if (bbox) {
+        const pad = 12;
+        const w = bbox.maxX - bbox.minX + pad * 2;
+        const h = bbox.maxY - bbox.minY + pad * 2;
+        return `${bbox.minX - pad} ${bbox.minY - pad} ${w} ${h}`;
+      }
       const regionData = REGION_MAP_DATA[selectedRegion];
       const stateData = regionData?.states.find(s => s.code === selectedState);
       if (stateData && regionData) {
-        const [x, y, w, h] = regionData.viewBox.split(' ').map(Number);
+        const [x, y] = regionData.viewBox.split(' ').map(Number);
         const sx = stateData.labelX - 40;
         const sy = stateData.labelY - 35;
         return `${Math.max(x, sx)} ${Math.max(y, sy)} 85 75`;
@@ -264,16 +290,19 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                   }
                   return null;
                 })()}
-                {citiesInState.map((city, i) => {
-                  const stateData = REGION_MAP_DATA[selectedRegion]?.states.find(s => s.code === selectedState);
-                  const cx = stateData ? stateData.labelX : 0;
-                  const cy = stateData ? stateData.labelY : 0;
-                  const angle = (i / citiesInState.length) * 2 * Math.PI - Math.PI / 2;
-                  const radius = 12 + (i % 3) * 4;
-                  const px = cx + Math.cos(angle) * radius;
-                  const py = cy + Math.sin(angle) * radius;
+                {citiesInState.map((city) => {
+                  const stateCode = selectedState!;
+                  const coordKey = `${stateCode}:${city}`;
+                  const cityCoord = CITY_COORDINATES[coordKey];
+                  if (!cityCoord) return null;
+                  const projected = projectCityToSVG(cityCoord.lat, cityCoord.lon, stateCode);
+                  if (!projected) return null;
+                  const px = projected.x;
+                  const py = projected.y;
                   const isSelected = selectedCity === city;
                   const isHov = hoveredElement === city;
+                  const hasUsers = stats && (stats.cityCounts?.[city] ?? 0) > 0;
+                  const userCount = stats?.cityCounts?.[city] ?? 0;
                   return (
                     <g
                       key={city}
@@ -285,22 +314,25 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                       <circle
                         cx={px}
                         cy={py}
-                        r={isSelected ? 2.5 : isHov ? 2 : 1.5}
-                        fill={isSelected ? REGION_MAP_DATA[selectedRegion]?.color : isHov ? '#3b82f6' : '#64748b'}
+                        r={isSelected ? 2.8 : isHov ? 2.2 : hasUsers ? 1.6 : 1}
+                        fill={isSelected ? REGION_MAP_DATA[selectedRegion]?.color : isHov ? '#3b82f6' : hasUsers ? '#3b82f6' : '#94a3b8'}
+                        fillOpacity={hasUsers ? 1 : 0.4}
                         className="transition-all duration-200"
                       />
-                      <text
-                        x={px}
-                        y={py - 3}
-                        textAnchor="middle"
-                        fill={isSelected ? REGION_MAP_DATA[selectedRegion]?.color : '#475569'}
-                        fontSize={isSelected ? '4.5' : '3.5'}
-                        fontWeight={isSelected ? '700' : '500'}
-                        fontFamily="system-ui, sans-serif"
-                        className="pointer-events-none select-none"
-                      >
-                        {city}
-                      </text>
+                      {(isSelected || isHov) && (
+                        <text
+                          x={px}
+                          y={py - 4}
+                          textAnchor="middle"
+                          fill={isSelected ? REGION_MAP_DATA[selectedRegion]?.color : '#1e293b'}
+                          fontSize="3.5"
+                          fontWeight="700"
+                          fontFamily="system-ui, sans-serif"
+                          className="pointer-events-none select-none"
+                        >
+                          {city}{userCount > 0 ? ` (${userCount})` : ''}
+                        </text>
+                      )}
                     </g>
                   );
                 })}
