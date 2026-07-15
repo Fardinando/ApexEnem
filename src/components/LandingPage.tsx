@@ -189,11 +189,11 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                   {stats && (
                     <text
                       x={data.states.reduce((a, s) => a + s.labelX, 0) / data.states.length}
-                      y={data.states.reduce((a, s) => a + s.labelY, 0) / data.states.length + 6}
+                      y={data.states.reduce((a, s) => a + s.labelY, 0) / data.states.length + 7}
                       textAnchor="middle"
                       fill={isHovered ? data.color : '#94a3b8'}
-                      fontSize="6"
-                      fontWeight="600"
+                      fontSize="9"
+                      fontWeight="700"
                       fontFamily="system-ui, sans-serif"
                       className="pointer-events-none select-none"
                     >
@@ -233,7 +233,7 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                         y={state.labelY - 4}
                         textAnchor="middle"
                         fill={isHovered ? regionColor : '#334155'}
-                        fontSize={isHovered ? '8' : '6'}
+                        fontSize={isHovered ? '9' : '7'}
                         fontWeight="700"
                         fontFamily="system-ui, sans-serif"
                         className="pointer-events-none select-none transition-all duration-300"
@@ -245,7 +245,7 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                         y={state.labelY + 5}
                         textAnchor="middle"
                         fill={isHovered ? '#1e293b' : '#94a3b8'}
-                        fontSize="3.5"
+                        fontSize="4.5"
                         fontFamily="system-ui, sans-serif"
                         className="pointer-events-none select-none transition-all duration-300"
                       >
@@ -254,15 +254,15 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                       {stats && (
                         <text
                           x={state.labelX}
-                          y={state.labelY + 10}
+                          y={state.labelY + 11}
                           textAnchor="middle"
                           fill={regionColor}
-                          fontSize="3"
-                          fontWeight="600"
+                          fontSize="4.5"
+                          fontWeight="700"
                           fontFamily="system-ui, sans-serif"
                           className="pointer-events-none select-none"
                         >
-                          {stats.stateCounts?.[state.code] || 0}
+                          {stats.stateCounts?.[state.code] || 0} alunos
                         </text>
                       )}
                     </g>
