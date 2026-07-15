@@ -90,12 +90,14 @@ function DoughnutChart({ data }: { data?: Record<string, number> }) {
 }
 
 function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string, c: string) => void }) {
+  const [hoveredRegion, setHoveredRegion] = useState<RegionBR | null>(null);
   const [selectedRegion, setSelectedRegion] = useState<RegionBR | null>(null);
   const [selectedState, setSelectedState] = useState<string | null>(null);
   const [selectedCity, setSelectedCity] = useState<string | null>(null);
 
   const statesInRegion = useMemo(() => selectedRegion ? getStatesByRegion(selectedRegion) : [], [selectedRegion]);
-  const citiesInState = useMemo(() => selectedState ? getCitiesByState(selectedState) : [], [selectedState]);
+  const selectedStateObj = useMemo(() => selectedState ? STATES.find(s => s.code === selectedState) : null, [selectedState]);
+  const citiesInState = useMemo(() => selectedStateObj ? selectedStateObj.cities : [], [selectedStateObj]);
 
   const handleRegionClick = (region: RegionBR) => {
     setSelectedRegion(region);
@@ -119,13 +121,29 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
     else if (selectedRegion) { setSelectedRegion(null); }
   };
 
+  const regionPaths: Record<RegionBR, string> = {
+    Norte: 'M 120 20 L 180 15 L 220 25 L 240 50 L 230 80 L 200 95 L 170 90 L 140 85 L 110 70 L 100 45 Z',
+    Nordeste: 'M 200 95 L 240 80 L 280 85 L 310 100 L 320 130 L 300 155 L 270 160 L 240 150 L 220 130 L 210 110 Z',
+    'Centro-Oeste': 'M 140 85 L 170 90 L 200 95 L 210 110 L 220 130 L 210 160 L 180 170 L 150 165 L 120 150 L 110 120 L 115 95 Z',
+    Sudeste: 'M 210 160 L 240 150 L 270 160 L 280 180 L 270 200 L 250 210 L 230 205 L 215 190 L 200 175 Z',
+    Sul: 'M 180 170 L 210 160 L 200 175 L 215 190 L 230 205 L 225 225 L 210 240 L 190 245 L 175 235 L 170 215 L 165 195 Z',
+  };
+
+  const regionLabels: Record<RegionBR, { x: number; y: number }> = {
+    Norte: { x: 165, y: 55 },
+    Nordeste: { x: 265, y: 120 },
+    'Centro-Oeste': { x: 165, y: 130 },
+    Sudeste: { x: 245, y: 185 },
+    Sul: { x: 195, y: 215 },
+  };
+
   return (
     <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm overflow-hidden">
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">
           <MapPin className="h-4 w-4 text-blue-600" />
           <span className="text-sm font-bold text-slate-800 dark:text-slate-100">
-            {!selectedRegion ? 'Escolha sua Região' : !selectedState ? `Região ${selectedRegion}` : !selectedCity ? `Estado: ${STATES.find(s => s.code === selectedState)?.name}` : `Cidade: ${selectedCity}`}
+            {!selectedRegion ? 'Explore o Brasil' : !selectedState ? `Região ${selectedRegion}` : !selectedCity ? `${selectedStateObj?.name} — Escolha uma cidade` : `${selectedCity}, ${selectedStateObj?.name}`}
           </span>
         </div>
         {(selectedRegion || selectedState || selectedCity) && (
@@ -135,75 +153,180 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
         )}
       </div>
 
-      <AnimatePresence mode="wait">
-        {!selectedRegion && (
-          <motion.div key="regions" initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-            {REGIONS.map((region) => (
-              <motion.button
-                key={region}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-                onClick={() => handleRegionClick(region)}
-                className="p-4 rounded-2xl border-2 text-left transition-all cursor-pointer group hover:shadow-md"
-                style={{ borderColor: `${REGION_COLORS[region]}33`, backgroundColor: `${REGION_COLORS[region]}08` }}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+        {/* SVG Map */}
+        <div className="flex justify-center">
+          <svg viewBox="0 0 360 270" className="w-full max-w-md" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <filter id="glow">
+                <feGaussianBlur stdDeviation="3" result="blur" />
+                <feMerge>
+                  <feMergeNode in="blur" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <filter id="shadow">
+                <feDropShadow dx="0" dy="2" stdDeviation="3" floodOpacity="0.15" />
+              </filter>
+            </defs>
+
+            {REGIONS.map((region) => {
+              const isHovered = hoveredRegion === region;
+              const isSelected = selectedRegion === region;
+              const isActive = isHovered || isSelected;
+              const baseColor = REGION_COLORS[region];
+              const fillOpacity = isActive ? 0.5 : 0.25;
+              const strokeW = isActive ? 2.5 : 1.5;
+
+              return (
+                <g
+                  key={region}
+                  onMouseEnter={() => setHoveredRegion(region)}
+                  onMouseLeave={() => setHoveredRegion(null)}
+                  onClick={() => handleRegionClick(region)}
+                  className="cursor-pointer transition-all"
+                  style={{ filter: isActive ? 'url(#glow)' : 'none' }}
+                >
+                  <path
+                    d={regionPaths[region]}
+                    fill={baseColor}
+                    fillOpacity={fillOpacity}
+                    stroke={baseColor}
+                    strokeWidth={strokeW}
+                    strokeLinejoin="round"
+                    className="transition-all duration-200"
+                  />
+                  <text
+                    x={regionLabels[region].x}
+                    y={regionLabels[region].y}
+                    textAnchor="middle"
+                    className="pointer-events-none select-none"
+                    fill={isActive ? baseColor : '#64748b'}
+                    fontSize={isActive ? '11' : '9'}
+                    fontWeight={isActive ? '800' : '600'}
+                    fontFamily="system-ui, sans-serif"
+                  >
+                    {region}
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Brazil outline hint */}
+            <text x="180" y="262" textAnchor="middle" fill="#94a3b8" fontSize="8" fontFamily="monospace">
+              {selectedRegion ? 'Clique em "Voltar" para ver o mapa' : 'Clique em uma região para explorar'}
+            </text>
+          </svg>
+        </div>
+
+        {/* Drill-down panel */}
+        <div className="min-h-[280px]">
+          <AnimatePresence mode="wait">
+            {!selectedRegion && (
+              <motion.div
+                key="overview"
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className="space-y-3"
               >
-                <div className="flex items-center gap-3">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: REGION_COLORS[region] }} />
-                  <span className="font-bold text-sm text-slate-800 dark:text-slate-100">{region}</span>
-                  <ChevronRight className="h-4 w-4 text-slate-400 ml-auto group-hover:text-blue-500 transition" />
+                <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">Clique em uma região no mapa para ver os estados</p>
+                {REGIONS.map((region) => (
+                  <motion.button
+                    key={region}
+                    whileHover={{ x: 4 }}
+                    onClick={() => handleRegionClick(region)}
+                    className="w-full flex items-center gap-3 p-3 rounded-xl border border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 transition-all cursor-pointer text-left group"
+                  >
+                    <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ backgroundColor: REGION_COLORS[region] }} />
+                    <div className="flex-1">
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{region}</span>
+                      <span className="text-[10px] text-slate-400 ml-2">{getStatesByRegion(region).length} estados</span>
+                    </div>
+                    <ChevronRight className="h-3.5 w-3.5 text-slate-400 group-hover:text-blue-500 transition" />
+                  </motion.button>
+                ))}
+              </motion.div>
+            )}
+
+            {selectedRegion && !selectedState && (
+              <motion.div
+                key="states"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-2"
+              >
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REGION_COLORS[selectedRegion] }} />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{selectedRegion}</span>
+                  <span className="text-[10px] text-slate-400">— {statesInRegion.length} estados</span>
                 </div>
-                <p className="text-[10px] text-slate-400 mt-1.5 ml-6">{getStatesByRegion(region).length} estados</p>
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
+                <div className="grid grid-cols-2 gap-2">
+                  {statesInRegion.map((state) => (
+                    <motion.button
+                      key={state.code}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleStateClick(state.code)}
+                      className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-left hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all cursor-pointer"
+                    >
+                      <span className="text-xs font-bold text-slate-800 dark:text-slate-100 block">{state.name}</span>
+                      <span className="text-[10px] text-slate-400">{state.cities.length} cidades</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
 
-        {selectedRegion && !selectedState && (
-          <motion.div key="states" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-            {statesInRegion.map((state) => (
-              <motion.button
-                key={state.code}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => handleStateClick(state.code)}
-                className="p-3 rounded-xl border border-slate-200 dark:border-slate-700 text-left hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 transition-all cursor-pointer"
+            {selectedRegion && selectedState && selectedStateObj && (
+              <motion.div
+                key="cities"
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: -20 }}
+                className="space-y-2"
               >
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{state.name}</span>
-                <span className="block text-[10px] text-slate-400 mt-0.5">{state.code} · {state.cities.length} cidades</span>
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: REGION_COLORS[selectedRegion] }} />
+                  <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{selectedStateObj.name}</span>
+                  <span className="text-[10px] text-slate-400">— {citiesInState.length} cidades</span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto pr-1">
+                  {citiesInState.map((city) => (
+                    <motion.button
+                      key={city}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => handleCityClick(city)}
+                      className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                        selectedCity === city
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-500/20'
+                          : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/20'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold text-slate-800 dark:text-slate-100">{city}</span>
+                    </motion.button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
-        {selectedRegion && selectedState && (
-          <motion.div key="cities" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }} transition={{ duration: 0.2 }} className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-            {citiesInState.map((city) => (
-              <motion.button
-                key={city}
-                whileHover={{ scale: 1.03 }}
-                whileTap={{ scale: 0.97 }}
-                onClick={() => handleCityClick(city)}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer ${
-                  selectedCity === city
-                    ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/30 ring-2 ring-blue-500/20'
-                    : 'border-slate-200 dark:border-slate-700 hover:border-blue-400 dark:hover:border-blue-600 hover:bg-blue-50/50 dark:hover:bg-blue-950/20'
-                }`}
-              >
-                <span className="text-xs font-bold text-slate-800 dark:text-slate-100">{city}</span>
-              </motion.button>
-            ))}
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {selectedCity && (
-        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-2xl border border-blue-200/50 dark:border-blue-800/30 text-center">
-          <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
-            {selectedCity}, {STATES.find(s => s.code === selectedState)?.name} · {selectedRegion}
-          </p>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cadastre-se e comece a estudar!</p>
-        </motion.div>
-      )}
+          {selectedCity && selectedStateObj && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-4 bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-950/30 dark:to-purple-950/30 rounded-2xl border border-blue-200/50 dark:border-blue-800/30 text-center"
+            >
+              <p className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                {selectedCity}, {selectedStateObj.name} · {selectedRegion}
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">Cadastre-se e comece a estudar!</p>
+            </motion.div>
+          )}
+        </div>
+      </div>
     </div>
   );
 }

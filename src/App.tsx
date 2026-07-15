@@ -1,4 +1,4 @@
-import React, { useState, useEffect, lazy, Suspense } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress, deleteEssaysByUser, deleteSimuladosByUser, deleteLogsByUser } from './lib/supabase';
 import type { EssayCorrection, ActivityLog, WrongAnswer } from './types';
 import { calculateStreak, XP_REWARDS, getUnlockedAchievements, computeGamificationStats, type GamificationStats } from './lib/gamification';
@@ -100,6 +100,18 @@ export default function App() {
         setProfile(p);
         setRequireOnboarding(!p?.serie);
 
+        // Sync XP/streak from server to localStorage if server has data
+        const localXp = parseInt(localStorage.getItem('ApexEnem_total_xp') || '0', 10);
+        const localStreak = parseInt(localStorage.getItem('ApexEnem_longest_streak') || '0', 10);
+        if (p?.total_xp && p.total_xp > localXp) {
+          setTotalXp(p.total_xp);
+          localStorage.setItem('ApexEnem_total_xp', String(p.total_xp));
+        }
+        if (p?.longest_streak && p.longest_streak > localStreak) {
+          setLongestStreak(p.longest_streak);
+          localStorage.setItem('ApexEnem_longest_streak', String(p.longest_streak));
+        }
+
         // Calculate and update streak
         if (p) {
           const { newStreak, isNewDay } = calculateStreak(p.last_login_date);
@@ -111,6 +123,7 @@ export default function App() {
             await upsertProfile({
               id: session.user.id,
               streak: updatedStreak,
+              longest_streak: newLongest,
               last_login_date: new Date().toISOString().split('T')[0],
             }).catch(() => {});
             setProfile((prev: any) => ({ ...prev, streak: updatedStreak, last_login_date: new Date().toISOString().split('T')[0] }));
@@ -154,9 +167,10 @@ export default function App() {
   }, [isDarkMode]);
 
   useEffect(() => {
+    if (!session?.user) return;
     const cleanup = loadSpecialAds();
     return cleanup;
-  }, []);
+  }, [session?.user?.id]);
 
 
 
@@ -214,6 +228,7 @@ export default function App() {
       const newXp = totalXp + xpEarned;
       setTotalXp(newXp);
       localStorage.setItem('ApexEnem_total_xp', String(newXp));
+      await upsertProfile({ id: session.user.id, total_xp: newXp });
     } catch (err) {
       console.error("Failed to save correction:", err);
     }
@@ -246,6 +261,7 @@ export default function App() {
       const newXp = totalXp + xpEarned;
       setTotalXp(newXp);
       localStorage.setItem('ApexEnem_total_xp', String(newXp));
+      await upsertProfile({ id: session.user.id, total_xp: newXp });
     } catch (err) {
       console.error("Failed to save simulado result:", err);
     }
@@ -263,7 +279,8 @@ export default function App() {
     if (!session?.user) return;
     try {
       await upsertProfile({ id: session.user.id, ...updated });
-      setProfile((prev: any) => ({ ...prev, ...updated }));
+      const p = await getProfile(session.user.id);
+      if (p) setProfile(p);
     } catch (err) {
       console.error("Failed to update profile:", err);
     }
@@ -352,7 +369,7 @@ export default function App() {
     return <OnboardingView currentUser={userProfile as any} onCompleted={handleOnboardingCompleted} />;
   }
 
-  const currentUser = {
+  const currentUser = useMemo(() => ({
     name: profile?.name || 'Estudante',
     email: session.user.email || '',
     region: profile?.region,
@@ -367,17 +384,17 @@ export default function App() {
     confirmed: true,
     totalXp,
     longestStreak: Math.max(longestStreak, profile?.streak || 1),
-  };
+  }), [profile, session, totalXp, longestStreak]);
 
-  const gamificationStats = computeGamificationStats({
+  const gamificationStats = useMemo(() => computeGamificationStats({
     essays: essayCorrections,
     simulados: simuladosHistory,
     streak: profile?.streak || 1,
     longestStreak: Math.max(longestStreak, profile?.streak || 1),
     totalXp,
-  });
+  }), [essayCorrections, simuladosHistory, profile, longestStreak, totalXp]);
 
-  const unlockedAchievements = getUnlockedAchievements(gamificationStats);
+  const unlockedAchievements = useMemo(() => getUnlockedAchievements(gamificationStats), [gamificationStats]);
 
   return (
     <div id="app-workspace" className="min-h-screen lg:h-screen bg-slate-50 dark:bg-[#0f172a] text-[#1b1b24] dark:text-[#f3effc] flex flex-col lg:flex-row transition-colors duration-300 pb-16 lg:pb-0 lg:overflow-hidden">
