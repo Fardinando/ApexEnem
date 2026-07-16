@@ -33,6 +33,7 @@ export default function AdPlaceholder({ slot, format = 'banner', className = '',
             height={adSlot.height}
             style={{ border: 'none', overflow: 'hidden' }}
             scrolling="no"
+            sandbox="allow-scripts allow-same-origin"
             title={`ad-${slot}`}
           />
         ) : (
