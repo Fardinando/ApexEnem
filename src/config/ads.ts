@@ -117,6 +117,18 @@ export const AD_SLOTS: Record<string, AdSlot> = {
     height: 60,
   },
 
+  // ── SIDEBAR ──────────────────────────────────────────────────
+  'sidebar-desktop': {
+    code: `<script>atOptions={'key':'e2cded58a320b50ccf5f6ff214bb8d08','format':'iframe','height':250,'width':300,'params':{}};</script><script src="https://www.highperformanceformat.com/e2cded58a320b50ccf5f6ff214bb8d08/invoke.js"></script>`,
+    width: 300,
+    height: 250,
+  },
+  'sidebar-mobile': {
+    code: `<script>atOptions={'key':'b6a8ab78e77171caf21881c02c58f5c0','format':'iframe','height':50,'width':320,'params':{}};</script><script src="https://www.highperformanceformat.com/b6a8ab78e77171caf21881c02c58f5c0/invoke.js"></script>`,
+    width: 320,
+    height: 50,
+  },
+
   // ── CONFIGURAÇÕES ─────────────────────────────────────────────
   'configuracoes-topo': {
     code: `<script>atOptions={'key':'b6a8ab78e77171caf21881c02c58f5c0','format':'iframe','height':50,'width':320,'params':{}};</script><script src="https://www.highperformanceformat.com/b6a8ab78e77171caf21881c02c58f5c0/invoke.js"></script>`,

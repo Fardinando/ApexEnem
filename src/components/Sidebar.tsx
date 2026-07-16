@@ -5,6 +5,7 @@ import {
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getLevelFromXp, getLevelTitle } from '../lib/gamification';
+import AdPlaceholder from './AdPlaceholder';
 
 interface SidebarProps {
   currentUser: UserProfile;
@@ -112,6 +113,10 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
                 <LogOut className="h-4.5 w-4.5" /> Sair
               </button>
             </div>
+
+            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
+              <AdPlaceholder slot="sidebar-mobile" format="banner" user={currentUser} />
+            </div>
           </div>
         </>
       )}
@@ -175,6 +180,7 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
 
         {/* Desktop bottom */}
         <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
+          <AdPlaceholder slot="sidebar-desktop" format="rectangle" user={currentUser} />
           <button type="button" onClick={toggleDarkMode}
             className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-between transition cursor-pointer">
             <div className="flex items-center gap-2.5">{isDarkMode ? <Sun className="h-4.5 w-4.5 text-amber-500" /> : <Moon className="h-4.5 w-4.5 text-blue-600" />}<span>{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span></div>
