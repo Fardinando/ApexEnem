@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useRef } from 'react';
+import React, { useRef, useState } from 'react';
 import { 
   User, 
   Settings, 
@@ -16,7 +16,10 @@ import {
   Sun, 
   Moon,
   Camera,
-  X
+  X,
+  KeyRound,
+  AlertTriangle,
+  CheckCircle
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import AdPlaceholder from './AdPlaceholder';
@@ -48,6 +51,21 @@ export default function ConfiguracoesView({
   const [newHardSubjects, setNewHardSubjects] = React.useState<string[]>(currentUser.hardSubjects || []);
   const [newAvatar, setNewAvatar] = React.useState<string | undefined>(currentUser.avatar);
   const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  // Reset account modal state
+  const [showResetModal, setShowResetModal] = useState(false);
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
+  const [resetError, setResetError] = useState('');
+
+  // Delete account modal state
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteStep, setDeleteStep] = useState<1 | 2 | 3>(1);
+  const [deleteEmail, setDeleteEmail] = useState('');
+  const [deletePassword1, setDeletePassword1] = useState('');
+  const [deletePassword2, setDeletePassword2] = useState('');
+  const [deletePassword3, setDeletePassword3] = useState('');
+  const [deleteError, setDeleteError] = useState('');
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -416,19 +434,11 @@ export default function ConfiguracoesView({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1" id="danger-actions-grid">
             
-            {/* Clear Data Button */}
+            {/* Clear Data Button - opens reset modal */}
             <button
               id="btn-settings-clear-data"
               type="button"
-              onClick={() => {
-                const check = confirm(
-                  'ATENÇÃO: Isso deletará todas as suas redações avaliadas por IA, seu histórico acadêmico escolar e reiniciará o onboarding. Deseja realmente prosseguir?'
-                );
-                if (check) {
-                  onClearLocalData();
-                  alert('Sua conta foi redefinida para o zero absoluta! Complete o onboarding para criar um novo plano.');
-                }
-              }}
+              onClick={() => { setShowResetModal(true); setResetPassword(''); setResetPasswordConfirm(''); setResetError(''); }}
               className="py-3 px-4 rounded-xl border border-red-200 text-xs font-bold text-red-700 hover:bg-red-50 flex items-center justify-center gap-2 transition cursor-pointer dark:border-red-950/40 dark:hover:bg-red-950/15 dark:text-red-400"
             >
               <Trash2 className="h-4.5 w-4.5" />
@@ -450,20 +460,11 @@ export default function ConfiguracoesView({
               <span>Sair da Plataforma</span>
             </button>
 
-            {/* Permanent Account Deletion button */}
+            {/* Permanent Account Deletion button - opens delete modal */}
             <button
               id="btn-settings-delete-account"
               type="button"
-              onClick={() => {
-                const step1 = confirm('ATENÇÃO EXTREMA: Deseja realmente DELETAR sua conta permanentemente? Isso apagará todos os seus registros de cadastro e dados guardados no app.');
-                if (step1) {
-                  const step2 = confirm('Essa operação é irreversível! Clique em OK se deseja desconectar e liberar seu e-mail para um cadastro novo do zero.');
-                  if (step2) {
-                    onDeleteAccount();
-                    alert('Sua conta foi excluída permanentemente com sucesso!');
-                  }
-                }
-              }}
+              onClick={() => { setShowDeleteModal(true); setDeleteStep(1); setDeleteEmail(''); setDeletePassword1(''); setDeletePassword2(''); setDeletePassword3(''); setDeleteError(''); }}
               className="py-3 px-4 col-span-1 md:col-span-2 bg-red-650 hover:bg-red-700 text-white font-bold text-xs rounded-xl flex items-center justify-center gap-2 transition cursor-pointer shadow-md"
             >
               <Trash2 className="h-4.5 w-4.5" />
@@ -471,8 +472,180 @@ export default function ConfiguracoesView({
             </button>
 
           </div>
-
         </div>
+
+        {/* Reset Account Modal */}
+        {showResetModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowResetModal(false)}>
+            <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-amber-100 dark:bg-amber-950/30 rounded-xl">
+                  <AlertTriangle className="h-5 w-5 text-amber-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Reiniciar Conta</h3>
+                  <p className="text-[10px] text-slate-400">Todos os seus dados serão apagados</p>
+                </div>
+              </div>
+
+              <p className="text-xs text-slate-500 leading-relaxed">
+                Esta ação irá apagar todas as suas redações, histórico de simulados, progresso de aprendizado e onboarding. Você precisará completar o onboarding novamente.
+              </p>
+
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Digite sua senha</label>
+                  <input
+                    type="password"
+                    value={resetPassword}
+                    onChange={(e) => setResetPassword(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    placeholder="Sua senha"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[10px] font-bold text-slate-500 uppercase">Confirme sua senha</label>
+                  <input
+                    type="password"
+                    value={resetPasswordConfirm}
+                    onChange={(e) => setResetPasswordConfirm(e.target.value)}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                    placeholder="Confirme a senha"
+                  />
+                </div>
+                {resetError && <p className="text-[10px] text-red-500 font-bold">{resetError}</p>}
+              </div>
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowResetModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
+                <button
+                  onClick={() => {
+                    if (!resetPassword) { setResetError('Digite sua senha.'); return; }
+                    if (resetPassword !== resetPasswordConfirm) { setResetError('As senhas não coincidem.'); return; }
+                    if (resetPassword !== (currentUser.password || '')) { setResetError('Senha incorreta.'); return; }
+                    setShowResetModal(false);
+                    onClearLocalData();
+                  }}
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  Reiniciar Conta
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Delete Account Modal - 3 Step Process */}
+        {showDeleteModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setShowDeleteModal(false)}>
+            <div className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 shadow-2xl p-6 w-full max-w-md space-y-4" onClick={(e) => e.stopPropagation()}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-red-100 dark:bg-red-950/30 rounded-xl">
+                  <Trash2 className="h-5 w-5 text-red-600" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Excluir Conta Permanentemente</h3>
+                  <p className="text-[10px] text-slate-400">Passo {deleteStep} de 3</p>
+                </div>
+              </div>
+
+              {/* Progress steps */}
+              <div className="flex gap-2">
+                {[1, 2, 3].map((step) => (
+                  <div key={step} className={`flex-1 h-1.5 rounded-full ${deleteStep >= step ? 'bg-red-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                ))}
+              </div>
+
+              {deleteStep === 1 && (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-500">Confirme seu e-mail para iniciar o processo de exclusão.</p>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Seu e-mail cadastrado</label>
+                    <input
+                      type="email"
+                      value={deleteEmail}
+                      onChange={(e) => setDeleteEmail(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      placeholder={currentUser.email}
+                    />
+                  </div>
+                  {deleteError && <p className="text-[10px] text-red-500 font-bold">{deleteError}</p>}
+                </div>
+              )}
+
+              {deleteStep === 2 && (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-500">Digite sua senha (1/3).</p>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (1ª vez)</label>
+                    <input
+                      type="password"
+                      value={deletePassword1}
+                      onChange={(e) => setDeletePassword1(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      placeholder="Sua senha"
+                    />
+                  </div>
+                  {deleteError && <p className="text-[10px] text-red-500 font-bold">{deleteError}</p>}
+                </div>
+              )}
+
+              {deleteStep === 3 && (
+                <div className="space-y-3">
+                  <p className="text-xs text-slate-500">Última chance. Digite sua senha duas vezes para confirmar.</p>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (2ª vez)</label>
+                    <input
+                      type="password"
+                      value={deletePassword2}
+                      onChange={(e) => setDeletePassword2(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      placeholder="Sua senha"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (3ª vez)</label>
+                    <input
+                      type="password"
+                      value={deletePassword3}
+                      onChange={(e) => setDeletePassword3(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                      placeholder="Sua senha"
+                    />
+                  </div>
+                  {deleteError && <p className="text-[10px] text-red-500 font-bold">{deleteError}</p>}
+                </div>
+              )}
+
+              <div className="flex justify-end gap-2 pt-2">
+                <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
+                <button
+                  onClick={() => {
+                    if (deleteStep === 1) {
+                      if (!deleteEmail.trim()) { setResetError('Digite seu e-mail.'); setDeleteError('Digite seu e-mail.'); return; }
+                      if (deleteEmail.trim().toLowerCase() !== currentUser.email?.toLowerCase()) { setDeleteError('E-mail incorreto.'); return; }
+                      setDeleteError('');
+                      setDeleteStep(2);
+                    } else if (deleteStep === 2) {
+                      if (!deletePassword1) { setDeleteError('Digite sua senha.'); return; }
+                      if (deletePassword1 !== (currentUser.password || '')) { setDeleteError('Senha incorreta.'); return; }
+                      setDeleteError('');
+                      setDeleteStep(3);
+                    } else {
+                      if (!deletePassword2 || !deletePassword3) { setDeleteError('Preencha ambos os campos de senha.'); return; }
+                      if (deletePassword2 !== (currentUser.password || '') || deletePassword3 !== (currentUser.password || '')) { setDeleteError('Senhas incorretas.'); return; }
+                      setShowDeleteModal(false);
+                      onDeleteAccount();
+                    }
+                  }}
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                >
+                  {deleteStep === 3 ? 'Excluir Permanentemente' : 'Próximo'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
       </div>
 

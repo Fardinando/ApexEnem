@@ -710,6 +710,66 @@ export default function DashboardView({
           </div>
         )}
 
+        {/* Bento Card 9: All Essays with Scores */}
+        <div id="bento-essays-list" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
+          <div className="flex justify-between items-center mb-5">
+            <div>
+              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
+                <FileText className="h-4.5 w-4.5 text-blue-500" />
+                Todas as Redações
+              </h3>
+              <p className="text-slate-450 text-[10px] mt-0.5">{totalEssays} redação{totalEssays !== 1 ? 'ões' : ''} corrigida{totalEssays !== 1 ? 's' : ''}</p>
+            </div>
+            <button
+              onClick={() => setActiveTab('redacao')}
+              className="text-xs font-bold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1 border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 p-2 rounded-xl transition cursor-pointer"
+            >
+              Nova Redação <ArrowUpRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+
+          {essayCorrections.length === 0 ? (
+            <div className="py-10 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+              <FileText className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-500">Nenhuma redação enviada ainda</p>
+              <p className="text-[10px] text-slate-400 mt-1">Envie sua primeira redação para receber notas de 10 IAs</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {essayCorrections.slice().reverse().map((essay) => {
+                const scoreColor = essay.score >= 800 ? 'text-emerald-600 dark:text-emerald-400' : essay.score >= 600 ? 'text-amber-600 dark:text-amber-400' : 'text-red-500 dark:text-red-400';
+                const scoreBg = essay.score >= 800 ? 'bg-emerald-50 dark:bg-emerald-950/20 border-emerald-200 dark:border-emerald-900/40' : essay.score >= 600 ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/40' : 'bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900/40';
+                return (
+                  <div key={essay.id} className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl hover:border-blue-300 dark:hover:border-blue-700 transition">
+                    <div className={`px-3 py-2 rounded-xl border font-display font-black text-lg ${scoreBg} ${scoreColor} min-w-[60px] text-center`}>
+                      {essay.score}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{essay.title}</p>
+                      <p className="text-[10px] text-slate-400 mt-0.5">{essay.date}</p>
+                      <div className="flex gap-1.5 mt-1.5 flex-wrap">
+                        {essay.competencies?.map((comp) => (
+                          <span key={comp.id} className="text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded font-mono">
+                            C{comp.id}: {comp.score}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="text-right flex-shrink-0">
+                      {essay.strengths && essay.strengths.length > 0 && (
+                        <span className="text-[9px] text-emerald-500 block">{essay.strengths.length} ponto{essay.strengths.length > 1 ? 's' : ''} forte{essay.strengths.length > 1 ? 's' : ''}</span>
+                      )}
+                      {essay.weaknesses && essay.weaknesses.length > 0 && (
+                        <span className="text-[9px] text-red-400 block">{essay.weaknesses.length} melhoria{essay.weaknesses.length > 1 ? 's' : ''}</span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
 
       <AdPlaceholder slot="dashboard-rodape" format="banner" className="mt-6" user={currentUser} />
