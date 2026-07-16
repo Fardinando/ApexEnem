@@ -179,7 +179,7 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                     y={data.states.reduce((a, s) => a + s.labelY, 0) / data.states.length - 5}
                     textAnchor="middle"
                     fill={isHovered ? data.color : '#64748b'}
-                    fontSize={isHovered ? '15' : '12'}
+                    fontSize={isHovered ? '12' : '9'}
                     fontWeight="700"
                     fontFamily="system-ui, sans-serif"
                     className="pointer-events-none select-none transition-all duration-300"
@@ -189,10 +189,10 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                   {stats && (
                     <text
                       x={data.states.reduce((a, s) => a + s.labelX, 0) / data.states.length}
-                      y={data.states.reduce((a, s) => a + s.labelY, 0) / data.states.length + 9}
+                      y={data.states.reduce((a, s) => a + s.labelY, 0) / data.states.length + 8}
                       textAnchor="middle"
                       fill={isHovered ? data.color : '#94a3b8'}
-                      fontSize="14"
+                      fontSize="8"
                       fontWeight="700"
                       fontFamily="system-ui, sans-serif"
                       className="pointer-events-none select-none"
@@ -209,6 +209,12 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                 {REGION_MAP_DATA[selectedRegion].states.map((state) => {
                   const isHovered = hoveredElement === state.code;
                   const regionColor = REGION_MAP_DATA[selectedRegion].color;
+                  const bbox = getStateBBox(state.code);
+                  const stateW = bbox ? bbox.maxX - bbox.minX : 80;
+                  const scale = Math.min(1, stateW / 90);
+                  const codeFs = Math.max(3, Math.round(5 + scale * 4));
+                  const nameFs = Math.max(2, Math.round(2.5 + scale * 2));
+                  const countFs = Math.max(2, Math.round(2.5 + scale * 2));
                   return (
                     <g
                       key={state.code}
@@ -230,10 +236,10 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                       />
                       <text
                         x={state.labelX}
-                        y={state.labelY - 4}
+                        y={state.labelY - 3}
                         textAnchor="middle"
                         fill={isHovered ? regionColor : '#334155'}
-                        fontSize={isHovered ? '11' : '9'}
+                        fontSize={isHovered ? codeFs + 2 : codeFs}
                         fontWeight="700"
                         fontFamily="system-ui, sans-serif"
                         className="pointer-events-none select-none transition-all duration-300"
@@ -242,10 +248,10 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                       </text>
                       <text
                         x={state.labelX}
-                        y={state.labelY + 5}
+                        y={state.labelY + 4}
                         textAnchor="middle"
-                        fill={isHovered ? '#1e293b' : '#94a3b8'}
-                        fontSize="6"
+                        fill={isHovered ? '#1e293b' : '#64748b'}
+                        fontSize={nameFs}
                         fontFamily="system-ui, sans-serif"
                         className="pointer-events-none select-none transition-all duration-300"
                       >
@@ -254,10 +260,10 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                       {stats && (
                         <text
                           x={state.labelX}
-                          y={state.labelY + 13}
+                          y={state.labelY + 4 + nameFs + 1}
                           textAnchor="middle"
                           fill={regionColor}
-                          fontSize="6"
+                          fontSize={countFs}
                           fontWeight="700"
                           fontFamily="system-ui, sans-serif"
                           className="pointer-events-none select-none"
