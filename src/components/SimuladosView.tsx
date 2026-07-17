@@ -186,18 +186,26 @@ function renderContent(text: string): (React.ReactNode | string)[] {
 
 async function fetchENEMQuestions(subject: SimuladoConfig['subject'], count: number): Promise<SimuladoQuestion[]> {
   const discipline = DISCIPLINE_TO_API[subject];
+  const targetTotal = Math.min(count * 4, 200);
   let allRaw: any[] = [];
 
   for (const year of ENEM_YEARS) {
-    try {
-      const res = await fetch(`${ENEM_API_BASE}/exams/${year}/questions?limit=200`);
-      if (!res.ok) continue;
-      const data = await res.json();
-      allRaw.push(...(data.questions || []));
-    } catch {
-      continue;
+    if (allRaw.length >= targetTotal) break;
+    let offset = 0;
+    while (allRaw.length < targetTotal) {
+      try {
+        const res = await fetch(`${ENEM_API_BASE}/exams/${year}/questions?limit=50&offset=${offset}`);
+        if (!res.ok) break;
+        const data = await res.json();
+        const questions = data.questions || [];
+        if (questions.length === 0) break;
+        allRaw.push(...questions);
+        offset += 50;
+        if (!data.metadata?.hasMore) break;
+      } catch {
+        break;
+      }
     }
-    if (allRaw.length >= count * 5) break;
   }
 
   if (allRaw.length === 0) {

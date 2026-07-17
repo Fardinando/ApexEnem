@@ -22,6 +22,7 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { UserProfile } from '../types';
+import { supabase } from '../lib/supabase';
 import AdPlaceholder from './AdPlaceholder';
 
 interface ConfiguracoesViewProps {
@@ -57,6 +58,7 @@ export default function ConfiguracoesView({
   const [resetPassword, setResetPassword] = useState('');
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
   const [resetError, setResetError] = useState('');
+  const [resetVerifying, setResetVerifying] = useState(false);
 
   // Delete account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -66,6 +68,7 @@ export default function ConfiguracoesView({
   const [deletePassword2, setDeletePassword2] = useState('');
   const [deletePassword3, setDeletePassword3] = useState('');
   const [deleteError, setDeleteError] = useState('');
+  const [deleteVerifying, setDeleteVerifying] = useState(false);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -519,16 +522,29 @@ export default function ConfiguracoesView({
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setShowResetModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
                 <button
-                  onClick={() => {
+                  disabled={resetVerifying}
+                  onClick={async () => {
                     if (!resetPassword) { setResetError('Digite sua senha.'); return; }
                     if (resetPassword !== resetPasswordConfirm) { setResetError('As senhas não coincidem.'); return; }
-                    if (resetPassword !== (currentUser.password || '')) { setResetError('Senha incorreta.'); return; }
-                    setShowResetModal(false);
-                    onClearLocalData();
+                    setResetVerifying(true);
+                    setResetError('');
+                    try {
+                      const { error } = await supabase.auth.signInWithPassword({
+                        email: currentUser.email || '',
+                        password: resetPassword,
+                      });
+                      if (error) { setResetError('Senha incorreta.'); return; }
+                      setShowResetModal(false);
+                      onClearLocalData();
+                    } catch {
+                      setResetError('Erro ao verificar senha.');
+                    } finally {
+                      setResetVerifying(false);
+                    }
                   }}
-                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                  className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
                 >
-                  Reiniciar Conta
+                  {resetVerifying ? 'Verificando...' : 'Reiniciar Conta'}
                 </button>
               </div>
             </div>
@@ -620,27 +636,53 @@ export default function ConfiguracoesView({
               <div className="flex justify-end gap-2 pt-2">
                 <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
                 <button
-                  onClick={() => {
+                  disabled={deleteVerifying}
+                  onClick={async () => {
                     if (deleteStep === 1) {
-                      if (!deleteEmail.trim()) { setResetError('Digite seu e-mail.'); setDeleteError('Digite seu e-mail.'); return; }
+                      if (!deleteEmail.trim()) { setDeleteError('Digite seu e-mail.'); return; }
                       if (deleteEmail.trim().toLowerCase() !== currentUser.email?.toLowerCase()) { setDeleteError('E-mail incorreto.'); return; }
                       setDeleteError('');
                       setDeleteStep(2);
                     } else if (deleteStep === 2) {
                       if (!deletePassword1) { setDeleteError('Digite sua senha.'); return; }
-                      if (deletePassword1 !== (currentUser.password || '')) { setDeleteError('Senha incorreta.'); return; }
+                      setDeleteVerifying(true);
                       setDeleteError('');
-                      setDeleteStep(3);
+                      try {
+                        const { error } = await supabase.auth.signInWithPassword({
+                          email: currentUser.email || '',
+                          password: deletePassword1,
+                        });
+                        if (error) { setDeleteError('Senha incorreta.'); return; }
+                        setDeleteError('');
+                        setDeleteStep(3);
+                      } catch {
+                        setDeleteError('Erro ao verificar senha.');
+                      } finally {
+                        setDeleteVerifying(false);
+                      }
                     } else {
                       if (!deletePassword2 || !deletePassword3) { setDeleteError('Preencha ambos os campos de senha.'); return; }
-                      if (deletePassword2 !== (currentUser.password || '') || deletePassword3 !== (currentUser.password || '')) { setDeleteError('Senhas incorretas.'); return; }
-                      setShowDeleteModal(false);
-                      onDeleteAccount();
+                      if (deletePassword2 !== deletePassword3) { setDeleteError('As senhas não coincidem.'); return; }
+                      setDeleteVerifying(true);
+                      setDeleteError('');
+                      try {
+                        const { error } = await supabase.auth.signInWithPassword({
+                          email: currentUser.email || '',
+                          password: deletePassword2,
+                        });
+                        if (error) { setDeleteError('Senha incorreta.'); return; }
+                        setShowDeleteModal(false);
+                        onDeleteAccount();
+                      } catch {
+                        setDeleteError('Erro ao verificar senha.');
+                      } finally {
+                        setDeleteVerifying(false);
+                      }
                     }
                   }}
-                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition cursor-pointer"
+                  className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
                 >
-                  {deleteStep === 3 ? 'Excluir Permanentemente' : 'Próximo'}
+                  {deleteVerifying ? 'Verificando...' : deleteStep === 3 ? 'Excluir Permanentemente' : 'Próximo'}
                 </button>
               </div>
             </div>

@@ -1395,7 +1395,7 @@ export default function AprendizadoView({
               <div className="text-center pb-4 border-b border-slate-200 dark:border-slate-800">
                 <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
                   {mainTab === 'cursinho'
-                    ? 'Caminho do Conhecimento ENEM'
+                    ? 'Cursinho ENEM'
                     : 'Arena de Questões ENEM'}
                 </h3>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
