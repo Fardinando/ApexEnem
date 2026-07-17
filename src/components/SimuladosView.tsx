@@ -345,13 +345,6 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
     const handleCopy = (e: ClipboardEvent) => { e.preventDefault(); triggerWarning('Tentou copiar conteúdo da prova'); };
     const handlePaste = (e: ClipboardEvent) => { e.preventDefault(); triggerWarning('Tentou colar conteúdo na prova'); };
 
-    const handlePointerDown = (e: PointerEvent) => {
-      const target = e.target as HTMLElement;
-      if (!target.closest('#active-exam-view')) {
-        triggerWarning('Clicou fora da área da prova');
-      }
-    };
-
     const handleKeyDown = (e: KeyboardEvent) => {
       const blocked = [
         e.ctrlKey && e.key === 'c',
@@ -384,7 +377,6 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
     window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
-    document.addEventListener('pointerdown', handlePointerDown);
     document.addEventListener('keydown', handleKeyDown);
 
     return () => {
@@ -392,7 +384,6 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
       window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('paste', handlePaste);
-      document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
       if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
       if (heartbeatRef.current) clearInterval(heartbeatRef.current);
