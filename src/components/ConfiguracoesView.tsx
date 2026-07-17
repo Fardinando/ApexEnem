@@ -59,6 +59,7 @@ export default function ConfiguracoesView({
   const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetVerifying, setResetVerifying] = useState(false);
+  const [resetEmailSent, setResetEmailSent] = useState(false);
 
   // Delete account modal state
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -69,6 +70,7 @@ export default function ConfiguracoesView({
   const [deletePassword3, setDeletePassword3] = useState('');
   const [deleteError, setDeleteError] = useState('');
   const [deleteVerifying, setDeleteVerifying] = useState(false);
+  const [deleteEmailSent, setDeleteEmailSent] = useState(false);
 
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -140,6 +142,28 @@ export default function ConfiguracoesView({
     setNewHardSubjects(currentUser.hardSubjects || []);
     setNewAvatar(currentUser.avatar);
     setIsEditing(false);
+  };
+
+  const handleForgotPassword = async (onSuccess?: () => void) => {
+    if (!currentUser.email) return;
+    setResetError('');
+    setDeleteError('');
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(currentUser.email, {
+        redirectTo: window.location.origin,
+      });
+      if (error) {
+        setResetError('Erro ao enviar e-mail de redefinição.');
+        setDeleteError('Erro ao enviar e-mail de redefinição.');
+        return;
+      }
+      setResetEmailSent(true);
+      setDeleteEmailSent(true);
+      onSuccess?.();
+    } catch {
+      setResetError('Erro ao enviar e-mail de redefinição.');
+      setDeleteError('Erro ao enviar e-mail de redefinição.');
+    }
   };
 
   return (
@@ -495,35 +519,50 @@ export default function ConfiguracoesView({
                 Esta ação irá apagar todas as suas redações, histórico de simulados, progresso de aprendizado e onboarding. Você precisará completar o onboarding novamente.
               </p>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Digite sua senha</label>
-                  <input
-                    type="password"
-                    value={resetPassword}
-                    onChange={(e) => setResetPassword(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                    placeholder="Sua senha"
-                  />
+              {resetEmailSent ? (
+                <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
+                  <p className="text-xs font-bold text-green-700 dark:text-green-400">E-mail enviado!</p>
+                  <p className="text-[11px] text-green-600 dark:text-green-300">Verifique sua caixa de entrada e redefina sua senha. Depois volte e confirme a reinicialização.</p>
                 </div>
-                <div className="space-y-1">
-                  <label className="text-[10px] font-bold text-slate-500 uppercase">Confirme sua senha</label>
-                  <input
-                    type="password"
-                    value={resetPasswordConfirm}
-                    onChange={(e) => setResetPasswordConfirm(e.target.value)}
-                    className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                    placeholder="Confirme a senha"
-                  />
+              ) : (
+                <div className="space-y-3">
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Digite sua senha</label>
+                    <input
+                      type="password"
+                      value={resetPassword}
+                      onChange={(e) => setResetPassword(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                      placeholder="Sua senha"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Confirme sua senha</label>
+                    <input
+                      type="password"
+                      value={resetPasswordConfirm}
+                      onChange={(e) => setResetPasswordConfirm(e.target.value)}
+                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
+                      placeholder="Confirme a senha"
+                    />
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleForgotPassword()}
+                    className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                  >
+                    Esqueci minha senha
+                  </button>
                 </div>
-                {resetError && <p className="text-[10px] text-red-500 font-bold">{resetError}</p>}
-              </div>
+              )}
+              {resetError && <p className="text-[10px] text-red-500 font-bold">{resetError}</p>}
 
               <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setShowResetModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
+                <button onClick={() => { setShowResetModal(false); setResetEmailSent(false); }} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
                 <button
-                  disabled={resetVerifying}
+                  disabled={resetVerifying || resetEmailSent}
                   onClick={async () => {
+                    if (resetEmailSent) { setShowResetModal(false); setResetEmailSent(false); return; }
                     if (!resetPassword) { setResetError('Digite sua senha.'); return; }
                     if (resetPassword !== resetPasswordConfirm) { setResetError('As senhas não coincidem.'); return; }
                     setResetVerifying(true);
@@ -533,8 +572,9 @@ export default function ConfiguracoesView({
                         email: currentUser.email || '',
                         password: resetPassword,
                       });
-                      if (error) { setResetError('Senha incorreta.'); return; }
+                      if (error) { setResetError('Senha incorreta. Use "Esqueci minha senha" se necessário.'); return; }
                       setShowResetModal(false);
+                      setResetEmailSent(false);
                       onClearLocalData();
                     } catch {
                       setResetError('Erro ao verificar senha.');
@@ -544,7 +584,7 @@ export default function ConfiguracoesView({
                   }}
                   className="px-5 py-2 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
                 >
-                  {resetVerifying ? 'Verificando...' : 'Reiniciar Conta'}
+                  {resetVerifying ? 'Verificando...' : resetEmailSent ? 'Fechar' : 'Reiniciar Conta'}
                 </button>
               </div>
             </div>
@@ -592,16 +632,32 @@ export default function ConfiguracoesView({
               {deleteStep === 2 && (
                 <div className="space-y-3">
                   <p className="text-xs text-slate-500">Digite sua senha (1/3).</p>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (1ª vez)</label>
-                    <input
-                      type="password"
-                      value={deletePassword1}
-                      onChange={(e) => setDeletePassword1(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                      placeholder="Sua senha"
-                    />
-                  </div>
+                  {deleteEmailSent ? (
+                    <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
+                      <p className="text-xs font-bold text-green-700 dark:text-green-400">E-mail enviado!</p>
+                      <p className="text-[11px] text-green-600 dark:text-green-300">Verifique sua caixa de entrada e redefina sua senha. Depois volte e continue.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (1ª vez)</label>
+                        <input
+                          type="password"
+                          value={deletePassword1}
+                          onChange={(e) => setDeletePassword1(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                          placeholder="Sua senha"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleForgotPassword()}
+                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </>
+                  )}
                   {deleteError && <p className="text-[10px] text-red-500 font-bold">{deleteError}</p>}
                 </div>
               )}
@@ -609,35 +665,52 @@ export default function ConfiguracoesView({
               {deleteStep === 3 && (
                 <div className="space-y-3">
                   <p className="text-xs text-slate-500">Última chance. Digite sua senha duas vezes para confirmar.</p>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (2ª vez)</label>
-                    <input
-                      type="password"
-                      value={deletePassword2}
-                      onChange={(e) => setDeletePassword2(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                      placeholder="Sua senha"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (3ª vez)</label>
-                    <input
-                      type="password"
-                      value={deletePassword3}
-                      onChange={(e) => setDeletePassword3(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                      placeholder="Sua senha"
-                    />
-                  </div>
+                  {deleteEmailSent ? (
+                    <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
+                      <p className="text-xs font-bold text-green-700 dark:text-green-400">E-mail enviado!</p>
+                      <p className="text-[11px] text-green-600 dark:text-green-300">Verifique sua caixa de entrada e redefina sua senha. Depois volte e confirme a exclusão.</p>
+                    </div>
+                  ) : (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (2ª vez)</label>
+                        <input
+                          type="password"
+                          value={deletePassword2}
+                          onChange={(e) => setDeletePassword2(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                          placeholder="Sua senha"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (3ª vez)</label>
+                        <input
+                          type="password"
+                          value={deletePassword3}
+                          onChange={(e) => setDeletePassword3(e.target.value)}
+                          className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
+                          placeholder="Sua senha"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleForgotPassword()}
+                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
+                      >
+                        Esqueci minha senha
+                      </button>
+                    </>
+                  )}
                   {deleteError && <p className="text-[10px] text-red-500 font-bold">{deleteError}</p>}
                 </div>
               )}
 
               <div className="flex justify-end gap-2 pt-2">
-                <button onClick={() => setShowDeleteModal(false)} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
+                <button onClick={() => { setShowDeleteModal(false); setDeleteStep(1); setDeleteEmailSent(false); }} className="px-4 py-2 text-xs font-bold text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-xl transition cursor-pointer">Cancelar</button>
                 <button
-                  disabled={deleteVerifying}
+                  disabled={deleteVerifying || deleteEmailSent}
                   onClick={async () => {
+                    if (deleteEmailSent) { setShowDeleteModal(false); setDeleteStep(1); setDeleteEmailSent(false); return; }
                     if (deleteStep === 1) {
                       if (!deleteEmail.trim()) { setDeleteError('Digite seu e-mail.'); return; }
                       if (deleteEmail.trim().toLowerCase() !== currentUser.email?.toLowerCase()) { setDeleteError('E-mail incorreto.'); return; }
@@ -652,7 +725,7 @@ export default function ConfiguracoesView({
                           email: currentUser.email || '',
                           password: deletePassword1,
                         });
-                        if (error) { setDeleteError('Senha incorreta.'); return; }
+                        if (error) { setDeleteError('Senha incorreta. Use "Esqueci minha senha" se necessário.'); return; }
                         setDeleteError('');
                         setDeleteStep(3);
                       } catch {
@@ -670,8 +743,10 @@ export default function ConfiguracoesView({
                           email: currentUser.email || '',
                           password: deletePassword2,
                         });
-                        if (error) { setDeleteError('Senha incorreta.'); return; }
+                        if (error) { setDeleteError('Senha incorreta. Use "Esqueci minha senha" se necessário.'); return; }
                         setShowDeleteModal(false);
+                        setDeleteStep(1);
+                        setDeleteEmailSent(false);
                         onDeleteAccount();
                       } catch {
                         setDeleteError('Erro ao verificar senha.');
@@ -682,7 +757,7 @@ export default function ConfiguracoesView({
                   }}
                   className="px-5 py-2 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-xl transition cursor-pointer disabled:opacity-50"
                 >
-                  {deleteVerifying ? 'Verificando...' : deleteStep === 3 ? 'Excluir Permanentemente' : 'Próximo'}
+                  {deleteVerifying ? 'Verificando...' : deleteEmailSent ? 'Fechar' : deleteStep === 3 ? 'Excluir Permanentemente' : 'Próximo'}
                 </button>
               </div>
             </div>
