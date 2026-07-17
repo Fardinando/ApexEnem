@@ -22,6 +22,7 @@ import {
   BarChart3,
   Zap,
   Shield,
+  ShieldAlert,
   Save,
   ChevronDown,
 } from 'lucide-react';
@@ -252,7 +253,11 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
 
   const [warningCount, setWarningCount] = useState(0);
   const [showWarning, setShowWarning] = useState(false);
+  const [violationReasons, setViolationReasons] = useState<string[]>([]);
+  const [showBlockedModal, setShowBlockedModal] = useState(false);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
+  const wasHiddenRef = useRef(false);
 
   const timerRef = useRef<NodeJS.Timeout | null>(null);
   const [timerExpired, setTimerExpired] = useState(false);
@@ -298,8 +303,17 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
     }
   }, [timerExpired]);
 
-  const triggerWarning = useCallback(() => {
-    setWarningCount(c => c + 1);
+  const BLOCK_THRESHOLD = 3;
+
+  const triggerWarning = useCallback((reason: string) => {
+    setWarningCount(c => {
+      const next = c + 1;
+      if (next >= BLOCK_THRESHOLD) {
+        setTimeout(() => setShowBlockedModal(true), 300);
+      }
+      return next;
+    });
+    setViolationReasons(prev => prev.includes(reason) ? prev : [...prev, reason]);
     setShowWarning(true);
     if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
     warningTimerRef.current = setTimeout(() => setShowWarning(false), 8000);
@@ -308,21 +322,80 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
   useEffect(() => {
     if (!simulado?.isActive) return;
 
+    let lastHiddenAt = 0;
+
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') triggerWarning();
+      if (document.visibilityState === 'hidden') {
+        lastHiddenAt = Date.now();
+        wasHiddenRef.current = true;
+        triggerWarning('Trocou de aba ou janela (aba ficou oculta)');
+      } else if (wasHiddenRef.current) {
+        wasHiddenRef.current = false;
+        const duration = Math.round((Date.now() - lastHiddenAt) / 1000);
+        if (duration > 0) {
+          triggerWarning(`Voltou após ${duration}s fora da prova`);
+        }
+      }
     };
-    const handleCopy = (e: ClipboardEvent) => { e.preventDefault(); triggerWarning(); };
-    const handlePaste = (e: ClipboardEvent) => { e.preventDefault(); triggerWarning(); };
+
+    const handleWindowBlur = () => {
+      triggerWarning('Janela do navegador perdeu foco (provável troca de aba ou aba em grupo)');
+    };
+
+    const handleCopy = (e: ClipboardEvent) => { e.preventDefault(); triggerWarning('Tentou copiar conteúdo da prova'); };
+    const handlePaste = (e: ClipboardEvent) => { e.preventDefault(); triggerWarning('Tentou colar conteúdo na prova'); };
+
+    const handlePointerDown = (e: PointerEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest('#active-exam-view')) {
+        triggerWarning('Clicou fora da área da prova');
+      }
+    };
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const blocked = [
+        e.ctrlKey && e.key === 'c',
+        e.ctrlKey && e.key === 'v',
+        e.ctrlKey && e.key === 'u',
+        e.ctrlKey && e.shiftKey && e.key === 'I',
+        e.key === 'F12',
+        e.ctrlKey && e.shiftKey && e.key === 'J',
+      ];
+      if (blocked.some(Boolean)) {
+        e.preventDefault();
+        triggerWarning('Tentou usar atalho de teclado proibido');
+      }
+    };
+
+    // Heartbeat: check if page became hidden without firing visibilitychange (tab groups)
+    heartbeatRef.current = setInterval(() => {
+      if (document.hidden && simulado.isActive) {
+        if (!wasHiddenRef.current) {
+          wasHiddenRef.current = true;
+          lastHiddenAt = Date.now();
+          triggerWarning('Aba oculta detectada via heartbeat (possível aba em grupo)');
+        }
+      } else {
+        wasHiddenRef.current = false;
+      }
+    }, 1500);
 
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleWindowBlur);
     document.addEventListener('copy', handleCopy);
     document.addEventListener('paste', handlePaste);
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
 
     return () => {
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleWindowBlur);
       document.removeEventListener('copy', handleCopy);
       document.removeEventListener('paste', handlePaste);
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
       if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
+      if (heartbeatRef.current) clearInterval(heartbeatRef.current);
     };
   }, [simulado?.isActive, triggerWarning]);
 
@@ -353,6 +426,8 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
       setShowGabarito(false);
       setWarningCount(0);
       setShowWarning(false);
+      setViolationReasons([]);
+      setShowBlockedModal(false);
     } catch (err: any) {
       setLoadingError(err.message || 'Erro ao carregar questões. Tente novamente.');
     } finally {
@@ -420,6 +495,14 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
     setShowCancelModal(false);
     setSimulado(null);
     questionDisciplinesRef.current.clear();
+  };
+
+  const handleBlockedDismiss = () => {
+    setShowBlockedModal(false);
+    if (timerRef.current) clearInterval(timerRef.current);
+    setSimulado(null);
+    questionDisciplinesRef.current.clear();
+    setViolationReasons([]);
   };
 
   const handleSaveResult = () => {
@@ -581,9 +664,18 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                 <AlertOctagon className="h-4 w-4 text-amber-500 flex-shrink-0 mt-0.5" />
                 <div className="space-y-0.5">
                   <p className="text-xs font-bold text-amber-700 dark:text-amber-300">
-                    Detectamos comportamento suspeito! Isso afeta sua nota.
+                    Comportamento suspeito detectado!
                   </p>
                   <p className="text-[10px] text-amber-600/70 dark:text-amber-400/60">
+                    {violationReasons[violationReasons.length - 1] || 'Atividade fora da prova detectada'}
+                    {warningCount >= BLOCK_THRESHOLD - 1 && (
+                      <span className="block mt-0.5 font-semibold text-amber-700 dark:text-amber-300">
+                        Próxima violação encerrará o simulado automaticamente.
+                      </span>
+                    )}
+                    {warningCount > 1 && <span className="ml-1 font-semibold">({warningCount}/{BLOCK_THRESHOLD} alertas)</span>}
+                  </p>
+                  <p className="text-[10px] text-amber-500/50 dark:text-amber-400/40">
                     Acha que isso é um erro?{' '}
                     <a
                       href="mailto:suporte@apexenem.com.br?subject=Reporte%20-%20Comportamento%20suspeito%20no%20Simulado"
@@ -593,7 +685,6 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                     >
                       Reporte aqui
                     </a>
-                    {warningCount > 1 && <span className="ml-1 font-semibold">({warningCount} alertas registrados)</span>}
                   </p>
                 </div>
               </div>
@@ -1033,6 +1124,48 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                   Abandonar
                 </button>
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* MODAL: BLOCKED DUE TO CHEATING */}
+        {showBlockedModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm animate-fade-in" id="blocked-exam-modal">
+            <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-red-200 dark:border-red-900/40 max-w-md w-full shadow-2xl space-y-5">
+              <div className="text-center space-y-2">
+                <div className="inline-flex p-3.5 bg-red-50 dark:bg-red-950/40 rounded-2xl">
+                  <ShieldAlert className="h-7 w-7 text-red-500" />
+                </div>
+                <h3 className="text-xl font-extrabold text-red-700 dark:text-red-400">Simulado Bloqueado</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
+                  O sistema anti-roubo detectou <strong>{warningCount} violações</strong> de integridade durante a prova.
+                </p>
+              </div>
+
+              <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-900/30 rounded-xl p-4 space-y-2">
+                <p className="text-[11px] font-bold text-red-700 dark:text-red-300 uppercase tracking-wider">Motivos da detecção:</p>
+                <ul className="space-y-1.5">
+                  {violationReasons.map((reason, i) => (
+                    <li key={i} className="flex items-start gap-2 text-xs text-red-600 dark:text-red-400">
+                      <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-red-400 flex-shrink-0" />
+                      {reason}
+                    </li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+                Para garantir a integridade do simulado, esta sessão foi encerrada automaticamente.<br />
+                Tente novamente e mantenha esta aba em foco durante toda a prova.
+              </p>
+
+              <button
+                type="button"
+                onClick={handleBlockedDismiss}
+                className="w-full py-2.5 px-4 text-xs font-bold bg-red-600 hover:bg-red-700 text-white rounded-xl shadow transition cursor-pointer"
+              >
+                Entendido
+              </button>
             </div>
           </div>
         )}
