@@ -898,6 +898,125 @@ app.post("/api/openrouter-chat", async (req, res) => {
   return res.json({ text: text || "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
 });
 
+app.post("/api/lesson", async (req, res) => {
+  const { area, level, weakTopics, topicIndex } = req.body;
+  if (!area) return res.status(400).json({ error: "area is required" });
+
+  const topicNum = typeof topicIndex === 'number' ? topicIndex : Math.floor(Math.random() * 100);
+
+  const systemPrompt = `Você é o Cabrito 🐐, tutor inteligente e encorajador do ENEM. Gere uma aula completa e detalhada sobre um tópico específico dentro da área "${area}" para o ENEM.
+
+Nível de dificuldade: ${level || 5}/10 (1=fundamental, 10=avançado cursinho).
+Tópico sorteado #: ${topicNum} (use para variar o conteúdo — cada número gera um tema diferente dentro da área).
+
+Regras:
+- O conteúdo deve ter EXATAMENTE 5 a 7 blocos de texto, cada um com 2-4 frases didáticas
+- Cada bloco deve ser um conceito distinto e progressivo
+- Ao final, gere 3 dicas práticas para o ENEM
+- Use linguagem acessível mas técnica o suficiente para o ENEM
+- Inclua exemplos práticos e contextualizações reais
+- NÃO repita tópicos óbvios — aprofunde-se em nuances que caem no ENEM
+- Foque em conteúdo que realmente cai nas provas
+
+Para a área "${area}", sugira tópicos variados como:
+- Redação: tipos de tese, conectivos avançados, repertórios, proposta de intervenção
+- Linguagens: interpretação de gêneros, figuras de linguagem, gramática contextual, literatura brasileira
+- Humanas: movimentos sociais, geopolítica, filósofos, historia do Brasil
+- Natureza: bioquímica, termodinâmica, química orgânica, genética molecular
+- Matemática: funções trigonométricas, combinatória, geometria analítica, estatística`;
+
+  const userPrompt = `Gere uma aula ENEM sobre um tópico diversificado da área "${area}" (tópico #${topicNum}). Retorne APENAS o JSON, sem markdown:
+
+{
+  "title": "Título chamativo da aula",
+  "subtitle": "Subtítulo explicativo curto",
+  "content": ["bloco 1", "bloco 2", "bloco 3", "bloco 4", "bloco 5"],
+  "tips": ["dica 1", "dica 2", "dica 3"]
+}`;
+
+  async function tryLesson(model: string): Promise<any | null> {
+    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
+      const key = getNextOpenRouterKey();
+      if (!key) continue;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 12000);
+      try {
+        const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${key}`,
+            "HTTP-Referer": "https://apexenem.vercel.app",
+            "X-Title": "ApexEnem"
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            max_tokens: 1536,
+            temperature: 0.85
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (resp.status === 429) continue;
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) continue;
+
+        const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          if (parsed.title && Array.isArray(parsed.content) && parsed.content.length >= 3) {
+            return parsed;
+          }
+        } catch {
+          const match = cleaned.match(/\{[\s\S]*\}/);
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[0]);
+              if (parsed.title && Array.isArray(parsed.content)) return parsed;
+            } catch {}
+          }
+        }
+      } catch {
+        clearTimeout(tid);
+        continue;
+      }
+    }
+    return null;
+  }
+
+  const models = ["meta-llama/llama-3.2-3b-instruct:free", "openrouter/free"];
+  const lesson = await Promise.any(
+    models.map(m => tryLesson(m).then(l => l ? Promise.resolve(l) : Promise.reject()))
+  ).catch(() => null);
+
+  if (!lesson) {
+    return res.json({
+      title: `Aula de ${area}`,
+      subtitle: 'Conceitos essenciais para o ENEM',
+      content: [
+        `A área de ${area} é uma das mais importantes no ENEM. Cada prova traz questões que exigem não apenas memorização, mas interpretação profunda e aplicação prática.`,
+        `Para ir bem, é essencial dominar os conceitos fundamentais e entender como eles se conectam com situações reais. O ENEM valoriza a capacidade de relacionar conteúdos.`,
+        `Estude com consistência, resolva questões de provas anteriores e sempre revise seus pontos fracos. A prática regular é a chave para a aprovação.`,
+        `Não pule etapas: construa uma base sólida antes de avançar para tópicos complexos. Use resumos, mapas mentais e fichas de revisão.`,
+        `Lembre-se: o ENEM não cobra apenas fórmulas. Ele avalia sua capacidade de pensar criticamente e propor soluções para problemas reais da sociedade brasileira.`
+      ],
+      tips: [
+        'Resolva questões de provas anteriores do ENEM regularmente.',
+        'Revise seus erros e identifique padrões nos temas que erra.',
+        'Use o método de repetição espaçada para fixar o conteúdo.'
+      ]
+    });
+  }
+
+  return res.json(lesson);
+});
+
 app.post("/api/generate-learning-exercises", async (req, res) => {
   const { chapterTitle, chapterArea, weakAreas, count } = req.body;
 

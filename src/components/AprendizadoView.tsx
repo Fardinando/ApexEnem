@@ -431,99 +431,119 @@ function generatePlaceholderQuestions(
   return shuffled.slice(0, Math.min(count, shuffled.length));
 }
 
-const CABRITO_LESSON_CONTENT: Record<
-  string,
-  { title: string; content: string[]; tips: string[] }
-> = {
-  Redação: {
-    title: 'Estrutura da Redação Nota 1000',
-    content: [
-      'A redação do ENEM é avaliada em 5 competências, cada uma valendo até 200 pontos.',
-      'Competência 1: Domínio da norma culta — gramática impecável, coesão e sem erros grosseiros.',
-      'Competência 2: Compreensão da proposta — ler o texto motivador e aplicar conceitos de várias áreas.',
-      'Competência 3: Seleção de informações — organize argumentos de forma lógica e relevante.',
-      'Competência 4: Conhecimento dos mecanismos linguísticos — use conectivos e organize parágrafos.',
-      'Competência 5: Proposta de intervenção — detalhe quem, o quê, como, onde e quando.',
-    ],
-    tips: [
-      'Comece com uma introdução que contextualize o tema.',
-      'Desenvolva pelo menos 2 argumentos consistentes.',
-      'Sempre inclua a proposta de intervenção detalhada.',
-      'Revise erros de português antes de entregar.',
-    ],
-  },
-  Linguagens: {
-    title: 'Linguagens e Códigos — O que Cobrar',
-    content: [
-      'Português: gramática, interpretação de texto, gêneros textuais.',
-      'Literatura: movimentos literários, autores clássicos e contemporâneos.',
-      'Língua Estrangeira: inglês e espanhol (básico a intermediário).',
-      'Artes: expressões artísticas, cinema, história da arte.',
-      'Educação Física: esporte e sociedade, saúde, legislação esportiva.',
-    ],
-    tips: [
-      'Pratique interpretação de textos variados (crônicas, poesias, textos argumentativos).',
-      'Estude os principais movimentos literários brasileiros.',
-      'Revise regras gramaticais: concordância, regência e pontuação.',
-    ],
-  },
-  Humanas: {
-    title: 'Ciências Humanas — Mapa do Conhecimento',
-    content: [
-      'História: Brasil Colonial, Independência, República, Era Vargas, Ditadura e Redemocratização.',
-      'Geografia: geopolítica, urbanização, globalização, questões ambientais.',
-      'Filosofia: pensadores clássicos, ética, política, conhecimento.',
-      'Sociologia:_classes sociais, movimentos sociais, educação, trabalho.',
-    ],
-    tips: [
-      'Associe eventos históricos a suas causas e consequências.',
-      'Pratique a leitura de mapas e gráficos geográficos.',
-      'Estude os principais filósofos e suas ideias centrais.',
-    ],
-  },
-  Natureza: {
-    title: 'Ciências da Natureza — Essenciais',
-    content: [
-      'Biologia: genética, ecologia, citologia, evolução, biotecnologia.',
-      'Química: ligações químicas, estequiometria, orgânica, eletroquímica.',
-      'Física: mecânica, óptica, eletricidade, termodinâmica.',
-    ],
-    tips: [
-      'Resolva muitos exercícios de cálculo para Física e Química.',
-      'Decorar fórmulas é importante, mas saber aplicá-las é essencial.',
-      'Estude os ciclos biogeoquímicos e questões ambientais.',
-    ],
-  },
-  Matemática: {
-    title: 'Matemática — Domine os Tópicos',
-    content: [
-      'Álgebra: equações, inequações, sistemas lineares, funções.',
-      'Geometria: plana, espacial, analítica, trigonometria.',
-      'Análise combinatória: permutação,Arranjo, Combinação.',
-      'Estatística e Probabilidade: média, mediana, desvio padrão.',
-      'Funções: progressões aritméticas e geométricas.',
-    ],
-    tips: [
-      'Resolva provas anteriores do ENEM para treinar.',
-      'Aprenda a interpretar gráficos e tabelas rapidamente.',
-      'Domine as operações com conjuntos e lógica.',
-    ],
-  },
-  Recomendado: {
-    title: 'Revisão Personalizada',
-    content: [
-      'Analisamos seus erros e pontos fracos para criar um plano focado.',
-      'Revise os temas onde você mais errou nas questões anteriores.',
-      'Pratique diariamente para consolidar o aprendizado.',
-      'Use o método de repetição espaçada para fixar o conteúdo.',
-    ],
-    tips: [
-      'Não pule etapas — volte aos fundamentos se necessário.',
-      'Grupos de estudo ajudam a fixar conceitos.',
-      'Use resumos e mapas mentais para revisar.',
-    ],
-  },
-};
+interface AiLessonContent {
+  title: string;
+  subtitle: string;
+  content: string[];
+  tips: string[];
+}
+
+function getFallbackLesson(area: string): AiLessonContent {
+  const fallbacks: Record<string, AiLessonContent> = {
+    Redação: {
+      title: 'Redação Nota 1000',
+      subtitle: 'Estratégias que garantem pontuação máxima',
+      content: [
+        'A redação do ENEM é avaliada em 5 competências, cada uma valendo até 200 pontos. Dominar cada uma é essencial para atingir a nota 1000.',
+        'Competência 1: Domínio da norma culta. Isso significa escrever com gramática impecável, usar coesão correta e evitar erros grosseiros de português.',
+        'Competência 2: Compreensão da proposta. Leia atentamente o texto motivador e aplique conceitos de várias áreas do conhecimento ao seu argumento.',
+        'Competência 3: Seleção de informações. Organize seus argumentos de forma lógica e relevante, sempre conectando com o tema proposto.',
+        'Competência 4: Mecanismos linguísticos. Use conectivos variados e organize seus parágrafos com clareza e coerência.',
+        'Competência 5: Proposta de intervenção detalhada. Quem faz, o quê, como, onde e quando — tudo deve estar claro e ser viável.'
+      ],
+      tips: [
+        'Comece com uma contextualização que use repertório legitimo (filosofia, história, sociologia).',
+        'Desenvolva pelo menos 2 argumentos consistentes em parágrafos separados.',
+        'Sempre inclua a proposta de intervenção detalhada com os 5 elementos obrigatórios.'
+      ]
+    },
+    Linguagens: {
+      title: 'Linguagens e Códigos',
+      subtitle: 'Interpretação, literatura e gramática no ENEM',
+      content: [
+        'A prova de Linguagens abrange Português, Literatura, Língua Estrangeira, Artes e Educação Física. É a área que mais exige interpretação profunda.',
+        'Na interpretação textual, identifique o tema central, os argumentos do autor e a intencionalidade comunicativa. O ENEM cobra leitura crítica, não decoreba.',
+        'Na gramática contextualizada, foque em concordância verbal e nominal, regência, crase e pontuação. Cada questão traz um texto real como base.',
+        'A literatura brasileira cai todos os anos: Modernismo, Realismo, Naturalismo e movimentos contemporâneos. Conheça os principais autores e suas obras.',
+        'Para Língua Estrangeira, pratique com textos autênticos. O nível é intermediário — foque em vocabulário temático e estruturas gramaticais essenciais.',
+        'Artes e Educação Física são interdisciplinares. Relacione expressões artísticas e práticas esportivas com aspectos sociais e culturais.'
+      ],
+      tips: [
+        'Pratique interpretação de textos variados: crônicas, poemas, charges, textos argumentativos.',
+        'Revise concordância verbal com sujeito composto e orações impessoais.',
+        'Estude os movimentos literários com foco no que mais cai: Modernismo de 22 e Generação de 30.'
+      ]
+    },
+    Humanas: {
+      title: 'Ciências Humanas',
+      subtitle: 'História, Geografia, Filosofia e Sociologia aplicadas',
+      content: [
+        'As Ciências Humanas do ENEM misturam História, Geografia, Filosofia e Sociologia em uma única prova interdisciplinar.',
+        'Na História do Brasil, foque em: Colônia (escravidão e ciclo do açúcar), Independência, República Velha, Era Vargas e Redemocratização.',
+        'Geografia cobra muito leitura de mapas, gráficos e dados. Domine urbanização, globalização, geopolítica e questões ambientais como mudanças climáticas.',
+        'Filosofia aparece com pensadores clássicos: Sócrates, Platão, Aristóteles, Marx, Kant e os existencialistas. Entenda suas ideias centrais.',
+        'Sociologia foca em classes sociais, movimentos sociais, educação e trabalho. Relacione com a realidade brasileira contemporânea.',
+        'O segredo é conectar conteúdo histórico com a realidade atual — o ENEM adora questões que pedem essa relação.'
+      ],
+      tips: [
+        'Associe cada evento histórico às suas causas e consequências em cadeia.',
+        'Pratique a leitura de mapas temáticos, gráficos e infográficos.',
+        'Para Filosofia, memorize apenas a ideia central de cada filósofo, não tentdecorar biografias.'
+      ]
+    },
+    Natureza: {
+      title: 'Ciências da Natureza',
+      subtitle: 'Biologia, Química e Física para o ENEM',
+      content: [
+        'A prova de Natureza reúne Biologia, Química e Física. As questões são interdisciplinares e exigem raciocínio lógico aplicado.',
+        'Em Biologia, foque em genética (leis de Mendel, heredogramas), ecologia (cadeias alimentares, bioacumulação) e biotecnologia.',
+        'A Química do ENEM cobra estequiometria, ligações químicas, orgânica e eletroquímica. Saiba aplicar conceitos em situações do dia a dia.',
+        'Na Física, domine cinemática, dinâmica, óptica e circuitos elétricos. O ENEM adora questões com contexto de tecnologia e engenharia.',
+        'Questões de laboratório e métodos científicos aparecem todos os anos. Entenda hipótese, tese, variáveis e análise de dados.',
+        'A interdisciplinaridade é a chave: uma mesma questão pode envolver conceitos de biologia e química ao mesmo tempo.'
+      ],
+      tips: [
+        'Resolva muitos exercícios com dados e gráficos — é assim que o ENEM cobraNatureza.',
+        'Monte um caderno de fórmulas organizado por disciplina e revise semanalmente.',
+        'Estude os ciclos biogeoquímicos e a relação entre poluição e impactos ambientais.'
+      ]
+    },
+    Matemática: {
+      title: 'Matemática',
+      subtitle: 'Domine os tópicos que mais caem no ENEM',
+      content: [
+        'A Matemática do ENEM é puro raciocínio lógico aplicado a situações cotidianas. Não basta decorar fórmulas — é preciso saber quando e como usá-las.',
+        'Funções são o coração da prova: linear, quadrática, exponencial e logarítmica. Entenda como interpretar gráficos e identificar comportamentos.',
+        'Análise combinatória cai todo ano: permutação, arranjo e combinação. Domine as fórmulas e saiba identificar quando cada uma se aplica.',
+        'Estatística e Probabilidade aparecem com frequência: média, mediana, moda, desvio padrão, probabilidade simples e composta.',
+        'Geometria analítica e trigonometria resolvem problemas de áreas, distâncias e ângulos. Saiba aplicar no plano cartesiano.',
+        'Regra de três composta e progressões aritméticas e geométricas são clássicos — domine os conceitos e resolva questões rápidas.'
+      ],
+      tips: [
+        'Resolva provas anteriores com cronômetro — a tempo é crucial na Matemática.',
+        'Aprenda a interpretar gráficos e tabelas rapidamente, identificando padrões.',
+        'Use a técnica de eliminação nas alternativas quando não souber resolver diretamente.'
+      ]
+    },
+    Recomendado: {
+      title: 'Revisão Personalizada',
+      subtitle: 'Plano focado nos seus pontos fracos',
+      content: [
+        'Analisamos seus erros e pontos fracos para criar um plano de estudo personalizado focado onde mais precisa.',
+        'A repetição espaçada é o método mais eficiente para fixar conteúdo: revise o mesmo tema em intervalos crescentes de tempo.',
+        'Foque nos temas onde mais errou — identificar padrões de erro é mais eficiente que estudar tudo igualmente.',
+        'Pratique diariamente, mesmo que por apenas 15 minutos. A consistência supera maratonas de estudo ocasionais.',
+        'Use mapas mentais e resumos visuais para conectar conceitos e facilitar a memorização de longo prazo.'
+      ],
+      tips: [
+        'Não pule etapas — volte aos fundamentos se sentir dificuldade em tópicos avançados.',
+        'Grupos de estudo ajudam a fixar conceitos através da explicação para colegas.',
+        'Revise seus erros de simulados anteriores antes de fazer novos — é onde está seu maior ganho.'
+      ]
+    }
+  };
+  return fallbacks[area] || fallbacks['Recomendado'];
+}
 
 export default function AprendizadoView({
   essayCorrections,
@@ -539,6 +559,9 @@ export default function AprendizadoView({
     null
   );
   const [lessonStep, setLessonStep] = useState(0);
+  const [aiLesson, setAiLesson] = useState<AiLessonContent | null>(null);
+  const [loadingLesson, setLoadingLesson] = useState(false);
+  const [lessonTopicIndex, setLessonTopicIndex] = useState(0);
 
   const [questoesArea, setQuestoesArea] = useState<string>('');
   const [questoesList, setQuestoesList] = useState<PlaceholderQuestion[]>([]);
@@ -644,11 +667,42 @@ export default function AprendizadoView({
     }
   };
 
+  const fetchLesson = async (cat: CategoryCard, topicIdx: number) => {
+    setLoadingLesson(true);
+    setAiLesson(null);
+    try {
+      const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
+      const resp = await fetch('/api/lesson', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          area: cat.area,
+          level: 5,
+          weakTopics: wrongSubjects,
+          topicIndex: topicIdx,
+        }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data && data.title && Array.isArray(data.content)) {
+          setAiLesson(data);
+        }
+      }
+    } catch {
+      // fallback content will be used
+    } finally {
+      setLoadingLesson(false);
+    }
+  };
+
   const handleAdGateContinue = useCallback(() => {
     setShowAdGate(false);
     if (adGateTarget === 'cursinho' && activeCategory) {
       setViewMode('lesson');
       setLessonStep(0);
+      const nextIdx = lessonTopicIndex + 1;
+      setLessonTopicIndex(nextIdx);
+      fetchLesson(activeCategory, nextIdx);
     } else if (adGateTarget === 'questoes' && questoesArea) {
       const questions = generatePlaceholderQuestions(questoesArea, 5);
       setQuestoesList(questions);
@@ -676,6 +730,9 @@ export default function AprendizadoView({
     }
     setViewMode('lesson');
     setLessonStep(0);
+    const nextIdx = lessonTopicIndex + 1;
+    setLessonTopicIndex(nextIdx);
+    fetchLesson(cat, nextIdx);
   };
 
   const handleStartQuestoes = (area: string) => {
@@ -734,11 +791,14 @@ export default function AprendizadoView({
     setQuestoesArea('');
     setLessonActive(false);
     setActiveChapter(null);
+    setAiLesson(null);
+    setLoadingLesson(false);
   };
 
-  const getLessonContent = () => {
+  const getLessonContent = (): AiLessonContent | null => {
     if (!activeCategory) return null;
-    return CABRITO_LESSON_CONTENT[activeCategory.area] || CABRITO_LESSON_CONTENT['Recomendado'];
+    if (aiLesson) return aiLesson;
+    return getFallbackLesson(activeCategory.area);
   };
 
   const lessonContent = getLessonContent();
@@ -747,6 +807,37 @@ export default function AprendizadoView({
     : 0;
 
   const renderCursinhoTab = () => {
+    if (viewMode === 'lesson' && activeCategory && loadingLesson) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+          <div className="relative">
+            <span className="text-7xl animate-bounce">🐐</span>
+            <div className="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">
+              IA
+            </div>
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
+              Preparando sua aula...
+            </h3>
+            <p className="text-xs text-slate-400 max-w-xs">
+              O Cabrito está pesquisando o melhor conteúdo de{' '}
+              <strong>{activeCategory.title}</strong> para você!
+            </p>
+          </div>
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <div
+                key={i}
+                className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce"
+                style={{ animationDelay: `${i * 0.15}s` }}
+              />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
     if (viewMode === 'lesson' && activeCategory && lessonContent) {
       const cabritoSpeeches = [
         'Vamos lá! Eu, o Cabrito, vou te ensinar o essencial! 🐐',
@@ -808,9 +899,16 @@ export default function AprendizadoView({
                   <span className={activeCategory.color}>
                     {activeCategory.icon}
                   </span>
-                  <h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">
-                    {lessonContent.title}
-                  </h3>
+                  <div>
+                    <h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">
+                      {lessonContent.title}
+                    </h3>
+                    {lessonContent.subtitle && (
+                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">
+                        {lessonContent.subtitle}
+                      </p>
+                    )}
+                  </div>
                 </div>
                 <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
                   {lessonContent.content[lessonStep]}
@@ -916,14 +1014,28 @@ export default function AprendizadoView({
                   <ArrowRight className="h-4 w-4" />
                 </button>
               ) : (
-                <button
-                  type="button"
-                  onClick={handleBackToCategories}
-                  className="px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <Check className="h-4 w-4" />
-                  <span>Aula Concluída!</span>
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={handleBackToCategories}
+                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition"
+                  >
+                    Menu
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const nextIdx = lessonTopicIndex + 1;
+                      setLessonTopicIndex(nextIdx);
+                      setLessonStep(0);
+                      fetchLesson(activeCategory, nextIdx);
+                    }}
+                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <span>Próxima Aula</span>
+                  </button>
+                </div>
               )}
             </div>
           </div>
