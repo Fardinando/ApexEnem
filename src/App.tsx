@@ -115,19 +115,27 @@ export default function App() {
 
         // Calculate and update streak
         if (p) {
-          const { newStreak, isNewDay } = calculateStreak(p.last_login_date);
+          const todayStr = new Date().toISOString().split('T')[0];
+          const serverLastLogin = p.last_login_date || '';
+          const localLastLogin = localStorage.getItem('ApexEnem_last_login') || '';
+
+          // Use whichever is more recent
+          const effectiveLastLogin = serverLastLogin > localLastLogin ? serverLastLogin : localLastLogin;
+
+          const { newStreak, isNewDay, streakBroken } = calculateStreak(effectiveLastLogin);
           if (isNewDay && newStreak > 0) {
-            const updatedStreak = (p.streak || 0) + newStreak;
+            const updatedStreak = streakBroken ? 1 : (p.streak || 0) + newStreak;
             const newLongest = Math.max(updatedStreak, longestStreak);
             setLongestStreak(newLongest);
             localStorage.setItem('ApexEnem_longest_streak', String(newLongest));
+            localStorage.setItem('ApexEnem_last_login', todayStr);
             await upsertProfile({
               id: session.user.id,
               streak: updatedStreak,
               longest_streak: newLongest,
-              last_login_date: new Date().toISOString().split('T')[0],
+              last_login_date: todayStr,
             }).catch(() => {});
-            setProfile((prev: any) => ({ ...prev, streak: updatedStreak, last_login_date: new Date().toISOString().split('T')[0] }));
+            setProfile((prev: any) => ({ ...prev, streak: updatedStreak, last_login_date: todayStr }));
           }
         }
 

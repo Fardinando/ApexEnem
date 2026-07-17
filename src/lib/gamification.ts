@@ -61,21 +61,21 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'xp_5000', title: 'Experiência Máxima', description: 'Acumulou 5000 pontos de experiência', icon: '💎', condition: (s) => s.totalXp >= 5000 },
 ];
 
-export function calculateStreak(lastLoginDate?: string): { newStreak: number; isNewDay: boolean } {
-  if (!lastLoginDate) return { newStreak: 1, isNewDay: true };
+export function calculateStreak(lastLoginDate?: string): { newStreak: number; isNewDay: boolean; streakBroken: boolean } {
+  if (!lastLoginDate) return { newStreak: 1, isNewDay: true, streakBroken: false };
 
   const today = new Date();
   today.setHours(0, 0, 0, 0);
 
-  const last = new Date(lastLoginDate);
+  const last = new Date(lastLoginDate + 'T12:00:00');
   last.setHours(0, 0, 0, 0);
 
   const diffMs = today.getTime() - last.getTime();
   const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
-  if (diffDays === 0) return { newStreak: 0, isNewDay: false }; // already logged in today
-  if (diffDays === 1) return { newStreak: 1, isNewDay: true }; // consecutive day
-  return { newStreak: 1, isNewDay: true }; // streak broken, restart
+  if (diffDays === 0) return { newStreak: 0, isNewDay: false, streakBroken: false };
+  if (diffDays === 1) return { newStreak: 1, isNewDay: true, streakBroken: false };
+  return { newStreak: 1, isNewDay: true, streakBroken: true };
 }
 
 export function getLevelFromXp(xp: number): { level: number; currentXp: number; nextThreshold: number; progress: number } {
