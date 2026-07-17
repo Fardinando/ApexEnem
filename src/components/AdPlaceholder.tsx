@@ -19,11 +19,12 @@ const FORMAT_CLASSES: Record<string, string> = {
 
 function AdIframe({ code, width, height, title }: { code: string; width: number; height: number; title: string }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const createdRef = useRef(false);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || createdRef.current) return;
+    createdRef.current = true;
     const container = containerRef.current;
-    container.innerHTML = '';
 
     const iframe = document.createElement('iframe');
     iframe.width = String(width);
@@ -41,8 +42,8 @@ function AdIframe({ code, width, height, title }: { code: string; width: number;
     doc.write(`<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head><body style="margin:0;overflow:hidden">${code}</body></html>`);
     doc.close();
 
-    return () => { container.innerHTML = ''; };
-  }, [code, width, height, title]);
+    return () => { createdRef.current = false; container.innerHTML = ''; };
+  }, []);
 
   return <div ref={containerRef} />;
 }

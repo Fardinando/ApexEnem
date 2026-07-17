@@ -638,7 +638,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                 </div>
               </div>
 
-              <div className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3 font-sans overflow-y-auto max-h-[50vh] pr-1">
+              <div className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3 font-sans overflow-y-auto max-h-[50vh] pr-2 scrollbar-visible">
                 {activeQuestion.image && (
                   <img
                     src={activeQuestion.image}
