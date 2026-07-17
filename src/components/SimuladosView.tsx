@@ -186,13 +186,12 @@ function renderContent(text: string): (React.ReactNode | string)[] {
 
 async function fetchENEMQuestions(subject: SimuladoConfig['subject'], count: number): Promise<SimuladoQuestion[]> {
   const discipline = DISCIPLINE_TO_API[subject];
-  const targetTotal = Math.min(count * 4, 200);
   let allRaw: any[] = [];
 
   for (const year of ENEM_YEARS) {
-    if (allRaw.length >= targetTotal) break;
     let offset = 0;
-    while (allRaw.length < targetTotal) {
+    let hasMore = true;
+    while (hasMore) {
       try {
         const res = await fetch(`${ENEM_API_BASE}/exams/${year}/questions?limit=50&offset=${offset}`);
         if (!res.ok) break;
@@ -201,7 +200,7 @@ async function fetchENEMQuestions(subject: SimuladoConfig['subject'], count: num
         if (questions.length === 0) break;
         allRaw.push(...questions);
         offset += 50;
-        if (!data.metadata?.hasMore) break;
+        hasMore = !!data.metadata?.hasMore;
       } catch {
         break;
       }
@@ -639,7 +638,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                 </div>
               </div>
 
-              <div className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3 font-sans">
+              <div className="text-sm text-slate-800 dark:text-slate-100 leading-relaxed pt-3 border-t border-slate-200 dark:border-slate-800 space-y-3 font-sans overflow-y-auto max-h-[50vh] pr-1">
                 {activeQuestion.image && (
                   <img
                     src={activeQuestion.image}
@@ -648,7 +647,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                     loading="lazy"
                   />
                 )}
-                <p className="whitespace-pre-wrap">{renderContent(activeQuestion.statement)}</p>
+                <div className="whitespace-pre-wrap break-words">{renderContent(activeQuestion.statement)}</div>
               </div>
 
               <div className="grid grid-cols-1 gap-2.5 pt-2" id={`active-choices-panel-${activeQuestion.id}`}>
@@ -922,7 +921,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                             loading="lazy"
                           />
                         )}
-                        <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed italic pr-4 select-all">
+                        <div className="text-xs text-slate-800 dark:text-slate-200 leading-relaxed italic pr-4 select-all whitespace-pre-wrap break-words">
                           {renderContent(q.statement)}
                         </div>
 
