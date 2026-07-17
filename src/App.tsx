@@ -14,6 +14,7 @@ const PerguntasView = lazy(() => import('./components/PerguntasView'));
 const SimuladosView = lazy(() => import('./components/SimuladosView'));
 const ConfiguracoesView = lazy(() => import('./components/ConfiguracoesView'));
 const AprendizadoView = lazy(() => import('./components/AprendizadoView'));
+const PerfilView = lazy(() => import('./components/PerfilView'));
 
 function ViewSpinner() {
   return (
@@ -453,6 +454,18 @@ export default function App() {
               onClearLocalData={handleClearLocalData}
               onDeleteAccount={handleDeleteAccount}
               onUpdateProfile={handleUpdateProfile}
+            />
+          )}
+          {activeTab === 'perfil' && (
+            <PerfilView
+              currentUser={currentUser as any}
+              essayCorrections={essayCorrections}
+              simuladosHistory={simuladosHistory}
+              activityLogs={activityLogs}
+              wrongAnswers={wrongAnswers}
+              gamificationStats={gamificationStats}
+              achievements={unlockedAchievements}
+              setActiveTab={setActiveTab}
             />
           )}
         </Suspense>

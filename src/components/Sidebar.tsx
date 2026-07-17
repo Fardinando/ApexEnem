@@ -4,7 +4,7 @@ import {
   Settings, Flame, LogOut, Target, Sun, Moon, Trophy, X, Plus, User, Zap
 } from 'lucide-react';
 import { UserProfile } from '../types';
-import { getLevelFromXp, getLevelTitle } from '../lib/gamification';
+import { getLevelFromXp, getLevelTitle, type GamificationStats } from '../lib/gamification';
 import AdPlaceholder from './AdPlaceholder';
 
 interface SidebarProps {
@@ -21,7 +21,7 @@ const MAIN_TABS = [
   { id: 'redacao', label: 'Redação', icon: FileText },
   { id: 'aprendizado', label: 'Estudos', icon: Trophy },
   { id: 'simulados', label: 'Simulados', icon: BookOpen },
-  { id: 'perguntas', label: 'Perguntas', icon: HelpCircle },
+  { id: 'perguntas', label: 'Questões IA', icon: HelpCircle },
 ];
 
 const getInitials = (nameStr: string) => {
@@ -103,6 +103,9 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
             </div>
 
             <div className="space-y-1 border-t border-slate-200 dark:border-slate-800 pt-4">
+              <button type="button" onClick={() => { setActiveTab('perfil'); setShowMoreSheet(false); }} className="w-full py-3 px-4 rounded-xl text-left text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#0f172a] flex items-center gap-3 transition cursor-pointer">
+                <User className="h-4.5 w-4.5" /> Meu Perfil
+              </button>
               <button type="button" onClick={() => { setActiveTab('configuracoes'); setShowMoreSheet(false); }} className="w-full py-3 px-4 rounded-xl text-left text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#0f172a] flex items-center gap-3 transition cursor-pointer">
                 <Settings className="h-4.5 w-4.5" /> Configurações
               </button>
@@ -163,7 +166,7 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
 
         {/* Desktop navigation */}
         <nav className="flex-1 space-y-1" id="nav-group-desktop">
-          {[...MAIN_TABS, { id: 'configuracoes', label: 'Configurações', icon: Settings }].map((item) => {
+          {[...MAIN_TABS, { id: 'perfil', label: 'Perfil', icon: User }, { id: 'configuracoes', label: 'Configurações', icon: Settings }].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (

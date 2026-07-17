@@ -470,11 +470,11 @@ export default function DashboardView({
               {/* Radar labels C1C2C3C4C5 with micro placements */}
               {(() => {
                 const labelPlacements = [
-                  { text: 'Comp 1', dx: cX, dy: cY - rLimit - 12, anchor: 'middle' },
-                  { text: 'Comp 2', dx: cX + rLimit + 14, dy: cY - 18, anchor: 'start' },
-                  { text: 'Comp 3', dx: cX + rLimit - 14, dy: cY + rLimit + 10, anchor: 'start' },
-                  { text: 'Comp 4', dx: cX - rLimit + 14, dy: cY + rLimit + 10, anchor: 'end' },
-                  { text: 'Comp 5', dx: cX - rLimit - 14, dy: cY - 18, anchor: 'end' },
+                  { text: 'Norma Culta', dx: cX, dy: cY - rLimit - 12, anchor: 'middle' },
+                  { text: 'Compreensão', dx: cX + rLimit + 14, dy: cY - 18, anchor: 'start' },
+                  { text: 'Argumentação', dx: cX + rLimit - 14, dy: cY + rLimit + 10, anchor: 'start' },
+                  { text: 'Linguagem', dx: cX - rLimit + 14, dy: cY + rLimit + 10, anchor: 'end' },
+                  { text: 'Intervenção', dx: cX - rLimit - 14, dy: cY - 18, anchor: 'end' },
                 ];
                 return labelPlacements.map((pos, i) => (
                   <text

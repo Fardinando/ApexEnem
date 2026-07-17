@@ -6,6 +6,7 @@ import { REGION_MAP_DATA, BRAZIL_VIEWBOX, getStateBBox } from '../data/brazil-ma
 import { CITY_COORDINATES } from '../data/brazil-city-coordinates';
 
 function projectCityToSVG(lat: number, lon: number, stateCode: string): { x: number; y: number } | null {
+  if (!isFinite(lat) || !isFinite(lon)) return null;
   const bbox = getStateBBox(stateCode);
   if (!bbox) return null;
   const pad = 4;
@@ -20,7 +21,10 @@ function projectCityToSVG(lat: number, lon: number, stateCode: string): { x: num
   const yMercBot = Math.log(Math.tan((Math.PI / 2) + (latMin * Math.PI / 360)));
   const yMercCur = Math.log(Math.tan((Math.PI / 2) + (lat * Math.PI / 360)));
   const ny = (yMercTop - yMercCur) / (yMercTop - yMercBot);
-  return { x: xMin + nx * (xMax - xMin), y: yMin + ny * (yMax - yMin) };
+  const x = xMin + nx * (xMax - xMin);
+  const y = yMin + ny * (yMax - yMin);
+  if (!isFinite(x) || !isFinite(y)) return null;
+  return { x, y };
 }
 
 function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string, c: string) => void }) {
