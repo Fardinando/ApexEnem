@@ -730,7 +730,8 @@ export default function AprendizadoView({
     setLoadingQuestions(false);
   };
 
-  const handleAdGateContinue = useCallback(() => {
+  const adGateContinueRef = React.useRef<() => void>(() => {});
+  adGateContinueRef.current = () => {
     setAdGateActive(false);
     setAdGateSecondsLeft(0);
     if (adGateTarget === 'cursinho' && activeCategory) {
@@ -744,7 +745,8 @@ export default function AprendizadoView({
       fetchQuestoesAI(questoesArea);
     }
     setAdGateTarget(null);
-  }, [adGateTarget, activeCategory, questoesArea]);
+  };
+  const handleAdGateContinue = useCallback(() => adGateContinueRef.current(), []);
 
   const handleStartCursinhoCategory = (cat: CategoryCard) => {
     setActiveCategory(cat);
