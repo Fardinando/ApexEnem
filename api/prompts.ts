@@ -516,8 +516,8 @@ Retorne APENAS o JSON:`,
       }
     },
     models: [
+      MODELS.geminiFlash(),
       MODELS.openRouterFree(),
-      MODELS.openRouterLlama(),
     ],
   },
 
@@ -578,8 +578,8 @@ Retorne APENAS o JSON, sem markdown, sem texto antes ou depois.`,
       }
     },
     models: [
+      MODELS.geminiFlash(),
       MODELS.openRouterFree(),
-      MODELS.openRouterLlama(),
     ],
   },
 }

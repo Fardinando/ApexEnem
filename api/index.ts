@@ -4,7 +4,7 @@ import crypto from "crypto";
 import dotenv from "dotenv";
 import { createClient } from "@supabase/supabase-js";
 import rateLimit from "express-rate-limit";
-import { PROMPTS } from "./prompts.js";
+import { PROMPTS, ModelConfig } from "./prompts.js";
 import { jsonrepair } from "jsonrepair";
 
 declare global {
@@ -1029,12 +1029,46 @@ app.post("/api/lesson-v2", async (req, res) => {
   const systemPrompt = typeof built === 'string' ? built : built.system;
   const userPrompt = typeof built === 'string' ? built : built.user;
 
-  async function tryLessonV2(model: string): Promise<any | null> {
+  async function tryLessonV2Model(mc: ModelConfig): Promise<any | null> {
+    const model = mc.modelId;
+    const timeout = Math.min(mc.timeout || 8000, 8000);
+
+    if (mc.provider === 'gemini') {
+      if (!googleApiKey) return null;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), timeout);
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              { role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }
+            ],
+            safetySettings: [
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+            ],
+            generationConfig: { temperature: 0.85, maxOutputTokens: 6144 }
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) return null;
+        return parseLessonJson(text);
+      } catch { clearTimeout(tid); return null; }
+    }
+
     for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 25000);
+      const tid = setTimeout(() => ctrl.abort(), timeout);
       try {
         const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -1061,33 +1095,32 @@ app.post("/api/lesson-v2", async (req, res) => {
         const data = await resp.json();
         const content = data.choices?.[0]?.message?.content;
         if (!content) continue;
+        return parseLessonJson(content);
+      } catch { clearTimeout(tid); continue; }
+    }
+    return null;
+  }
 
-        const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+  function parseLessonJson(content: string): any | null {
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.title && Array.isArray(parsed.cycles) && parsed.cycles.length >= 4) return parsed;
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
         try {
-          const parsed = JSON.parse(cleaned);
-          if (parsed.title && Array.isArray(parsed.cycles) && parsed.cycles.length >= 4) {
-            return parsed;
-          }
-        } catch {
-          const match = cleaned.match(/\{[\s\S]*\}/);
-          if (match) {
-            try {
-              const parsed = JSON.parse(match[0]);
-              if (parsed.title && Array.isArray(parsed.cycles)) return parsed;
-            } catch {}
-          }
-        }
-      } catch {
-        clearTimeout(tid);
-        continue;
+          const parsed = JSON.parse(match[0]);
+          if (parsed.title && Array.isArray(parsed.cycles)) return parsed;
+        } catch {}
       }
     }
     return null;
   }
 
-  const models = promptDef.models.map(m => m.modelId);
+  const models = promptDef.models;
   const lesson = await Promise.any(
-    models.map(m => tryLessonV2(m).then(l => l ? Promise.resolve(l) : Promise.reject()))
+    models.map(m => tryLessonV2Model(m).then(l => l ? Promise.resolve(l) : Promise.reject()))
   ).catch(() => null);
 
   if (!lesson) {
@@ -1138,12 +1171,46 @@ app.post("/api/questoes-ai", async (req, res) => {
   const systemPrompt = typeof built === 'string' ? built : built.system;
   const userPrompt = typeof built === 'string' ? built : built.user;
 
-  async function tryQuestoes(model: string): Promise<any | null> {
+  async function tryQuestoesModel(mc: ModelConfig): Promise<any | null> {
+    const model = mc.modelId;
+    const timeout = Math.min(mc.timeout || 8000, 8000);
+
+    if (mc.provider === 'gemini') {
+      if (!googleApiKey) return null;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), timeout);
+      try {
+        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: [
+              { role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }
+            ],
+            safetySettings: [
+              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
+              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
+            ],
+            generationConfig: { temperature: 0.85, maxOutputTokens: 4096 }
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+        if (!text) return null;
+        return parseQuestoesJson(text);
+      } catch { clearTimeout(tid); return null; }
+    }
+
     for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 25000);
+      const tid = setTimeout(() => ctrl.abort(), timeout);
       try {
         const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -1159,7 +1226,7 @@ app.post("/api/questoes-ai", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: 6144,
+            max_tokens: 4096,
             temperature: 0.85
           }),
           signal: ctrl.signal
@@ -1170,33 +1237,34 @@ app.post("/api/questoes-ai", async (req, res) => {
         const data = await resp.json();
         const content = data.choices?.[0]?.message?.content;
         if (!content) continue;
+        return parseQuestoesJson(content);
+      } catch { clearTimeout(tid); continue; }
+    }
+    return null;
+  }
 
-        const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+  function parseQuestoesJson(content: string): any[] | null {
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length >= 2) {
+        return parsed.questions;
+      }
+    } catch {
+      const match = cleaned.match(/\[[\s\S]*\]/);
+      if (match) {
         try {
-          const parsed = JSON.parse(cleaned);
-          if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length >= 2) {
-            return parsed.questions;
-          }
-        } catch {
-          const match = cleaned.match(/\[[\s\S]*\]/);
-          if (match) {
-            try {
-              const parsed = JSON.parse(match[0]);
-              if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
-            } catch {}
-          }
-        }
-      } catch {
-        clearTimeout(tid);
-        continue;
+          const parsed = JSON.parse(match[0]);
+          if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
+        } catch {}
       }
     }
     return null;
   }
 
-  const models = promptDef.models.map(m => m.modelId);
+  const qModels = promptDef.models;
   const questions = await Promise.any(
-    models.map(m => tryQuestoes(m).then(q => q ? Promise.resolve(q) : Promise.reject()))
+    qModels.map(m => tryQuestoesModel(m).then(q => q ? Promise.resolve(q) : Promise.reject()))
   ).catch(() => null);
 
   if (!questions) {
