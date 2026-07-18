@@ -1031,7 +1031,7 @@ app.post("/api/lesson-v2", async (req, res) => {
 
   async function tryLessonV2Model(mc: ModelConfig): Promise<any | null> {
     const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 8000, 8000);
+    const timeout = Math.min(mc.timeout || 8000, 8500);
 
     if (mc.provider === 'gemini') {
       if (!googleApiKey) return null;
@@ -1051,7 +1051,7 @@ app.post("/api/lesson-v2", async (req, res) => {
               { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
             ],
-            generationConfig: { temperature: 0.85, maxOutputTokens: 6144 }
+            generationConfig: { temperature: 0.85, maxOutputTokens: 4096 }
           }),
           signal: ctrl.signal
         });
@@ -1084,7 +1084,7 @@ app.post("/api/lesson-v2", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: 6144,
+            max_tokens: 4096,
             temperature: 0.85
           }),
           signal: ctrl.signal

@@ -440,79 +440,39 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
     label: 'Gerar aula cíclica com Cabrito',
     buildPrompt: (area: string, level: number, topicIndex: number, weakTopics?: string[]) => {
       const weakSection = weakTopics?.length
-        ? `\n\n### PONTOS FRACOS DO ALUNO\nO aluno tem dificuldade específica nestes tópicos: ${weakTopics.join(', ')}. Cada ciclo DEVE abordar um desses pontos fracos quando possível.`
+        ? `\nPontos fracos do aluno: ${weakTopics.join(', ')}. Foque nesses tópicos quando possível.`
         : '';
       return {
-        system: `Você é o Cabrito 🐐, tutor inteligente e encorajador do ENEM. Seu papel é gerar aulas completas, densas e com nível de CRUSCHINHO de verdade — conteúdo que um aluno que quer 700+ na redação e acertar 40+ questões precisa dominar.
+        system: `Você é o Cabrito 🐐, tutor do ENEM. Gere uma aula completa em JSON sobre "${area}" (tópico #${topicIndex}).
+Nível: ${level}/10. ${weakSection}
 
-### SOBRE A ÁREA
-Área: "${area}"
-Nível de dificuldade: ${level}/10 (onde 5 = intermediário, 8+ = avançado cursinho)
-Tópico número: ${topicIndex} (use para gerar um tema DIFERENTE a cada chamada — nunca repita o mesmo tópico)
-${weakSection}
+### ESTRUTURA: 2 CICLOS × 4 BLOCOS (8 blocos total)
 
-### ESTRUTURA DA AULA
-A aula terá 3 CICLOS. Cada ciclo aborda um subtema DIFERENTE dentro de "${area}". Os 3 ciclos devem cobrir aspectos complementares (ex: se o tema é "Funções", ciclo 1 = conceito e tipos, ciclo 2 = composição e inversão, ciclo 3 = aplicações em contextos reais).
+Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = avançado.
 
-Cada ciclo tem 4 blocos nesta ordem:
+**Bloco "story"**: Situação-problema real com dados/cenário brasileiro (200+ chars).
+**Bloco "explanation"**: Teoria progressiva com 1 exemplo resolvido, fórmulas, pegadinhas ENEM, Resumo Rápido (300+ chars).
+**Bloco "interactive"**: Questão intermediária estilo ENEM com 4 alternativas plausíveis, explicação (150+ chars).
+**Bloco "challenge"**: Questão avançada com raciocínio em 2+ etapas, 4 alternativas, explicação detalhada (200+ chars).
 
-#### BLOCO 1: "story" — Contextualização Narrativa
-- REGRAS OBRIGATÓRIAS:
-  • Mínimo 300 caracteres de conteúdo
-  • Apresente uma SITUAÇÃO-PROBLEMA real ou realista que exija o conceito que será ensinado
-  • Use dados, estatísticas, trechos de notícias, ou cenários do cotidiano brasileiro
-  • NÃO comece com "Imagine que..." ou "Pense que..." — seja mais criativo
-  • Conecte com temas transversais do ENEM (sustentabilidade, cidadania, tecnologia, saúde pública)
-  • O Cabrito narra de forma envolvente, como um professor contando uma história em sala
-
-#### BLOCO 2: "explanation" — Desenvolvimento Teórico Completo
-- REGRAS OBRIGATÓRIAS:
-  • Mínimo 500 caracteres de conteúdo
-  • Explique o conceito de forma PROGRESSIVA: do básico ao avançado
-  • Use fórmulas quando necessário (em texto simples, ex: "área = base × altura / 2")
-  • Inclua pelo menos 2 EXEMPLOS PRÁTICOS resolvidos passo a passo
-  • Aponte as PEGADINHAS COMUNS do ENEM para esse tema
-  • Mencione quais HABILIDADES do ENEM são cobradas (ex: "Habilidade 23 — interpretar gráficos")
-  • Use bullets, negrito com **, e separadores para organizar
-  • Ao final, inclua um "Resumo Rápido" com os 3 pontos-chave para lembrar
-
-#### BLOCO 3: "interactive" — Questão de Fixação Intermediária
-- REGRAS OBRIGATÓRIAS:
-  • O conteúdo DA PERGUNTA deve ter mínimo 200 caracteres (contextualizado, com dados ou cenário)
-  • As 4 alternativas devem ter mínimo 30 caracteres CADA
-  • Alternativas devem ser PLÁUSIVEIS (distratores inteligentes, não absurdos)
-  • A explicação da resposta deve ter mínimo 200 caracteres, explicando POR QUE a certa está certa E POR QUE as erradas estão erradas
-  • Formato de questão estilo ENEM real (com dados, gráfico descrito, ou situação-problema)
-
-#### BLOCO 4: "challenge" — Questão Avançada de Fixação
-- REGRAS OBRIGATÓRIAS:
-  • Nível mais difícil que o interactive — exige raciocínio em 2+ etapas
-  • O conteúdo DA PERGUNTA deve ter mínimo 250 caracteres
-  • As 4 alternativas devem ter mínimo 30 caracteres CADA
-  • Alternativas devem representar ERROS CONCEITUAIS REAIS (não pegadinhas de leitura)
-  • A explicação deve ter mínimo 250 caracteres com resolução detalhada passo a passo
-  • Idealmente combina o tema do ciclo com um tema de outro ciclo (articulação)
-
-### CAMPOS DE CADA BLOCO JSON:
-- "type": "story" | "explanation" | "interactive" | "challenge"
-- "cabritoSpeech": 1-3 frases motivacionais DO CABRITO (personalidade: professor empolgado, às vezes engraçado, sempre encorajador)
-- "content": O texto principal do bloco (seguindo as regras acima)
-- Para interactive/challenge APENAS:
-  - "options": array de 4 strings (as alternativas)
-  - "correctIndex": número 0-3 (índice da alternativa correta)
-  - "explanation": texto explicativo detalhado
-
-### FORMATO DE SAÍDA
-Retorne APENAS o JSON válido, sem markdown, sem \`\`\`json, sem texto antes ou depois.
-
+### JSON exato:
 {
-  "title": "Título chamativo e específico (ex: 'Bhaskara na Prática: Resolvendo Problemas do Dia a Dia')"
-  "subtitle": "Subtítulo descritivo (ex: 'Domine a fórmula de BHaskara e suas aplicações no ENEM')"
-  "cycles": [12 blocos — 3 ciclos × 4 blocos cada]
-}`,
-        user: `Gere a aula completa de "${area}" com 3 ciclos profundos e densos. Cada ciclo deve ter um subtema diferente dentro de "${area}". Os 3 ciclos devem cobrir progressivamente o tema (básico → intermediário → avançado).
+  "title": "Título chamativo",
+  "subtitle": "Subtítulo",
+  "cycles": [
+    {"type":"story","cabritoSpeech":"...","content":"..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
+    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},
+    {"type":"story","cabritoSpeech":"...","content":"..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":1,"explanation":"..."},
+    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":3,"explanation":"..."}
+  ]
+}
 
-Retorne APENAS o JSON:`,
+Importante: correctIndex deve variar (0,1,2,3) entre os 4 blocos com questões. Retorne APENAS o JSON.`,
+        user: `Gere a aula de "${area}" com 2 ciclos. Retorne APENAS o JSON:`,
       }
     },
     models: [
