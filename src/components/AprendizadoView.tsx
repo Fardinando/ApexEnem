@@ -776,11 +776,17 @@ export default function AprendizadoView({
     if (!adGateActive || adGateSecondsLeft <= 0) return;
     const timer = setInterval(() => {
       setAdGateSecondsLeft(prev => {
-        if (prev <= 1) { setAdGateActive(false); return 0; }
+        if (prev <= 1) { return 0; }
         return prev - 1;
       });
     }, 1000);
     return () => clearInterval(timer);
+  }, [adGateActive, adGateSecondsLeft]);
+
+  useEffect(() => {
+    if (adGateActive && adGateSecondsLeft <= 0) {
+      handleAdGateContinue();
+    }
   }, [adGateActive, adGateSecondsLeft]);
 
   const handleQuestaoCheck = () => {
