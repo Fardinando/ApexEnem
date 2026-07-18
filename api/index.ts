@@ -1032,7 +1032,7 @@ app.post("/api/lesson-v2", async (req, res) => {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 15000);
+      const tid = setTimeout(() => ctrl.abort(), 25000);
       try {
         const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -1048,7 +1048,7 @@ app.post("/api/lesson-v2", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: 4096,
+            max_tokens: 8192,
             temperature: 0.85
           }),
           signal: ctrl.signal
@@ -1126,7 +1126,7 @@ app.post("/api/questoes-ai", async (req, res) => {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 15000);
+      const tid = setTimeout(() => ctrl.abort(), 25000);
       try {
         const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -1142,7 +1142,7 @@ app.post("/api/questoes-ai", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: 4096,
+            max_tokens: 8192,
             temperature: 0.85
           }),
           signal: ctrl.signal

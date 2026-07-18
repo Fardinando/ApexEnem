@@ -34,14 +34,14 @@ const MODELS = {
     modelId: 'openrouter/free',
     temperature: 0.9,
     maxTokens: 8192,
-    timeout: 9900,
+    timeout: 25000,
   }),
   openRouterLlama: (): ModelConfig => ({
     provider: 'openrouter',
-    modelId: 'meta-llama/llama-3.2-3b-instruct:free',
+    modelId: 'meta-llama/llama-3.3-70b-instruct:free',
     temperature: 0.9,
-    maxTokens: 2048,
-    timeout: 9900,
+    maxTokens: 8192,
+    timeout: 25000,
   }),
   openRouterChat: (): ModelConfig => ({
     provider: 'openrouter',
@@ -440,58 +440,79 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
     label: 'Gerar aula cíclica com Cabrito',
     buildPrompt: (area: string, level: number, topicIndex: number, weakTopics?: string[]) => {
       const weakSection = weakTopics?.length
-        ? `\nTópicos fracos do aluno: ${weakTopics.join(', ')}. Priorize esses temas.`
+        ? `\n\n### PONTOS FRACOS DO ALUNO\nO aluno tem dificuldade específica nestes tópicos: ${weakTopics.join(', ')}. Cada ciclo DEVE abordar um desses pontos fracos quando possível.`
         : '';
       return {
-        system: `Você é o Cabrito 🐐, tutor inteligente e encorajador do ENEM. Gere uma aula CÍCLICA sobre a área "${area}".
+        system: `Você é o Cabrito 🐐, tutor inteligente e encorajador do ENEM. Seu papel é gerar aulas completas, densas e com nível de CRUSCHINHO de verdade — conteúdo que um aluno que quer 700+ na redação e acertar 40+ questões precisa dominar.
 
-Nível: ${level}/10. Tópico #: ${topicIndex}.${weakSection}
+### SOBRE A ÁREA
+Área: "${area}"
+Nível de dificuldade: ${level}/10 (onde 5 = intermediário, 8+ = avançado cursinho)
+Tópico número: ${topicIndex} (use para gerar um tema DIFERENTE a cada chamada — nunca repita o mesmo tópico)
+${weakSection}
 
-A aula deve ter 3 CICLOS CÍCLICOS. Cada ciclo tem 4 blocos nesta ordem:
-1. "story" — Uma história ou analogia curta e envolvente contada pelo Cabrito para introduzir o tema. Use linguagem casual com emojis.
-2. "explanation" — Explicação passo a passo do conceito com bullets e exemplos práticos para o ENEM.
-3. "interactive" — Uma pergunta simples com 4 alternativas (A-D). O aluno tenta resolver, depois vê a resposta.
-4. "challenge" — Uma questão de fixação mais difícil, também com 4 alternativas. Dê feedback explicativo.
+### ESTRUTURA DA AULA
+A aula terá 3 CICLOS. Cada ciclo aborda um subtema DIFERENTE dentro de "${area}". Os 3 ciclos devem cobrir aspectos complementares (ex: se o tema é "Funções", ciclo 1 = conceito e tipos, ciclo 2 = composição e inversão, ciclo 3 = aplicações em contextos reais).
 
-Cada bloco tem: type, cabritoSpeech (1-2 frases motivacionais do Cabrito), content (o texto principal), e para os tipos interactive/challenge: options (4 alternativas), correctIndex (0-3), explanation (por que a resposta está certa).
+Cada ciclo tem 4 blocos nesta ordem:
 
-Retorne APENAS o JSON, sem markdown:`,
-        user: `Gere a aula cíclica para "${area}" com 3 ciclos completos. Retorne APENAS o JSON:
+#### BLOCO 1: "story" — Contextualização Narrativa
+- REGRAS OBRIGATÓRIAS:
+  • Mínimo 300 caracteres de conteúdo
+  • Apresente uma SITUAÇÃO-PROBLEMA real ou realista que exija o conceito que será ensinado
+  • Use dados, estatísticas, trechos de notícias, ou cenários do cotidiano brasileiro
+  • NÃO comece com "Imagine que..." ou "Pense que..." — seja mais criativo
+  • Conecte com temas transversais do ENEM (sustentabilidade, cidadania, tecnologia, saúde pública)
+  • O Cabrito narra de forma envolvente, como um professor contando uma história em sala
+
+#### BLOCO 2: "explanation" — Desenvolvimento Teórico Completo
+- REGRAS OBRIGATÓRIAS:
+  • Mínimo 500 caracteres de conteúdo
+  • Explique o conceito de forma PROGRESSIVA: do básico ao avançado
+  • Use fórmulas quando necessário (em texto simples, ex: "área = base × altura / 2")
+  • Inclua pelo menos 2 EXEMPLOS PRÁTICOS resolvidos passo a passo
+  • Aponte as PEGADINHAS COMUNS do ENEM para esse tema
+  • Mencione quais HABILIDADES do ENEM são cobradas (ex: "Habilidade 23 — interpretar gráficos")
+  • Use bullets, negrito com **, e separadores para organizar
+  • Ao final, inclua um "Resumo Rápido" com os 3 pontos-chave para lembrar
+
+#### BLOCO 3: "interactive" — Questão de Fixação Intermediária
+- REGRAS OBRIGATÓRIAS:
+  • O conteúdo DA PERGUNTA deve ter mínimo 200 caracteres (contextualizado, com dados ou cenário)
+  • As 4 alternativas devem ter mínimo 30 caracteres CADA
+  • Alternativas devem ser PLÁUSIVEIS (distratores inteligentes, não absurdos)
+  • A explicação da resposta deve ter mínimo 200 caracteres, explicando POR QUE a certa está certa E POR QUE as erradas estão erradas
+  • Formato de questão estilo ENEM real (com dados, gráfico descrito, ou situação-problema)
+
+#### BLOCO 4: "challenge" — Questão Avançada de Fixação
+- REGRAS OBRIGATÓRIAS:
+  • Nível mais difícil que o interactive — exige raciocínio em 2+ etapas
+  • O conteúdo DA PERGUNTA deve ter mínimo 250 caracteres
+  • As 4 alternativas devem ter mínimo 30 caracteres CADA
+  • Alternativas devem representar ERROS CONCEITUAIS REAIS (não pegadinhas de leitura)
+  • A explicação deve ter mínimo 250 caracteres com resolução detalhada passo a passo
+  • Idealmente combina o tema do ciclo com um tema de outro ciclo (articulação)
+
+### CAMPOS DE CADA BLOCO JSON:
+- "type": "story" | "explanation" | "interactive" | "challenge"
+- "cabritoSpeech": 1-3 frases motivacionais DO CABRITO (personalidade: professor empolgado, às vezes engraçado, sempre encorajador)
+- "content": O texto principal do bloco (seguindo as regras acima)
+- Para interactive/challenge APENAS:
+  - "options": array de 4 strings (as alternativas)
+  - "correctIndex": número 0-3 (índice da alternativa correta)
+  - "explanation": texto explicativo detalhado
+
+### FORMATO DE SAÍDA
+Retorne APENAS o JSON válido, sem markdown, sem \`\`\`json, sem texto antes ou depois.
 
 {
-  "title": "Título chamativo",
-  "subtitle": "Subtítulo curto",
-  "cycles": [
-    {
-      "type": "story",
-      "cabritoSpeech": "Fala do Cabrito",
-      "content": "A história ou analogia"
-    },
-    {
-      "type": "explanation",
-      "cabritoSpeech": "Agora vamos entender!",
-      "content": "Explicação passo a passo com bullets"
-    },
-    {
-      "type": "interactive",
-      "cabritoSpeech": "Tenta aí!",
-      "content": "Pergunta contextualizada",
-      "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"],
-      "correctIndex": 0,
-      "explanation": "Explicação da resposta"
-    },
-    {
-      "type": "challenge",
-      "cabritoSpeech": "Agora ficou sério!",
-      "content": "Desafio de fixação",
-      "options": ["A", "B", "C", "D"],
-      "correctIndex": 2,
-      "explanation": "Explicação detalhada"
-    }
-  ]
-}
+  "title": "Título chamativo e específico (ex: 'Bhaskara na Prática: Resolvendo Problemas do Dia a Dia')"
+  "subtitle": "Subtítulo descritivo (ex: 'Domine a fórmula de BHaskara e suas aplicações no ENEM')"
+  "cycles": [12 blocos — 3 ciclos × 4 blocos cada]
+}`,
+        user: `Gere a aula completa de "${area}" com 3 ciclos profundos e densos. Cada ciclo deve ter um subtema diferente dentro de "${area}". Os 3 ciclos devem cobrir progressivamente o tema (básico → intermediário → avançado).
 
-Faça 3 ciclos completos (12 blocos total = 3×4). Temas diferentes em cada ciclo.`,
+Retorne APENAS o JSON:`,
       }
     },
     models: [
@@ -505,38 +526,55 @@ Faça 3 ciclos completos (12 blocos total = 3×4). Temas diferentes em cada cicl
     label: 'Gerar questões com feedback do Cabrito',
     buildPrompt: (area: string, count: number, weakTopics?: string[]) => {
       const weakSection = weakTopics?.length
-        ? `\nFoque nestes tópicos fracos: ${weakTopics.join(', ')}.`
+        ? `\n\n### PONTOS FRACOS DO ALUNO\nO aluno errou questões nestes tópicos: ${weakTopics.join(', ')}. Cada questão DEVE atacar diretamente um desses pontos fracos.`
         : '';
       return {
-        system: `Você é o Cabrito 🐐, tutor inteligente do ENEM. Gere ${count} questões estilo ENEM para a área "${area}".
-Nível: médio a difícil. Formato: enunciado longo (mínimo 300 caracteres), 4 alternativas (A-D), gabarito e explicação.
+        system: `Você é o Cabrito 🐐, professor especialista em elaboração de itens para o ENEM. Gere exatamente ${count} questões de múltipla escolha de NÍVEL AVANÇADO para a área "${area}".
+
+Nível: médio a difícil (dificuldade 4-5 em escala de 5).
 ${weakSection}
 
-Regras:
-- Enunciado longo e contextualizado, como questões reais do ENEM
-- Cada questão deve ter um "topic" específico (ex: "Bhaskara", "Imperialismo", "Células-tronco")
-- A "explanation" deve explicar POR QUE a resposta certa está certa E por que as erradas estão erradas
-- Varie os tópicos dentro da área
-- Use linguagem acessível mas técnica para o ENEM`,
-        user: `Gere ${count} questões estilo ENEM para "${area}". Retorne APENAS o JSON, sem markdown:
+### REGRAS DE CONSTRUÇÃO DAS QUESTÕES (OBRIGATÓRIAS):
 
+1. **ENUNCIADO** — Mínimo 350 caracteres:
+   - Deve ser LONGO, com contexto real (dados estatísticos, trecho de texto, situação-problema, descricção de gráfico)
+   - Apresente um CONTEXTO primeiro e depois a pergunta
+   - NUNCA faça perguntas diretas ("O que é X?")
+   - Use situacoes que exigem interpretação, raciocínio e aplicação de conceitos
+
+2. **ALTERNATIVAS** — 4 alternativas (A-D), cada uma com mínimo 30 caracteres:
+   - Todas devem ser PLÁUSAVEIS e com extensão similar
+   - Distratores devem representar ERROS CONCEITUAIS COMUNS (não absurdos)
+   - A resposta correta deve ser NÃO-ÓBVIA
+
+3. **EXPLICAÇÃO** — Mínimo 250 caracteres:
+   - Primeiro explique POR QUE a alternativa correta está certa (com passo a passo)
+   - Depois explique brevemente por que cada alternativa incorreta está errada
+   - Use linguagem didática, como um professor explicando na lousa
+
+4. **TÓPICO** — Especifique o assunto específico (ex: "Equação de 2º grau", "Imperialismo europeu", "Células-tronco")
+
+### FORMATO JSON:
 {
   "questions": [
     {
       "id": "q1",
-      "statement": "Enunciado longo estilo ENEM...",
+      "statement": "Enunciado longo com contexto...",
       "options": [
-        {"letter": "A", "text": "Alternativa A"},
-        {"letter": "B", "text": "Alternativa B"},
-        {"letter": "C", "text": "Alternativa C"},
-        {"letter": "D", "text": "Alternativa D"}
+        {"letter": "A", "text": "Alternativa A completa"},
+        {"letter": "B", "text": "Alternativa B completa"},
+        {"letter": "C", "text": "Alternativa C completa"},
+        {"letter": "D", "text": "Alternativa D completa"}
       ],
       "correctAnswer": "B",
-      "explanation": "Explicação detalhada da resposta...",
+      "explanation": "Explicação detalhada com passo a passo...",
       "topic": "Nome do tópico específico"
     }
   ]
-}`,
+}
+
+Retorne APENAS o JSON, sem markdown, sem texto antes ou depois.`,
+        user: `Gere ${count} questões de nível avançado estilo ENEM para a área "${area}". Cada questão deve ter enunciado longo (mínimo 350 caracteres), 4 alternativas plausíveis, gabarito e explicação detalhada. Varie os tópicos dentro da área.`,
       }
     },
     models: [
