@@ -68,6 +68,38 @@ export interface Question {
   explanation: string;
 }
 
+export type LessonBlockType = 'story' | 'explanation' | 'interactive' | 'challenge';
+
+export interface LessonBlock {
+  type: LessonBlockType;
+  cabritoSpeech: string;
+  content: string;
+  options?: string[];
+  correctIndex?: number;
+  explanation?: string;
+}
+
+export interface LessonCycle {
+  title: string;
+  subtitle: string;
+  cycles: LessonBlock[];
+}
+
+export interface AiQuestion {
+  id: string;
+  statement: string;
+  options: Array<{ letter: string; text: string }>;
+  correctAnswer: string;
+  explanation: string;
+  topic: string;
+}
+
+export interface TopicDifficulty {
+  topic: string;
+  subject: string;
+  score: number;
+  errorCount: number;
+}
 export interface SimuladoConfig {
   subject: 'Matemática' | 'Humanas' | 'Natureza' | 'Linguagens' | 'Geral';
   questionCount: number;

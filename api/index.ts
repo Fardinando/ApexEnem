@@ -1017,6 +1017,178 @@ Para a área "${area}", sugira tópicos variados como:
   return res.json(lesson);
 });
 
+app.post("/api/lesson-v2", async (req, res) => {
+  const { area, level, weakTopics, topicIndex } = req.body;
+  if (!area) return res.status(400).json({ error: "area is required" });
+
+  const topicNum = typeof topicIndex === 'number' ? topicIndex : Math.floor(Math.random() * 100);
+  const promptDef = PROMPTS.lessonCycle;
+  const built = promptDef.buildPrompt(area, level || 5, topicNum, weakTopics);
+  const systemPrompt = typeof built === 'string' ? built : built.system;
+  const userPrompt = typeof built === 'string' ? built : built.user;
+
+  async function tryLessonV2(model: string): Promise<any | null> {
+    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
+      const key = getNextOpenRouterKey();
+      if (!key) continue;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${key}`,
+            "HTTP-Referer": "https://apexenem.vercel.app",
+            "X-Title": "ApexEnem"
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            max_tokens: 4096,
+            temperature: 0.85
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (resp.status === 429) continue;
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) continue;
+
+        const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          if (parsed.title && Array.isArray(parsed.cycles) && parsed.cycles.length >= 4) {
+            return parsed;
+          }
+        } catch {
+          const match = cleaned.match(/\{[\s\S]*\}/);
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[0]);
+              if (parsed.title && Array.isArray(parsed.cycles)) return parsed;
+            } catch {}
+          }
+        }
+      } catch {
+        clearTimeout(tid);
+        continue;
+      }
+    }
+    return null;
+  }
+
+  const models = promptDef.models.map(m => m.modelId);
+  const lesson = await Promise.any(
+    models.map(m => tryLessonV2(m).then(l => l ? Promise.resolve(l) : Promise.reject()))
+  ).catch(() => null);
+
+  if (!lesson) {
+    return res.json({
+      title: `Aula de ${area}`,
+      subtitle: 'Conceitos essenciais para o ENEM',
+      cycles: [
+        { type: 'story', cabritoSpeech: 'Deixa eu te contar uma história!', content: `Pense numa situação do dia a dia que envolva conceitos de ${area}...` },
+        { type: 'explanation', cabritoSpeech: 'Agora vamos entender a teoria!', content: `Os principais conceitos de ${area} para o ENEM incluem...\n\n• Conceito fundamental 1\n• Conceito fundamental 2\n• Conceito fundamental 3` },
+        { type: 'interactive', cabritoSpeech: 'Testa seus conhecimentos!', content: `Qual das alternativas melhor descreve um conceito essencial de ${area}?`, options: ['Conceito A genérico', 'Conceito B correto', 'Conceito C incorreto', 'Conceito D irrelevante'], correctIndex: 1, explanation: 'A alternativa B está correta porque...' },
+        { type: 'challenge', cabritoSpeech: 'Agora ficou sério!', content: `Desafio: analise a situação e escolha a melhor alternativa sobre ${area}.`, options: ['A', 'B', 'C', 'D'], correctIndex: 0, explanation: 'Resolução detalhada do desafio...' },
+        { type: 'story', cabritoSpeech: 'Segundo tema, vamos lá!', content: `Outra história fascinante sobre ${area}...` },
+        { type: 'explanation', cabritoSpeech: 'Aprofundando o conhecimento!', content: `Agora vamos ver como ${area} cai no ENEM de forma mais avançada...` },
+        { type: 'interactive', cabritoSpeech: 'Mais uma pra treinar!', content: `Questão intermediária sobre ${area}.`, options: ['A', 'B', 'C', 'D'], correctIndex: 2, explanation: 'Explicação detalhada.' },
+        { type: 'challenge', cabritoSpeech: 'Último desafio!', content: `Desafio final sobre ${area}.`, options: ['A', 'B', 'C', 'D'], correctIndex: 1, explanation: 'Parabéns! Você completou a aula.' },
+        { type: 'story', cabritoSpeech: 'Terceiro ciclo, última história!', content: `Mais uma analogia envolvente sobre ${area}...` },
+        { type: 'explanation', cabritoSpeech: 'Consolidando o aprendizado!', content: `Revisão final dos pontos-chave de ${area} para o ENEM...` },
+        { type: 'interactive', cabritoSpeech: 'Última chance de brilhar!', content: `Questão final de fixação sobre ${area}.`, options: ['A', 'B', 'C', 'D'], correctIndex: 3, explanation: 'Excelente! Você dominou este tema.' },
+        { type: 'challenge', cabritoSpeech: 'Missão cumprida, estudioso!', content: `Parabéns por completar a aula de ${area}! Revise os pontos-chave e continue praticando.`, options: ['A', 'B', 'C', 'D'], correctIndex: 0, explanation: 'Fim da aula. Continue estudando!' },
+      ]
+    });
+  }
+
+  return res.json(lesson);
+});
+
+app.post("/api/questoes-ai", async (req, res) => {
+  const { area, count, weakTopics } = req.body;
+  if (!area) return res.status(400).json({ error: "area is required" });
+
+  const promptDef = PROMPTS.questoesComFeedback;
+  const built = promptDef.buildPrompt(area, count || 5, weakTopics);
+  const systemPrompt = typeof built === 'string' ? built : built.system;
+  const userPrompt = typeof built === 'string' ? built : built.user;
+
+  async function tryQuestoes(model: string): Promise<any | null> {
+    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
+      const key = getNextOpenRouterKey();
+      if (!key) continue;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 15000);
+      try {
+        const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${key}`,
+            "HTTP-Referer": "https://apexenem.vercel.app",
+            "X-Title": "ApexEnem"
+          },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            max_tokens: 4096,
+            temperature: 0.85
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (resp.status === 429) continue;
+        if (!resp.ok) continue;
+        const data = await resp.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) continue;
+
+        const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+        try {
+          const parsed = JSON.parse(cleaned);
+          if (parsed.questions && Array.isArray(parsed.questions) && parsed.questions.length >= 2) {
+            return parsed.questions;
+          }
+        } catch {
+          const match = cleaned.match(/\[[\s\S]*\]/);
+          if (match) {
+            try {
+              const parsed = JSON.parse(match[0]);
+              if (Array.isArray(parsed) && parsed.length >= 2) return parsed;
+            } catch {}
+          }
+        }
+      } catch {
+        clearTimeout(tid);
+        continue;
+      }
+    }
+    return null;
+  }
+
+  const models = promptDef.models.map(m => m.modelId);
+  const questions = await Promise.any(
+    models.map(m => tryQuestoes(m).then(q => q ? Promise.resolve(q) : Promise.reject()))
+  ).catch(() => null);
+
+  if (!questions) {
+    return res.json({ questions: [] });
+  }
+
+  return res.json({ questions });
+});
+
 app.post("/api/generate-learning-exercises", async (req, res) => {
   const { chapterTitle, chapterArea, weakAreas, count } = req.body;
 

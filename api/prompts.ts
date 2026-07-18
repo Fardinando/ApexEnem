@@ -434,6 +434,116 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
       MODELS.openRouterCorrection(),
     ],
   },
+
+  lessonCycle: {
+    id: 'lessonCycle',
+    label: 'Gerar aula cíclica com Cabrito',
+    buildPrompt: (area: string, level: number, topicIndex: number, weakTopics?: string[]) => {
+      const weakSection = weakTopics?.length
+        ? `\nTópicos fracos do aluno: ${weakTopics.join(', ')}. Priorize esses temas.`
+        : '';
+      return {
+        system: `Você é o Cabrito 🐐, tutor inteligente e encorajador do ENEM. Gere uma aula CÍCLICA sobre a área "${area}".
+
+Nível: ${level}/10. Tópico #: ${topicIndex}.${weakSection}
+
+A aula deve ter 3 CICLOS CÍCLICOS. Cada ciclo tem 4 blocos nesta ordem:
+1. "story" — Uma história ou analogia curta e envolvente contada pelo Cabrito para introduzir o tema. Use linguagem casual com emojis.
+2. "explanation" — Explicação passo a passo do conceito com bullets e exemplos práticos para o ENEM.
+3. "interactive" — Uma pergunta simples com 4 alternativas (A-D). O aluno tenta resolver, depois vê a resposta.
+4. "challenge" — Uma questão de fixação mais difícil, também com 4 alternativas. Dê feedback explicativo.
+
+Cada bloco tem: type, cabritoSpeech (1-2 frases motivacionais do Cabrito), content (o texto principal), e para os tipos interactive/challenge: options (4 alternativas), correctIndex (0-3), explanation (por que a resposta está certa).
+
+Retorne APENAS o JSON, sem markdown:`,
+        user: `Gere a aula cíclica para "${area}" com 3 ciclos completos. Retorne APENAS o JSON:
+
+{
+  "title": "Título chamativo",
+  "subtitle": "Subtítulo curto",
+  "cycles": [
+    {
+      "type": "story",
+      "cabritoSpeech": "Fala do Cabrito",
+      "content": "A história ou analogia"
+    },
+    {
+      "type": "explanation",
+      "cabritoSpeech": "Agora vamos entender!",
+      "content": "Explicação passo a passo com bullets"
+    },
+    {
+      "type": "interactive",
+      "cabritoSpeech": "Tenta aí!",
+      "content": "Pergunta contextualizada",
+      "options": ["Alternativa A", "Alternativa B", "Alternativa C", "Alternativa D"],
+      "correctIndex": 0,
+      "explanation": "Explicação da resposta"
+    },
+    {
+      "type": "challenge",
+      "cabritoSpeech": "Agora ficou sério!",
+      "content": "Desafio de fixação",
+      "options": ["A", "B", "C", "D"],
+      "correctIndex": 2,
+      "explanation": "Explicação detalhada"
+    }
+  ]
+}
+
+Faça 3 ciclos completos (12 blocos total = 3×4). Temas diferentes em cada ciclo.`,
+      }
+    },
+    models: [
+      MODELS.openRouterFree(),
+      MODELS.openRouterLlama(),
+    ],
+  },
+
+  questoesComFeedback: {
+    id: 'questoesComFeedback',
+    label: 'Gerar questões com feedback do Cabrito',
+    buildPrompt: (area: string, count: number, weakTopics?: string[]) => {
+      const weakSection = weakTopics?.length
+        ? `\nFoque nestes tópicos fracos: ${weakTopics.join(', ')}.`
+        : '';
+      return {
+        system: `Você é o Cabrito 🐐, tutor inteligente do ENEM. Gere ${count} questões estilo ENEM para a área "${area}".
+Nível: médio a difícil. Formato: enunciado longo (mínimo 300 caracteres), 4 alternativas (A-D), gabarito e explicação.
+${weakSection}
+
+Regras:
+- Enunciado longo e contextualizado, como questões reais do ENEM
+- Cada questão deve ter um "topic" específico (ex: "Bhaskara", "Imperialismo", "Células-tronco")
+- A "explanation" deve explicar POR QUE a resposta certa está certa E por que as erradas estão erradas
+- Varie os tópicos dentro da área
+- Use linguagem acessível mas técnica para o ENEM`,
+        user: `Gere ${count} questões estilo ENEM para "${area}". Retorne APENAS o JSON, sem markdown:
+
+{
+  "questions": [
+    {
+      "id": "q1",
+      "statement": "Enunciado longo estilo ENEM...",
+      "options": [
+        {"letter": "A", "text": "Alternativa A"},
+        {"letter": "B", "text": "Alternativa B"},
+        {"letter": "C", "text": "Alternativa C"},
+        {"letter": "D", "text": "Alternativa D"}
+      ],
+      "correctAnswer": "B",
+      "explanation": "Explicação detalhada da resposta...",
+      "topic": "Nome do tópico específico"
+    }
+  ]
+}`,
+      }
+    },
+    models: [
+      MODELS.openRouterFree(),
+      MODELS.openRouterLlama(),
+    ],
+  },
 }
 
 export function getLoadingMessages(): string[] {

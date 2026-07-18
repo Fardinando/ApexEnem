@@ -2,6 +2,8 @@
  * Gamification engine: XP, streak, achievements, levels
  */
 
+import type { WrongAnswer, TopicDifficulty } from '../types';
+
 export interface Achievement {
   id: string;
   title: string;
@@ -152,4 +154,32 @@ export function getUnlockedAchievements(stats: GamificationStats): Achievement[]
     ...a,
     unlockedAt: a.condition(stats) ? (a.unlockedAt || new Date().toISOString()) : undefined,
   })).filter(a => a.unlockedAt);
+}
+
+export function computeTopicDifficulty(wrongAnswers: WrongAnswer[]): TopicDifficulty[] {
+  const topicMap = new Map<string, { subject: string; count: number }>();
+
+  for (const wa of wrongAnswers) {
+    const key = wa.subject;
+    const existing = topicMap.get(key);
+    if (existing) {
+      existing.count++;
+    } else {
+      topicMap.set(key, { subject: wa.subject, count: 1 });
+    }
+  }
+
+  const results: TopicDifficulty[] = [];
+  for (const [topic, data] of topicMap) {
+    const score = Math.min(100, Math.round((data.count / Math.max(wrongAnswers.length, 1)) * 200));
+    results.push({
+      topic,
+      subject: data.subject,
+      score,
+      errorCount: data.count,
+    });
+  }
+
+  results.sort((a, b) => b.score - a.score);
+  return results;
 }

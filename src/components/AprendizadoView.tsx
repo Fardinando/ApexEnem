@@ -22,6 +22,8 @@ import {
   CheckCircle2,
   XCircle,
   BarChart3,
+  Clock,
+  MessageCircle,
 } from 'lucide-react';
 import MathRenderer from './MathRenderer';
 import { motion, AnimatePresence } from 'motion/react';
@@ -31,9 +33,14 @@ import type {
   EssayCorrection,
   UserProfile,
   WrongAnswer,
+  LessonCycle,
+  LessonBlock,
+  AiQuestion,
+  TopicDifficulty,
 } from '../types';
 import { INITIAL_CHAPTERS, CHAPTER_EXERCISES } from '../data/learning-exercises';
 import { saveLearningProgress, fetchLearningProgress } from '../lib/supabase';
+import { computeTopicDifficulty } from '../lib/gamification';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, {
   shouldShowRewardAd,
@@ -574,6 +581,16 @@ export default function AprendizadoView({
   const [questaoCompleted, setQuestaoCompleted] = useState(false);
   const [questaoCorrectCount, setQuestaoCorrectCount] = useState(0);
 
+  const [aiLessonCycle, setAiLessonCycle] = useState<LessonCycle | null>(null);
+  const [aiQuestoes, setAiQuestoes] = useState<AiQuestion[]>([]);
+  const [loadingQuestions, setLoadingQuestions] = useState(false);
+  const [questaoFeedback, setQuestaoFeedback] = useState('');
+  const [questaoTopic, setQuestaoTopic] = useState('');
+  const [adGateSecondsLeft, setAdGateSecondsLeft] = useState(0);
+  const [adGateActive, setAdGateActive] = useState(false);
+  const [interactiveAnswer, setInteractiveAnswer] = useState<number | null>(null);
+  const [interactiveChecked, setInteractiveChecked] = useState(false);
+
   const [chapters, setChapters] = useState<LearningChapter[]>(INITIAL_CHAPTERS);
   const [activeChapter, setActiveChapter] = useState<LearningChapter | null>(
     null
@@ -622,6 +639,9 @@ export default function AprendizadoView({
     wrongAnswers
   );
 
+  const topicDifficulties = computeTopicDifficulty(wrongAnswers || []);
+  const topWeakTopics = topicDifficulties.slice(0, 10);
+
   useEffect(() => {
     if (currentUser?.email) {
       fetchLearningProgress(currentUser.email)
@@ -667,99 +687,113 @@ export default function AprendizadoView({
     }
   };
 
-  const fetchLesson = async (cat: CategoryCard, topicIdx: number) => {
+  const fetchLessonCycle = async (cat: CategoryCard, topicIdx: number) => {
     setLoadingLesson(true);
-    setAiLesson(null);
+    setAiLessonCycle(null);
     try {
       const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
-      const resp = await fetch('/api/lesson', {
+      const resp = await fetch('/api/lesson-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          area: cat.area,
-          level: 5,
-          weakTopics: wrongSubjects,
-          topicIndex: topicIdx,
-        }),
+        body: JSON.stringify({ area: cat.area, level: 5, weakTopics: wrongSubjects, topicIndex: topicIdx }),
       });
       if (resp.ok) {
         const data = await resp.json();
-        if (data && data.title && Array.isArray(data.content)) {
-          setAiLesson(data);
+        if (data && data.title && Array.isArray(data.cycles) && data.cycles.length > 0) {
+          setAiLessonCycle(data);
         }
       }
-    } catch {
-      // fallback content will be used
-    } finally {
-      setLoadingLesson(false);
-    }
+    } catch {}
+    setLoadingLesson(false);
+  };
+
+  const fetchQuestoesAI = async (area: string) => {
+    setLoadingQuestions(true);
+    try {
+      const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
+      const resp = await fetch('/api/questoes-ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ area, count: 5, weakTopics: wrongSubjects }),
+      });
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
+          setAiQuestoes(data.questions.map((q: any, i: number) => ({
+            id: q.id || `ai-q-${i}`, statement: q.statement || '',
+            options: q.options || [], correctAnswer: q.correctAnswer || 'A',
+            explanation: q.explanation || '', topic: q.topic || '',
+          })));
+        } else { setAiQuestoes([]); }
+      } else { setAiQuestoes([]); }
+    } catch { setAiQuestoes([]); }
+    setLoadingQuestions(false);
   };
 
   const handleAdGateContinue = useCallback(() => {
-    setShowAdGate(false);
+    setAdGateActive(false);
+    setAdGateSecondsLeft(0);
     if (adGateTarget === 'cursinho' && activeCategory) {
       setViewMode('lesson');
       setLessonStep(0);
       const nextIdx = lessonTopicIndex + 1;
       setLessonTopicIndex(nextIdx);
-      fetchLesson(activeCategory, nextIdx);
+      fetchLessonCycle(activeCategory, nextIdx);
     } else if (adGateTarget === 'questoes' && questoesArea) {
-      const questions = generatePlaceholderQuestions(questoesArea, 5);
-      setQuestoesList(questions);
-      setQuestaoIdx(0);
-      setSelectedLetter(null);
-      setHasChecked(false);
-      setQuestaoHearts(5);
-      setQuestaoXp(0);
-      setQuestaoCorrectCount(0);
-      setQuestaoCompleted(false);
       setViewMode('questoes-play');
+      fetchQuestoesAI(questoesArea);
     }
     setAdGateTarget(null);
   }, [adGateTarget, activeCategory, questoesArea]);
 
   const handleStartCursinhoCategory = (cat: CategoryCard) => {
     setActiveCategory(cat);
-    if (cat.area === 'Recomendado' && wrongAnswers && wrongAnswers.length < 3) {
-      return;
-    }
-    if (shouldShowRewardAd('cursinho-lesson', 2)) {
-      setAdGateTarget('cursinho');
-      setShowAdGate(true);
-      return;
-    }
-    setViewMode('lesson');
-    setLessonStep(0);
-    const nextIdx = lessonTopicIndex + 1;
-    setLessonTopicIndex(nextIdx);
-    fetchLesson(cat, nextIdx);
+    if (cat.area === 'Recomendado' && wrongAnswers && wrongAnswers.length < 3) return;
+    setAdGateTarget('cursinho');
+    setAdGateActive(true);
+    setAdGateSecondsLeft(60);
   };
 
   const handleStartQuestoes = (area: string) => {
     setQuestoesArea(area);
-    if (shouldShowRewardAd('questoes-session', 2)) {
-      setAdGateTarget('questoes');
-      setShowAdGate(true);
-      return;
-    }
-    const questions = generatePlaceholderQuestions(area, 5);
-    setQuestoesList(questions);
     setQuestaoIdx(0);
     setSelectedLetter(null);
     setHasChecked(false);
+    setIsCorrectAnswer(null);
     setQuestaoHearts(5);
     setQuestaoXp(0);
-    setQuestaoCorrectCount(0);
     setQuestaoCompleted(false);
-    setViewMode('questoes-play');
+    setQuestaoCorrectCount(0);
+    setQuestaoFeedback('');
+    setQuestaoTopic('');
+    setAiQuestoes([]);
+    setAdGateTarget('questoes');
+    setAdGateActive(true);
+    setAdGateSecondsLeft(60);
   };
 
+  useEffect(() => {
+    if (!adGateActive || adGateSecondsLeft <= 0) return;
+    const timer = setInterval(() => {
+      setAdGateSecondsLeft(prev => {
+        if (prev <= 1) { setAdGateActive(false); return 0; }
+        return prev - 1;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [adGateActive, adGateSecondsLeft]);
+
   const handleQuestaoCheck = () => {
-    if (!selectedLetter) return;
-    const q = questoesList[questaoIdx];
-    const correct = selectedLetter === q.correctLetter;
-    setIsCorrectAnswer(correct);
+    if (!selectedLetter || hasChecked) return;
+    const activeList = aiQuestoes.length > 0 ? aiQuestoes : questoesList;
+    const currentQ: any = activeList[questaoIdx];
+    if (!currentQ) return;
+    const correctLetter = currentQ.correctAnswer || currentQ.correctLetter;
+    const correct = selectedLetter === correctLetter;
     setHasChecked(true);
+    setIsCorrectAnswer(correct);
+    setQuestaoFeedback(currentQ.explanation || '');
+    setQuestaoTopic(currentQ.topic || '');
     if (correct) {
       setQuestaoXp(prev => prev + 10);
       setQuestaoCorrectCount(prev => prev + 1);
@@ -769,20 +803,20 @@ export default function AprendizadoView({
   };
 
   const handleQuestaoContinue = () => {
-    if (questaoHearts <= 0) {
+    const activeList = aiQuestoes.length > 0 ? aiQuestoes : questoesList;
+    if (questaoHearts <= 0 || questaoIdx + 1 >= activeList.length) {
       setQuestaoCompleted(true);
-      return;
-    }
-    if (questaoIdx + 1 < questoesList.length) {
-      setQuestaoIdx(questaoIdx + 1);
-      setSelectedLetter(null);
-      setHasChecked(false);
-    } else {
-      setQuestaoCompleted(true);
-      const bonus = questaoCorrectCount >= questoesList.length * 0.7 ? 15 : 0;
+      const bonus = questaoCorrectCount >= activeList.length * 0.7 ? 15 : 0;
       setQuestaoXp(prev => prev + bonus);
       setXpPoints(prev => prev + questaoXp + bonus);
+      return;
     }
+    setQuestaoIdx(questaoIdx + 1);
+    setSelectedLetter(null);
+    setHasChecked(false);
+    setIsCorrectAnswer(null);
+    setQuestaoFeedback('');
+    setQuestaoTopic('');
   };
 
   const handleBackToCategories = () => {
@@ -792,6 +826,8 @@ export default function AprendizadoView({
     setLessonActive(false);
     setActiveChapter(null);
     setAiLesson(null);
+    setAiLessonCycle(null);
+    setAiQuestoes([]);
     setLoadingLesson(false);
   };
 
@@ -802,9 +838,11 @@ export default function AprendizadoView({
   };
 
   const lessonContent = getLessonContent();
-  const totalLessonSteps = lessonContent
-    ? lessonContent.content.length + lessonContent.tips.length
-    : 0;
+  const totalLessonSteps = aiLessonCycle
+    ? aiLessonCycle.cycles.length
+    : lessonContent
+      ? lessonContent.content.length + lessonContent.tips.length
+      : 0;
 
   const renderCursinhoTab = () => {
     if (viewMode === 'lesson' && activeCategory && loadingLesson) {
@@ -838,226 +876,212 @@ export default function AprendizadoView({
       );
     }
 
-    if (viewMode === 'lesson' && activeCategory && lessonContent) {
-      const cabritoSpeeches = [
-        'Vamos lá! Eu, o Cabrito, vou te ensinar o essencial! 🐐',
-        'Preste atenção nestas dicas valiosas!',
-        'Quase lá! Você está ficando mais forte!',
-        'Continue! O conhecimento é o melhor caminho!',
-        'Essa é uma parte crucial — anote! 📝',
-        'Você está indo muito bem! Continue assim!',
-      ];
-      const speechIdx = Math.min(lessonStep, cabritoSpeeches.length - 1);
+    if (viewMode === 'lesson' && activeCategory) {
+      const blockTypeLabels: Record<string, string> = {
+        story: '📖 História do Cabrito',
+        explanation: '📚 Explicação',
+        interactive: '🎯 Resolva comigo!',
+        challenge: '🏆 Desafio de fixação',
+      };
 
-      if (lessonStep < lessonContent.content.length) {
+      if (aiLessonCycle && lessonStep < aiLessonCycle.cycles.length) {
+        const block = aiLessonCycle.cycles[lessonStep];
+        const isInteractive = block.type === 'interactive' || block.type === 'challenge';
+
         return (
           <div className="space-y-6 animate-fade-in">
             <div className="flex items-center justify-between">
-              <button
-                type="button"
-                onClick={handleBackToCategories}
-                className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition"
-              >
-                ← Voltar
-              </button>
+              <button type="button" onClick={handleBackToCategories} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
               <div className="flex items-center gap-2">
                 <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                    style={{
-                      width: `${((lessonStep + 1) / totalLessonSteps) * 100}%`,
-                    }}
-                  />
+                  <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${((lessonStep + 1) / totalLessonSteps) * 100}%` }} />
                 </div>
-                <span className="text-[10px] font-mono text-slate-400">
-                  {lessonStep + 1}/{totalLessonSteps}
-                </span>
+                <span className="text-[10px] font-mono text-slate-400">{lessonStep + 1}/{totalLessonSteps}</span>
               </div>
             </div>
 
-            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-6">
+            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-5">
+              <div className="flex items-center gap-2 mb-1">
+                <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-bold uppercase tracking-wider">{blockTypeLabels[block.type] || 'Aula'}</span>
+              </div>
+
               <div className="flex items-center gap-4">
                 <div className="relative animate-bounce">
                   <span className="text-5xl">🐐</span>
-                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[8px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">
-                    IA
-                  </div>
+                  <div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[8px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">IA</div>
                 </div>
                 <div className="bg-blue-50 dark:bg-[#0f172a] p-4 rounded-2xl border border-blue-200/50 dark:border-slate-800 relative text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
                   <div className="absolute -left-2 top-4 w-4 h-4 bg-blue-50 dark:bg-[#0f172a] border-t border-l border-blue-200/50 dark:border-slate-800 rotate-45" />
-                  <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                    Cabrito do Mil:
-                  </p>
-                  <p>{cabritoSpeeches[speechIdx]}</p>
+                  <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Cabrito do Mil:</p>
+                  <p>{block.cabritoSpeech}</p>
                 </div>
               </div>
 
-              <div
-                className={`p-4 rounded-2xl border ${activeCategory.bgColor} ${activeCategory.darkBgColor} ${activeCategory.borderColor}`}
-              >
-                <div className="flex items-center gap-2 mb-3">
-                  <span className={activeCategory.color}>
-                    {activeCategory.icon}
-                  </span>
-                  <div>
-                    <h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">
-                      {lessonContent.title}
-                    </h3>
-                    {lessonContent.subtitle && (
-                      <p className="text-[10px] text-slate-400 font-medium mt-0.5">
-                        {lessonContent.subtitle}
-                      </p>
-                    )}
+              <div className={`p-5 rounded-2xl border ${block.type === 'story' ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-800/40' : block.type === 'explanation' ? `${activeCategory.bgColor} ${activeCategory.darkBgColor} ${activeCategory.borderColor}` : 'bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-800/40'}`}>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">{block.content}</p>
+              </div>
+
+              {isInteractive && block.options && (
+                <div className="space-y-3">
+                  <p className="text-xs font-bold text-slate-500 uppercase tracking-wider">Selecione sua resposta:</p>
+                  <div className="grid grid-cols-1 gap-2">
+                    {block.options.map((opt, i) => {
+                      const letter = String.fromCharCode(65 + i);
+                      const isSelected = interactiveAnswer === i;
+                      const isCorrect = i === block.correctIndex;
+                      let optClass = 'bg-slate-50 dark:bg-[#0f172a] border-slate-200 dark:border-slate-800 hover:border-blue-400 dark:hover:border-blue-500';
+                      if (interactiveChecked) {
+                        if (isCorrect) optClass = 'bg-green-50 dark:bg-green-950/30 border-green-400 dark:border-green-600 ring-2 ring-green-200 dark:ring-green-800';
+                        else if (isSelected && !isCorrect) optClass = 'bg-red-50 dark:bg-red-950/30 border-red-400 dark:border-red-600 ring-2 ring-red-200 dark:ring-red-800';
+                      } else if (isSelected) {
+                        optClass = 'bg-blue-50 dark:bg-blue-950/30 border-blue-400 dark:border-blue-500 ring-2 ring-blue-200 dark:ring-blue-800';
+                      }
+                      return (
+                        <button key={i} type="button" disabled={interactiveChecked} onClick={() => { setInteractiveAnswer(i); }} className={`px-4 py-3 rounded-xl border text-left text-xs font-semibold transition cursor-pointer ${optClass}`}>
+                          <span className="font-bold mr-2">{letter})</span>{opt}
+                        </button>
+                      );
+                    })}
                   </div>
+                  {!interactiveChecked ? (
+                    <button type="button" disabled={interactiveAnswer === null} onClick={() => setInteractiveChecked(true)} className={`px-5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${interactiveAnswer !== null ? 'bg-blue-600 hover:bg-blue-700 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}>Verificar Resposta</button>
+                  ) : (
+                    <div className="space-y-3">
+                      <div className={`p-3 rounded-xl text-xs font-semibold ${interactiveAnswer === block.correctIndex ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'}`}>
+                        {interactiveAnswer === block.correctIndex ? '✅ Correto! Excelente!' : '❌ Incorreto!'}
+                        {block.explanation && <p className="mt-1 font-normal opacity-80">{block.explanation}</p>}
+                      </div>
+                      <button type="button" onClick={() => { setLessonStep(prev => prev + 1); setInteractiveAnswer(null); setInteractiveChecked(false); }} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                        <span>{lessonStep + 1 >= totalLessonSteps ? 'Finalizar' : 'Próximo'}</span> <ArrowRight className="h-4 w-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                  {lessonContent.content[lessonStep]}
-                </p>
-              </div>
+              )}
 
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={handleBackToCategories}
-                  className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition"
-                >
-                  Sair
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setLessonStep(prev => prev + 1)}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <span>Próximo</span>
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              </div>
-            </div>
-          </div>
-        );
-      }
-
-      const tipIdx = lessonStep - lessonContent.content.length;
-      const tip = lessonContent.tips[tipIdx];
-
-      return (
-        <div className="space-y-6 animate-fade-in">
-          <div className="flex items-center justify-between">
-            <button
-              type="button"
-              onClick={handleBackToCategories}
-              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition"
-            >
-              ← Voltar
-            </button>
-            <div className="flex items-center gap-2">
-              <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-blue-600 rounded-full transition-all duration-500"
-                  style={{
-                    width: `${((lessonStep + 1) / totalLessonSteps) * 100}%`,
-                  }}
-                />
-              </div>
-              <span className="text-[10px] font-mono text-slate-400">
-                {lessonStep + 1}/{totalLessonSteps}
-              </span>
-            </div>
-          </div>
-
-          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-6">
-            <div className="flex items-center gap-4">
-              <div className="relative animate-bounce">
-                <span className="text-5xl">🐐</span>
-                <div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[8px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">
-                  IA
-                </div>
-              </div>
-              <div className="bg-blue-50 dark:bg-[#0f172a] p-4 rounded-2xl border border-blue-200/50 dark:border-slate-800 relative text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
-                <div className="absolute -left-2 top-4 w-4 h-4 bg-blue-50 dark:bg-[#0f172a] border-t border-l border-blue-200/50 dark:border-slate-800 rotate-45" />
-                <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">
-                  Cabrito do Mil:
-                </p>
-                <p>
-                  Última parte! Essas dicas são ouro para o ENEM! Preste atenção!
-                </p>
-              </div>
-            </div>
-
-            <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
-              <div className="flex items-center gap-2 mb-3">
-                <Sparkles className="h-5 w-5 text-amber-500" />
-                <h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">
-                  Dica #{tipIdx + 1}
-                </h3>
-              </div>
-              <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
-                {tip}
-              </p>
-            </div>
-
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={handleBackToCategories}
-                className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition"
-              >
-                Sair
-              </button>
-              {tipIdx < lessonContent.tips.length - 1 ? (
-                <button
-                  type="button"
-                  onClick={() => setLessonStep(prev => prev + 1)}
-                  className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
-                >
-                  <span>Próximo</span>
-                  <ArrowRight className="h-4 w-4" />
-                </button>
-              ) : (
-                <div className="flex gap-2">
-                  <button
-                    type="button"
-                    onClick={handleBackToCategories}
-                    className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition"
-                  >
-                    Menu
+              {!isInteractive && (
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={handleBackToCategories} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">Sair</button>
+                  <button type="button" onClick={() => { setLessonStep(prev => prev + 1); setInteractiveAnswer(null); setInteractiveChecked(false); }} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                    <span>{lessonStep + 1 >= totalLessonSteps ? 'Finalizar' : 'Próximo'}</span> <ArrowRight className="h-4 w-4" />
                   </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const nextIdx = lessonTopicIndex + 1;
-                      setLessonTopicIndex(nextIdx);
-                      setLessonStep(0);
-                      fetchLesson(activeCategory, nextIdx);
-                    }}
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
-                  >
-                    <Sparkles className="h-4 w-4" />
-                    <span>Próxima Aula</span>
+                </div>
+              )}
+
+              {lessonStep + 1 >= totalLessonSteps && interactiveChecked && (
+                <div className="text-center pt-2">
+                  <button type="button" onClick={() => { const nextIdx = lessonTopicIndex + 1; setLessonTopicIndex(nextIdx); setLessonStep(0); setInteractiveAnswer(null); setInteractiveChecked(false); fetchLessonCycle(activeCategory, nextIdx); }} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md mx-auto">
+                    <Sparkles className="h-4 w-4" /><span>Próxima Aula</span>
                   </button>
                 </div>
               )}
             </div>
           </div>
-        </div>
-      );
+        );
+      }
+
+      if (lessonContent) {
+        const cabritoSpeeches = ['Vamos lá! Eu, o Cabrito, vou te ensinar o essencial! 🐐', 'Preste atenção nestas dicas valiosas!', 'Quase lá! Você está ficando mais forte!', 'Continue! O conhecimento é o melhor caminho!', 'Essa é uma parte crucial — anote! 📝', 'Você está indo muito bem! Continue assim!'];
+        const speechIdx = Math.min(lessonStep, cabritoSpeeches.length - 1);
+
+        if (lessonStep < lessonContent.content.length) {
+          return (
+            <div className="space-y-6 animate-fade-in">
+              <div className="flex items-center justify-between">
+                <button type="button" onClick={handleBackToCategories} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
+                <div className="flex items-center gap-2">
+                  <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${((lessonStep + 1) / totalLessonSteps) * 100}%` }} /></div>
+                  <span className="text-[10px] font-mono text-slate-400">{lessonStep + 1}/{totalLessonSteps}</span>
+                </div>
+              </div>
+              <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-6">
+                <div className="flex items-center gap-4">
+                  <div className="relative animate-bounce"><span className="text-5xl">🐐</span><div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[8px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">IA</div></div>
+                  <div className="bg-blue-50 dark:bg-[#0f172a] p-4 rounded-2xl border border-blue-200/50 dark:border-slate-800 relative text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
+                    <div className="absolute -left-2 top-4 w-4 h-4 bg-blue-50 dark:bg-[#0f172a] border-t border-l border-blue-200/50 dark:border-slate-800 rotate-45" />
+                    <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Cabrito do Mil:</p><p>{cabritoSpeeches[speechIdx]}</p>
+                  </div>
+                </div>
+                <div className={`p-4 rounded-2xl border ${activeCategory.bgColor} ${activeCategory.darkBgColor} ${activeCategory.borderColor}`}>
+                  <div className="flex items-center gap-2 mb-3"><span className={activeCategory.color}>{activeCategory.icon}</span><div><h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">{lessonContent.title}</h3>{lessonContent.subtitle && <p className="text-[10px] text-slate-400 font-medium mt-0.5">{lessonContent.subtitle}</p>}</div></div>
+                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{lessonContent.content[lessonStep]}</p>
+                </div>
+                <div className="flex justify-end gap-2">
+                  <button type="button" onClick={handleBackToCategories} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">Sair</button>
+                  <button type="button" onClick={() => setLessonStep(prev => prev + 1)} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"><span>Próximo</span><ArrowRight className="h-4 w-4" /></button>
+                </div>
+              </div>
+            </div>
+          );
+        }
+
+        const tipIdx = lessonStep - lessonContent.content.length;
+        const tip = lessonContent.tips[tipIdx];
+        return (
+          <div className="space-y-6 animate-fade-in">
+            <div className="flex items-center justify-between">
+              <button type="button" onClick={handleBackToCategories} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
+              <div className="flex items-center gap-2">
+                <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${((lessonStep + 1) / totalLessonSteps) * 100}%` }} /></div>
+                <span className="text-[10px] font-mono text-slate-400">{lessonStep + 1}/{totalLessonSteps}</span>
+              </div>
+            </div>
+            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="relative animate-bounce"><span className="text-5xl">🐐</span><div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[8px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">IA</div></div>
+                <div className="bg-blue-50 dark:bg-[#0f172a] p-4 rounded-2xl border border-blue-200/50 dark:border-slate-800 relative text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
+                  <div className="absolute -left-2 top-4 w-4 h-4 bg-blue-50 dark:bg-[#0f172a] border-t border-l border-blue-200/50 dark:border-slate-800 rotate-45" />
+                  <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Cabrito do Mil:</p><p>Última parte! Essas dicas são ouro para o ENEM!</p>
+                </div>
+              </div>
+              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
+                <div className="flex items-center gap-2 mb-3"><Sparkles className="h-5 w-5 text-amber-500" /><h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">Dica #{tipIdx + 1}</h3></div>
+                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{tip}</p>
+              </div>
+              <div className="flex justify-end gap-2">
+                <button type="button" onClick={handleBackToCategories} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">Sair</button>
+                {tipIdx < lessonContent.tips.length - 1 ? (
+                  <button type="button" onClick={() => setLessonStep(prev => prev + 1)} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"><span>Próximo</span><ArrowRight className="h-4 w-4" /></button>
+                ) : (
+                  <div className="flex gap-2">
+                    <button type="button" onClick={handleBackToCategories} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">Menu</button>
+                    <button type="button" onClick={() => { const nextIdx = lessonTopicIndex + 1; setLessonTopicIndex(nextIdx); setLessonStep(0); fetchLessonCycle(activeCategory, nextIdx); }} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"><Sparkles className="h-4 w-4" /><span>Próxima Aula</span></button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        );
+      }
     }
 
     return (
       <div className="space-y-6 animate-fade-in">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {CATEGORIES.map(cat => {
-            const isRecomendado =
+            const isRecomendadoLocked =
               cat.area === 'Recomendado' &&
               wrongAnswers &&
               wrongAnswers.length < 3;
+            const isRecomendado = cat.area === 'Recomendado' && !isRecomendadoLocked;
+            const weakCount = topWeakTopics.length;
             return (
               <div
                 key={cat.id}
-                className={`bg-white dark:bg-[#1e293b] rounded-2xl border ${cat.borderColor} p-5 space-y-4 shadow-sm hover:shadow-md transition-all duration-200 ${
-                  isRecomendado ? 'opacity-50' : ''
+                className={`rounded-2xl p-5 space-y-4 shadow-sm hover:shadow-md transition-all duration-200 ${
+                  isRecomendado
+                    ? 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border-2 border-purple-300 dark:border-purple-700/50 ring-1 ring-purple-200/50 dark:ring-purple-800/30'
+                    : isRecomendadoLocked
+                      ? `bg-white dark:bg-[#1e293b] border ${cat.borderColor} opacity-50`
+                      : `bg-white dark:bg-[#1e293b] border ${cat.borderColor}`
                 }`}
               >
+                {isRecomendado && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-[9px] font-bold w-fit border border-purple-200 dark:border-purple-800/40">
+                    <Sparkles className="h-3 w-3" />
+                    Baseado nos seus erros
+                  </div>
+                )}
                 <div
                   className={`${cat.bgColor} ${cat.darkBgColor} w-12 h-12 rounded-xl flex items-center justify-center ${cat.color}`}
                 >
@@ -1071,7 +1095,12 @@ export default function AprendizadoView({
                     {cat.description}
                   </p>
                 </div>
-                {isRecomendado ? (
+                {isRecomendado && weakCount > 0 && (
+                  <p className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
+                    🎯 {weakCount} assunto{weakCount !== 1 ? 's' : ''} fraco{weakCount !== 1 ? 's' : ''} identificado{weakCount !== 1 ? 's' : ''}
+                  </p>
+                )}
+                {isRecomendadoLocked ? (
                   <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
                     ⚠️ Resolva pelo menos 3 questões para desbloquear
                   </p>
@@ -1079,10 +1108,14 @@ export default function AprendizadoView({
                   <button
                     type="button"
                     onClick={() => handleStartCursinhoCategory(cat)}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm ${
+                      isRecomendado
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
                   >
                     <Play className="h-3.5 w-3.5" />
-                    <span>Começar a Aprender</span>
+                    <span>{isRecomendado ? 'Estudar Pontos Fracos' : 'Começar a Aprender'}</span>
                   </button>
                 )}
               </div>
@@ -1095,9 +1128,29 @@ export default function AprendizadoView({
 
   const renderQuestoesTab = () => {
     if (viewMode === 'questoes-play') {
+      if (loadingQuestions) {
+        return (
+          <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+            <div className="relative">
+              <span className="text-7xl animate-bounce">🐐</span>
+              <div className="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">IA</div>
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Preparando suas questões...</h3>
+              <p className="text-xs text-slate-400 max-w-xs">O Cabrito está preparando questões personalizadas para você!</p>
+            </div>
+            <div className="flex gap-1.5">
+              {[0, 1, 2].map(i => (
+                <div key={i} className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+              ))}
+            </div>
+          </div>
+        );
+      }
+      const activeQListForStats = aiQuestoes.length > 0 ? aiQuestoes : questoesList;
       if (questaoCompleted) {
         const passed =
-          questaoCorrectCount >= questoesList.length * 0.7;
+          questaoCorrectCount >= activeQListForStats.length * 0.7;
         return (
           <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
             <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-2xl text-center space-y-6">
@@ -1112,7 +1165,7 @@ export default function AprendizadoView({
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
                     Excelente desempenho! Você acertou{' '}
                     <strong>
-                      {questaoCorrectCount}/{questoesList.length}
+                      {questaoCorrectCount}/{activeQListForStats.length}
                     </strong>{' '}
                     das questões. Continue assim para dominar o ENEM!
                   </p>
@@ -1128,7 +1181,7 @@ export default function AprendizadoView({
                   <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
                     Você acertou{' '}
                     <strong>
-                      {questaoCorrectCount}/{questoesList.length}
+                      {questaoCorrectCount}/{activeQListForStats.length}
                     </strong>{' '}
                     questões. Tente novamente para melhorar sua pontuação!
                   </p>
@@ -1146,7 +1199,7 @@ export default function AprendizadoView({
                     }`}
                   >
                     {Math.round(
-                      (questaoCorrectCount / questoesList.length) * 100
+                      (questaoCorrectCount / activeQListForStats.length) * 100
                     )}
                     %
                   </span>
@@ -1191,8 +1244,13 @@ export default function AprendizadoView({
         );
       }
 
-      const q = questoesList[questaoIdx];
+      const activeQList = aiQuestoes.length > 0 ? aiQuestoes : questoesList;
+      const q = activeQList[questaoIdx];
       if (!q) return null;
+
+      const qAny = q as any;
+      const qTopic = qAny.topic || '';
+      const qExplanation = qAny.explanation || (qAny as any).explanation || '';
 
       return (
         <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
@@ -1211,7 +1269,7 @@ export default function AprendizadoView({
                     className="bg-blue-600 h-full rounded-full transition-all duration-300"
                     style={{
                       width: `${
-                        ((questaoIdx + 1) / questoesList.length) * 100
+                        ((questaoIdx + 1) / activeQList.length) * 100
                       }%`,
                     }}
                   />
@@ -1233,10 +1291,16 @@ export default function AprendizadoView({
 
             <div className="p-6 md:p-8 space-y-6">
               <div className="space-y-1.5">
-                <span className="text-[10px] font-mono leading-none font-black text-blue-600 dark:text-blue-400 block tracking-wider uppercase">
-                  Questão {questaoIdx + 1} de {questoesList.length} •{' '}
-                  {q.area}
-                </span>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <span className="text-[10px] font-mono leading-none font-black text-blue-600 dark:text-blue-400 block tracking-wider uppercase">
+                    Questão {questaoIdx + 1} de {activeQList.length}
+                  </span>
+                  {qTopic && (
+                    <span className="px-2 py-0.5 bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-full text-[9px] font-bold border border-purple-200 dark:border-purple-800/40">
+                      📌 {qTopic}
+                    </span>
+                  )}
+                </div>
                 <p className="text-sm font-semibold text-slate-500 dark:text-slate-300">
                   Selecione a alternativa correta:
                 </p>
@@ -1249,9 +1313,11 @@ export default function AprendizadoView({
               </div>
 
               <div className="grid grid-cols-1 gap-2.5">
-                {q.options.map(opt => {
-                  const isSelected = selectedLetter === opt.letter;
-                  const isCorrect = opt.letter === q.correctLetter;
+                {q.options.map((opt: any) => {
+                  const letter = opt.letter || String.fromCharCode(65 + q.options.indexOf(opt));
+                  const isSelected = selectedLetter === letter;
+                  const correctLetter = qAny.correctAnswer || qAny.correctLetter || 'A';
+                  const isCorrect = letter === correctLetter;
                   let optStyle = '';
                   if (hasChecked) {
                     if (isCorrect) {
@@ -1274,10 +1340,10 @@ export default function AprendizadoView({
 
                   return (
                     <button
-                      key={opt.letter}
+                      key={letter}
                       type="button"
                       onClick={() => {
-                        if (!hasChecked) setSelectedLetter(opt.letter);
+                        if (!hasChecked) setSelectedLetter(letter);
                       }}
                       disabled={hasChecked}
                       className={`p-3.5 rounded-xl border text-left text-xs transition-all flex items-start gap-3 w-full cursor-pointer ${optStyle}`}
@@ -1289,7 +1355,7 @@ export default function AprendizadoView({
                             : 'bg-slate-100 dark:bg-slate-800/80 text-slate-500'
                         }`}
                       >
-                        {opt.letter}
+                        {letter}
                       </span>
                       <span className="leading-tight pt-0.5">{opt.text}</span>
                     </button>
@@ -1301,23 +1367,43 @@ export default function AprendizadoView({
                 <motion.div
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  className={`p-4 rounded-2xl flex items-start gap-3.5 text-xs ${
+                  className="space-y-3"
+                >
+                  <div className={`p-4 rounded-2xl flex items-start gap-3.5 text-xs ${
                     isCorrectAnswer
                       ? 'bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/40 text-green-800 dark:text-green-300'
                       : 'bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800/40 text-red-800 dark:text-red-300'
-                  }`}
-                >
-                  {isCorrectAnswer ? (
-                    <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
-                  ) : (
-                    <X className="h-5 w-5 text-red-500 flex-shrink-0" />
-                  )}
-                  <div className="space-y-1 leading-relaxed">
-                    <p className="font-bold">
-                      {isCorrectAnswer ? 'Correto!' : 'Incorreto!'}
-                    </p>
-                    <p>{q.explanation}</p>
+                  }`}>
+                    {isCorrectAnswer ? (
+                      <Check className="h-5 w-5 text-green-600 flex-shrink-0" />
+                    ) : (
+                      <X className="h-5 w-5 text-red-500 flex-shrink-0" />
+                    )}
+                    <div className="space-y-1 leading-relaxed">
+                      <p className="font-bold">
+                        {isCorrectAnswer ? 'Correto!' : 'Incorreto!'}
+                      </p>
+                      <p>{questaoFeedback || qExplanation}</p>
+                    </div>
                   </div>
+
+                  {questaoFeedback && (
+                    <div className="flex items-start gap-3 bg-blue-50 dark:bg-[#0f172a] p-4 rounded-2xl border border-blue-200/50 dark:border-slate-800">
+                      <div className="relative flex-shrink-0">
+                        <span className="text-2xl">🐐</span>
+                        <div className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-blue-500 text-white text-[7px] font-extrabold flex items-center justify-center rounded-full border border-white">IA</div>
+                      </div>
+                      <div className="text-xs text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
+                        <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Cabrito do Mil:</p>
+                        <p>{questaoFeedback}</p>
+                        {questaoTopic && (
+                          <p className="mt-2 text-[10px] text-purple-500 font-semibold">
+                            📌 Assunto: {questaoTopic}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  )}
                 </motion.div>
               )}
 
@@ -1375,17 +1461,29 @@ export default function AprendizadoView({
       <div className="space-y-6 animate-fade-in">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
           {CATEGORIES.map(cat => {
-            const isRecomendado =
+            const isRecomendadoLocked =
               cat.area === 'Recomendado' &&
               wrongAnswers &&
               wrongAnswers.length < 3;
+            const isRecomendado = cat.area === 'Recomendado' && !isRecomendadoLocked;
+            const weakCount = topWeakTopics.length;
             return (
               <div
                 key={cat.id}
-                className={`bg-white dark:bg-[#1e293b] rounded-2xl border ${cat.borderColor} p-5 space-y-4 shadow-sm hover:shadow-md transition-all duration-200 ${
-                  isRecomendado ? 'opacity-50' : ''
+                className={`rounded-2xl p-5 space-y-4 shadow-sm hover:shadow-md transition-all duration-200 ${
+                  isRecomendado
+                    ? 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border-2 border-purple-300 dark:border-purple-700/50 ring-1 ring-purple-200/50 dark:ring-purple-800/30'
+                    : isRecomendadoLocked
+                      ? `bg-white dark:bg-[#1e293b] border ${cat.borderColor} opacity-50`
+                      : `bg-white dark:bg-[#1e293b] border ${cat.borderColor}`
                 }`}
               >
+                {isRecomendado && (
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-[9px] font-bold w-fit border border-purple-200 dark:border-purple-800/40">
+                    <Sparkles className="h-3 w-3" />
+                    Baseado nos seus erros
+                  </div>
+                )}
                 <div
                   className={`${cat.bgColor} ${cat.darkBgColor} w-12 h-12 rounded-xl flex items-center justify-center ${cat.color}`}
                 >
@@ -1399,7 +1497,12 @@ export default function AprendizadoView({
                     {cat.description}
                   </p>
                 </div>
-                {isRecomendado ? (
+                {isRecomendado && weakCount > 0 && (
+                  <p className="text-[10px] text-purple-600 dark:text-purple-400 font-semibold">
+                    🎯 {weakCount} assunto{weakCount !== 1 ? 's' : ''} fraco{weakCount !== 1 ? 's' : ''} identificado{weakCount !== 1 ? 's' : ''}
+                  </p>
+                )}
+                {isRecomendadoLocked ? (
                   <p className="text-[10px] text-amber-600 dark:text-amber-400 font-semibold">
                     ⚠️ Resolva pelo menos 3 questões para desbloquear
                   </p>
@@ -1407,10 +1510,14 @@ export default function AprendizadoView({
                   <button
                     type="button"
                     onClick={() => handleStartQuestoes(cat.area)}
-                    className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm"
+                    className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm ${
+                      isRecomendado
+                        ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white'
+                    }`}
                   >
                     <Zap className="h-3.5 w-3.5" />
-                    <span>Começar Questões</span>
+                    <span>{isRecomendado ? 'Treinar Pontos Fracos' : 'Começar Questões'}</span>
                   </button>
                 )}
               </div>
@@ -1786,7 +1893,7 @@ export default function AprendizadoView({
         />
       </div>
 
-      {showAdGate && (
+      {adGateActive && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-2xl max-w-md w-full space-y-6 animate-fade-in">
             <div className="text-center space-y-3">
@@ -1810,12 +1917,26 @@ export default function AprendizadoView({
               </p>
             </div>
 
+            {adGateActive && adGateSecondsLeft > 0 && (
+              <div className="flex items-center justify-center gap-2 py-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800/40">
+                <Clock className="h-4 w-4 text-blue-600 dark:text-blue-400 animate-pulse" />
+                <span className="text-sm font-mono font-bold text-blue-600 dark:text-blue-400">
+                  {Math.floor(adGateSecondsLeft / 60)}:{String(adGateSecondsLeft % 60).padStart(2, '0')}
+                </span>
+                <span className="text-[10px] text-blue-500/70 dark:text-blue-400/60 font-medium">
+                  restante
+                </span>
+              </div>
+            )}
+
             <div className="flex gap-2">
               <button
                 type="button"
                 onClick={() => {
                   setShowAdGate(false);
                   setAdGateTarget(null);
+                  setAdGateActive(false);
+                  setAdGateSecondsLeft(0);
                 }}
                 className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
               >
@@ -1824,10 +1945,20 @@ export default function AprendizadoView({
               <button
                 type="button"
                 onClick={handleAdGateContinue}
-                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                disabled={adGateActive && adGateSecondsLeft > 0}
+                className="flex-1 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:opacity-40 disabled:cursor-not-allowed text-white rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
               >
-                <Play className="h-4 w-4" />
-                <span>Continuar</span>
+                {adGateActive && adGateSecondsLeft > 0 ? (
+                  <>
+                    <Clock className="h-4 w-4 animate-pulse" />
+                    <span>Aguarde {adGateSecondsLeft}s...</span>
+                  </>
+                ) : (
+                  <>
+                    <Play className="h-4 w-4" />
+                    <span>Continuar</span>
+                  </>
+                )}
               </button>
             </div>
           </div>
