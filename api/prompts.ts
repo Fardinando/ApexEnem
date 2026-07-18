@@ -566,15 +566,17 @@ ${weakSection}
         {"letter": "C", "text": "Alternativa C completa"},
         {"letter": "D", "text": "Alternativa D completa"}
       ],
-      "correctAnswer": "B",
+      "correctAnswer": "A",
       "explanation": "Explicação detalhada com passo a passo...",
       "topic": "Nome do tópico específico"
     }
   ]
 }
 
+IMPORTANTE: A alternativa correta (correctAnswer) DEVE ser ALEATÓRIA entre A, B, C e D. NÃO coloque sempre a mesma letra. Distribua as respostas corretas de forma equilibrada entre todas as questões geradas.
+
 Retorne APENAS o JSON, sem markdown, sem texto antes ou depois.`,
-        user: `Gere ${count} questões de nível avançado estilo ENEM para a área "${area}". Cada questão deve ter enunciado longo (mínimo 350 caracteres), 4 alternativas plausíveis, gabarito e explicação detalhada. Varie os tópicos dentro da área.`,
+        user: `Gere ${count} questões de nível avançado estilo ENEM para a área "${area}". Cada questão deve ter enunciado longo (mínimo 350 caracteres), 4 alternativas plausíveis, gabarito e explicação detalhada. Varie os tópicos dentro da área. Distribua as respostas corretas entre A, B, C e D de forma equilibrada.`,
       }
     },
     models: [
