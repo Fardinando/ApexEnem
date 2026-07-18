@@ -787,7 +787,7 @@ app.post("/api/questions", async (req, res) => {
               { role: "user", content: prompt }
             ],
             temperature: 0.9,
-            max_tokens: 8192
+            max_tokens: 6144
           }),
           signal: ctrl.signal
         });
@@ -1018,8 +1018,10 @@ Para a área "${area}", sugira tópicos variados como:
 });
 
 app.post("/api/lesson-v2", async (req, res) => {
-  const { area, level, weakTopics, topicIndex } = req.body;
-  if (!area) return res.status(400).json({ error: "area is required" });
+  res.setHeader('Content-Type', 'application/json');
+  try {
+    const { area, level, weakTopics, topicIndex } = req.body;
+    if (!area) return res.status(400).json({ error: "area is required" });
 
   const topicNum = typeof topicIndex === 'number' ? topicIndex : Math.floor(Math.random() * 100);
   const promptDef = PROMPTS.lessonCycle;
@@ -1048,7 +1050,7 @@ app.post("/api/lesson-v2", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: 8192,
+            max_tokens: 6144,
             temperature: 0.85
           }),
           signal: ctrl.signal
@@ -1110,11 +1112,26 @@ app.post("/api/lesson-v2", async (req, res) => {
   }
 
   return res.json(lesson);
+  } catch (err) {
+    console.error('[lesson-v2] fatal:', err);
+    return res.json({
+      title: `Aula de ${req.body?.area || 'Geral'}`,
+      subtitle: 'Conceitos essenciais para o ENEM',
+      cycles: [
+        { type: 'story', cabritoSpeech: 'Vamos lá!', content: 'Infelizmente a aula completa não pôde ser gerada agora. Tente novamente em alguns instantes!' },
+        { type: 'explanation', cabritoSpeech: 'Enquanto isso...', content: 'Revise os conceitos básicos da matéria e tente de novo. O Cabrito está aqui pra te ajudar! 🐐' },
+        { type: 'interactive', cabritoSpeech: 'Testa aí!', content: 'Resumo rápido: revise seus erros anteriores e foque nos pontos fracos. Tente gerar a aula novamente.', options: ['Tentar de novo', 'Voltar ao menu'], correctIndex: 0, explanation: 'Clique em "Tentar de novo" para gerar uma nova aula.' },
+        { type: 'challenge', cabritoSpeech: 'Não desista!', content: 'Às vezes a IA precisa de mais tempo. Tente gerar a aula novamente em alguns segundos.', options: ['Gerar nova aula', 'Voltar ao menu'], correctIndex: 0, explanation: 'Persistência é chave para o ENEM — e para a vida!' },
+      ]
+    });
+  }
 });
 
 app.post("/api/questoes-ai", async (req, res) => {
-  const { area, count, weakTopics } = req.body;
-  if (!area) return res.status(400).json({ error: "area is required" });
+  res.setHeader('Content-Type', 'application/json');
+  try {
+    const { area, count, weakTopics } = req.body;
+    if (!area) return res.status(400).json({ error: "area is required" });
 
   const promptDef = PROMPTS.questoesComFeedback;
   const built = promptDef.buildPrompt(area, count || 5, weakTopics);
@@ -1142,7 +1159,7 @@ app.post("/api/questoes-ai", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: 8192,
+            max_tokens: 6144,
             temperature: 0.85
           }),
           signal: ctrl.signal
@@ -1187,6 +1204,10 @@ app.post("/api/questoes-ai", async (req, res) => {
   }
 
   return res.json({ questions });
+  } catch (err) {
+    console.error('[questoes-ai] fatal:', err);
+    return res.json({ questions: [] });
+  }
 });
 
 app.post("/api/generate-learning-exercises", async (req, res) => {

@@ -697,12 +697,14 @@ export default function AprendizadoView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ area: cat.area, level: 5, weakTopics: wrongSubjects, topicIndex: topicIdx }),
       });
-      if (resp.ok) {
-        const data = await resp.json();
+      const text = await resp.text();
+      if (!resp.ok || !text) return;
+      try {
+        const data = JSON.parse(text);
         if (data && data.title && Array.isArray(data.cycles) && data.cycles.length > 0) {
           setAiLessonCycle(data);
         }
-      }
+      } catch {}
     } catch {}
     setLoadingLesson(false);
   };
@@ -716,8 +718,10 @@ export default function AprendizadoView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ area, count: 5, weakTopics: wrongSubjects }),
       });
-      if (resp.ok) {
-        const data = await resp.json();
+      const text = await resp.text();
+      if (!resp.ok || !text) { setAiQuestoes([]); setLoadingQuestions(false); return; }
+      try {
+        const data = JSON.parse(text);
         if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
           setAiQuestoes(data.questions.map((q: any, i: number) => ({
             id: q.id || `ai-q-${i}`, statement: q.statement || '',
@@ -725,7 +729,7 @@ export default function AprendizadoView({
             explanation: q.explanation || '', topic: q.topic || '',
           })));
         } else { setAiQuestoes([]); }
-      } else { setAiQuestoes([]); }
+      } catch { setAiQuestoes([]); }
     } catch { setAiQuestoes([]); }
     setLoadingQuestions(false);
   };
