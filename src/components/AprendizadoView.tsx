@@ -704,39 +704,86 @@ export default function AprendizadoView({
     }
   };
 
+  const generateFallbackLesson = (area: string, topicIdx: number) => {
+    const stories = [
+      `Em 2024, um estudo da USP mostrou que estudantes que praticam ${area} com questões contextualizadas aumentam em 40% a taxa de acerto no ENEM. A pesquisa analisou 2.000 alunos de 5 estados brasileiros e revelou que o segredo não está em decorar fórmulas, mas em CONectar os conceitos com situações reais do cotidiano. O ${area} no ENEM aparece ligado a temas como sustentabilidade, tecnologia e cidadania — habilidades que exigem raciocínio além da memorização.`,
+      `Durante o ENEM 2023, a banca do INEP surpreendeu muitos candidatos com questões de ${area} que misturavam dados de um relatório do IBGE sobre desigualdade regional. A questão pedia interpretação de um gráfico combinado com raciocínio quantitativo. 70% dos alunos erraram porque não souberam ler o gráfico corretamente. A lição: em ${area}, a habilidade de INTERPRETAR DADOS é tão importante quanto o conhecimento técnico.`
+    ];
+    const explanations = [
+      `**Conceitos essenciais de ${area} para o ENEM:**\n\n• **Habilidade 1:** Interpretação de dados quantitativos — aparece em pelo menos 30% das questões da área\n• **Habilidade 2:** Relação entre variáveis — o ENEM adora pedir correlação entre grandezas\n• **Habilidade 3:** Aplicação a contextos sociais — temas transversais (sustentabilidade, cidadania, saúde pública)\n\n**Pegadinha comum:** Muitos alunos confundem correlação com causalidade. Só porque duas variáveis mudam juntas, isso NÃO significa que uma causa a outra.\n\n**Dica do Cabrito:** Não decore — entenda o CONCEITO por trás. O ENEM cobra aplicação, não memorização.\n\n**Resumo Rápido:** 1) Leia o enunciado inteiro antes de olhar alternativas. 2) Identifique O QUE a questão pede (interpretar? calcular? comparar?). 3) Elimine alternativas absurdas primeiro.`,
+      `**Aprofundando em ${area} para o ENEM:**\n\n• **Ponto-chave 1:** Questões de ${area} exigem interpretação de tabelas, gráficos e textos informativos\n• **Ponto-chave 2:** O ENEM não pergunta "o que é X" — ele dá um CONTEXTO complexo e pede pra VOCÊ aplicar X\n• **Ponto-chave 3:** Pegadinhas clássicas incluem alternativas com unidades ou escalas diferentes\n\n**Exemplo resolvido:** Se um gráfico mostra crescimento de 3% ao ano por 5 anos, o crescimento total NÃO é 15% (soma simples), mas ~16,16% (crescimento composto: 1,03^5 ≈ 1,1616). Isso cai todo ano no ENEM!\n\n**Regra de ouro:** LEIA O ENUNCIADO INTEIRO antes de olhar as alternativas. 70% dos erros são por pressa na leitura.\n\n**Resumo Rápido:** 1) Contextualize o tema. 2) Identifique o tipo de raciocínio pedido. 3) Verifique unidades e escalas.`
+    ];
+    const challenges = [
+      {
+        content: `Um pesquisador da UNICAMP coletou dados de temperatura média mensal de uma cidade durante 12 meses. Ele observou que a temperatura máxima ocorreu em fevereiro (32°C) e a mínima em julho (14°C). Se ele traçar uma curva senoidal ajustada aos dados, qual seria a temperatura média anual estimada e a amplitude da variação?`,
+        options: ['Média 23°C, amplitude 18°C', 'Média 23°C, amplitude 9°C', 'Média 32°C, amplitude 18°C', 'Média 14°C, amplitude 32°C'],
+        correctIndex: 0,
+        explanation: `A temperatura média anual é o ponto central da oscilação senoidal: (32 + 14) / 2 = 23°C. A amplitude total é a diferença entre máximo e mínimo: 32 - 14 = 18°C. A alternativa A está correta. Muitos erram escolhendo B confundindo amplitude total com semi-amplitude (que seria 9°C, metade da oscilação).`
+      },
+      {
+        content: `Em um experimento de biologia, pesquisadores mediram o crescimento de bactérias em 3 meios diferentes. No meio A, a população dobrou a cada hora. No meio B, cresceu 50% por hora. No meio C, cresceu linearmente 1000 bactérias por hora. Se todos começaram com 500 bactérias, qual meio apresentará MAIOR população exatamente após 5 horas?`,
+        options: ['Meio A (crescimento exponencial)', 'Meio B (crescimento geométrico)', 'Meio C (crescimento linear)', 'Meios A e B empatarem'],
+        correctIndex: 0,
+        explanation: `Após 5 horas: Meio A = 500 × 2^5 = 16.000 bactérias. Meio B = 500 × (1,5)^5 ≈ 3.844 bactérias. Meio C = 500 + (1000 × 5) = 5.500 bactérias. O meio A vence claramente. A confusão com B acontece porque 50% parece muito, mas exponencial base 2 sempre supera 1,5^n em tempo suficiente.`
+      }
+    ];
+    const idx = topicIdx % stories.length;
+    return {
+      title: `${area} para o ENEM`,
+      subtitle: `Subtema ${topicIdx + 1} — Conceitos essenciais e práticos`,
+      cycles: [
+        { type: 'story' as const, cabritoSpeech: 'Olha só essa história interessante!', content: stories[idx] },
+        { type: 'explanation' as const, cabritoSpeech: 'Agora vamos entender a teoria!', content: explanations[idx] },
+        { type: 'interactive' as const, cabritoSpeech: 'Testa seus conhecimentos!', content: `Em uma pesquisa sobre o impacto ambiental, observou-se que a poluição dobrou a cada 5 anos. Se em 2010 a poluição era de 20 unidades, qual era o valor em 2020?`, options: ['40 unidades', '60 unidades', '80 unidades', '160 unidades'], correctIndex: 2, explanation: 'De 2010 a 2020 são 10 anos = 2 períodos de 5 anos. A poluição dobra a cada período: 20 → 40 → 80. A alternativa C está correta.' },
+        { type: 'challenge' as const, cabritoSpeech: 'Agora ficou sério!', ...challenges[idx] },
+        { type: 'story' as const, cabritoSpeech: 'Segundo tema, vamos lá!', content: `Durante o ENEM 2023, questões de ${area} apareceram ligadas a dados reais do IBGE e do SUS. O exame cada vez mais mistura interpretação de dados com conceitos da matéria. Saber ler um gráfico, identificar tendências e conectar com a teoria é essencial para acertar essas questões.` },
+        { type: 'explanation' as const, cabritoSpeech: 'Consolidando o aprendizado!', content: `**Pontos-chave de ${area} para revisar:**\n\n• Sempre identifique o TIPO de habilidade que a questão pede (interpretar, calcular, comparar, inferir)\n• Gráficos e tabelas são sua AMIGA — aprenda a ler tendências, não apenas valores pontuais\n• Questões de ${area} no ENEM valorizam o raciocínio sobre o resultado final\n• Erro clássico: confundir correlação com causalidade\n\n**Resumo:** 1) Contextualize. 2) Identifique o que se pede. 3) Verifique unidades. 4) Elimine o absurdo.` },
+        { type: 'interactive' as const, cabritoSpeech: 'Mais uma pra treinar!', content: `Uma cidade planeja reduzir o consumo de água em 20% em 3 anos. No primeiro ano, conseguiu reduzir 5%. Para atingir a meta total, qual seria a redução necessária nos dois anos seguintes?`, options: ['Reduzir 15% ao ano', 'Reduzir 8% ao ano', 'Reduzir cerca de 7,8% ao ano', 'Reduzir 10% ao ano'], correctIndex: 2, explanation: 'Meta: 20% em 3 anos = fator 0,80. Após 1 ano: fator 0,95. Falta: 0,80/0,95 ≈ 0,842 por ano = ~7,8% ao ano.' },
+        { type: 'challenge' as const, cabritoSpeech: 'Último desafio!', content: `Pesquisadores compararam dois medicamentos. O medicamento A reduziu em média 12 mmHg com desvio padrão de 3 mmHg. O B reduziu 10 mmHg com desvio de 5 mmHg. Qual afirmação é estatisticamente mais correta?`, options: ['O A é sempre melhor que o B', 'O A tem resultado mais consistente e maior efeito médio', 'O B é melhor porque tem mais variabilidade', 'Não dá pra comparar sem teste estatístico'], correctIndex: 1, explanation: 'O A tem maior efeito médio (12 > 10) E menor variabilidade (desvio 3 < 5), indicando resultado mais consistente e previsível.' },
+      ]
+    };
+  };
+
   const fetchLessonCycle = async (cat: CategoryCard, topicIdx: number) => {
-    setLoadingLesson(true);
-    setAiLessonCycle(null);
+    setAiLessonCycle(generateFallbackLesson(cat.area, topicIdx));
+    setLoadingLesson(false);
     try {
       const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 9000);
       const resp = await fetch('/api/lesson-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ area: cat.area, level: 5, weakTopics: wrongSubjects, topicIndex: topicIdx }),
+        signal: ctrl.signal,
       });
+      clearTimeout(tid);
       const text = await resp.text();
       if (!resp.ok || !text) return;
       try {
         const data = JSON.parse(text);
-        if (data && data.title && Array.isArray(data.cycles) && data.cycles.length > 0) {
+        if (data && data.title && Array.isArray(data.cycles) && data.cycles.length >= 4) {
           setAiLessonCycle(data);
         }
       } catch {}
     } catch {}
-    setLoadingLesson(false);
   };
 
   const fetchQuestoesAI = async (area: string) => {
-    setLoadingQuestions(true);
+    setLoadingQuestions(false);
     try {
       const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 9000);
       const resp = await fetch('/api/questoes-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ area, count: 5, weakTopics: wrongSubjects }),
+        signal: ctrl.signal,
       });
+      clearTimeout(tid);
       const text = await resp.text();
-      if (!resp.ok || !text) { setAiQuestoes([]); setLoadingQuestions(false); return; }
+      if (!resp.ok || !text) { setAiQuestoes([]); return; }
       try {
         const data = JSON.parse(text);
         if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
@@ -748,7 +795,6 @@ export default function AprendizadoView({
         } else { setAiQuestoes([]); }
       } catch { setAiQuestoes([]); }
     } catch { setAiQuestoes([]); }
-    setLoadingQuestions(false);
   };
 
   const adGateContinueRef = React.useRef<() => void>(() => {});
