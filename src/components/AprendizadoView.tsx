@@ -42,6 +42,7 @@ import { INITIAL_CHAPTERS, CHAPTER_EXERCISES } from '../data/learning-exercises'
 import { saveLearningProgress, fetchLearningProgress } from '../lib/supabase';
 import { computeTopicDifficulty } from '../lib/gamification';
 import AdPlaceholder from './AdPlaceholder';
+import { fetchLessonCycleClient, fetchQuestoesAIClient } from '../lib/ai-client';
 import RewardAdOverlay, {
   shouldShowRewardAd,
   incrementRewardCounter,
@@ -346,20 +347,15 @@ export default function AprendizadoView({
     setLessonError(false);
     try {
       const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
-      const resp = await fetch('/api/lesson-v2', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area: cat.area, level: 5, weakTopics: wrongSubjects, topicIndex: topicIdx }),
-      });
-      const text = await resp.text();
-      if (!resp.ok || !text) { setLessonError(true); setLoadingLesson(false); return; }
-      try {
-        const data = JSON.parse(text);
-        if (data && data.title && Array.isArray(data.cycles) && data.cycles.length >= 4) {
-          setAiLessonCycle(data);
-        } else { setLessonError(true); }
-      } catch { setLessonError(true); }
-    } catch { setLessonError(true); }
+      const data = await fetchLessonCycleClient(cat.area, 5, topicIdx, wrongSubjects);
+      if (data) {
+        setAiLessonCycle(data);
+      } else {
+        setLessonError(true);
+      }
+    } catch {
+      setLessonError(true);
+    }
     setLoadingLesson(false);
   };
 
@@ -369,24 +365,19 @@ export default function AprendizadoView({
     setQuestoesError(false);
     try {
       const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
-      const resp = await fetch('/api/questoes-ai', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area, count: 3, weakTopics: wrongSubjects }),
-      });
-      const text = await resp.text();
-      if (!resp.ok || !text) { setQuestoesError(true); setLoadingQuestions(false); return; }
-      try {
-        const data = JSON.parse(text);
-        if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
-          setAiQuestoes(data.questions.map((q: any, i: number) => ({
-            id: q.id || `ai-q-${i}`, statement: q.statement || '',
-            options: q.options || [], correctAnswer: q.correctAnswer || 'A',
-            explanation: q.explanation || '', topic: q.topic || '',
-          })));
-        } else { setQuestoesError(true); }
-      } catch { setQuestoesError(true); }
-    } catch { setQuestoesError(true); }
+      const questions = await fetchQuestoesAIClient(area, 3, wrongSubjects);
+      if (questions && questions.length > 0) {
+        setAiQuestoes(questions.map((q: any, i: number) => ({
+          id: q.id || `ai-q-${i}`, statement: q.statement || '',
+          options: q.options || [], correctAnswer: q.correctAnswer || 'A',
+          explanation: q.explanation || '', topic: q.topic || '',
+        })));
+      } else {
+        setQuestoesError(true);
+      }
+    } catch {
+      setQuestoesError(true);
+    }
     setLoadingQuestions(false);
   };
 
