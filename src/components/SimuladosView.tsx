@@ -255,6 +255,8 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
   const [showWarning, setShowWarning] = useState(false);
   const [violationReasons, setViolationReasons] = useState<string[]>([]);
   const [showBlockedModal, setShowBlockedModal] = useState(false);
+  const [aiExplanations, setAiExplanations] = useState<Record<string, string>>({});
+  const [loadingExplanations, setLoadingExplanations] = useState(false);
   const warningTimerRef = useRef<NodeJS.Timeout | null>(null);
   const heartbeatRef = useRef<NodeJS.Timeout | null>(null);
   const wasHiddenRef = useRef(false);
@@ -390,6 +392,33 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
     };
   }, [simulado?.isActive, triggerWarning]);
 
+  useEffect(() => {
+    if (!showGabarito || !simulado?.questions || simulado.questions.length === 0) return;
+    const unanswered = simulado.questions.filter(q => !aiExplanations[q.id]);
+    if (unanswered.length === 0) return;
+    setLoadingExplanations(true);
+    fetch('/api/simulado-explanation', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        questions: simulado.questions.map(q => ({
+          id: q.id,
+          statement: q.statement,
+          options: q.options,
+          correctAnswer: q.correctAnswer,
+        })),
+      }),
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.explanations) {
+          setAiExplanations(prev => ({ ...prev, ...data.explanations }));
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingExplanations(false));
+  }, [showGabarito, simulado?.questions]);
+
   const handleStartSimulado = async () => {
     setLoadingQuestions(true);
     setLoadingError(null);
@@ -415,6 +444,8 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
       });
       setResultsSaved(false);
       setShowGabarito(false);
+      setAiExplanations({});
+      setLoadingExplanations(false);
       setWarningCount(0);
       setShowWarning(false);
       setViolationReasons([]);
@@ -1012,7 +1043,16 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                             <BookOpen className="h-3.5 w-3.5 text-blue-600" />
                             Resposta Correta: {q.correctAnswer}
                           </p>
-                          <p className="text-slate-400 dark:text-slate-500 italic">{q.explanation}</p>
+                          {aiExplanations[q.id] ? (
+                            <p className="text-slate-600 dark:text-slate-300 whitespace-pre-line">{aiExplanations[q.id]}</p>
+                          ) : loadingExplanations ? (
+                            <p className="text-slate-400 dark:text-slate-500 italic flex items-center gap-1.5">
+                              <span className="inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                              Gerando explicação com IA...
+                            </p>
+                          ) : (
+                            <p className="text-slate-400 dark:text-slate-500 italic">Explicação não disponível.</p>
+                          )}
                         </div>
                       </div>
                     );

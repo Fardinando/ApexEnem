@@ -1317,6 +1317,88 @@ app.post("/api/questoes-ai", async (req, res) => {
   }
 });
 
+app.post("/api/simulado-explanation", async (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache');
+  try {
+    const { questions } = req.body;
+    if (!Array.isArray(questions) || questions.length === 0) {
+      return res.status(400).json({ error: 'questions array is required' });
+    }
+
+    const limited = questions.slice(0, 15);
+
+    async function explainOne(q: any): Promise<{ id: string; explanation: string } | null> {
+      const optsText = (q.options || []).map((o: any) => `${o.letter}) ${o.text}`).join('\n');
+      const prompt = `Explique de forma didática e detalhada por que a alternativa ${q.correctAnswer} está correta para esta questão do ENEM. Analise brevemente por que as outras alternativas estão incorretas. Seja claro e objetivo, como um professor explicando para um aluno.
+
+Enunciado: ${q.statement}
+Alternativas:
+${optsText}
+Resposta correta: ${q.correctAnswer}`;
+
+      try {
+        if (groqApiKey) {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 6000);
+          const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqApiKey}` },
+            body: JSON.stringify({
+              model: 'llama-3.3-70b-versatile',
+              messages: [{ role: 'user', content: prompt }],
+              max_tokens: 512,
+              temperature: 0.3,
+            }),
+            signal: ctrl.signal,
+          });
+          clearTimeout(tid);
+          if (r.ok) {
+            const d = await r.json();
+            const text = d.choices?.[0]?.message?.content;
+            if (text) return { id: q.id, explanation: text.trim() };
+          }
+        }
+      } catch {}
+
+      try {
+        if (googleApiKey) {
+          const ctrl = new AbortController();
+          const tid = setTimeout(() => ctrl.abort(), 6000);
+          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              contents: [{ role: 'user', parts: [{ text: prompt }] }],
+              generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
+            }),
+            signal: ctrl.signal,
+          });
+          clearTimeout(tid);
+          if (r.ok) {
+            const d = await r.json();
+            const text = d?.candidates?.[0]?.content?.parts?.[0]?.text;
+            if (text) return { id: q.id, explanation: text.trim() };
+          }
+        }
+      } catch {}
+
+      return null;
+    }
+
+    const results = await Promise.all(limited.map(q => explainOne(q)));
+    const explanations: Record<string, string> = {};
+    for (const r of results) {
+      if (r) explanations[r.id] = r.explanation;
+    }
+
+    return res.json({ explanations });
+  } catch (err) {
+    console.error('[simulado-explanation] fatal:', err);
+    return res.status(503).json({ error: 'Erro ao gerar explicações.' });
+  }
+});
+
 app.post("/api/generate-learning-exercises", async (req, res) => {
   const { chapterTitle, chapterArea, weakAreas, count } = req.body;
 
