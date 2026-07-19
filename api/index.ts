@@ -784,11 +784,11 @@ app.post("/api/questions", async (req, res) => {
           body: JSON.stringify({
             model,
             messages: [
-              { role: "system", content: "Você é um especialista em questões ENEM. Gere apenas JSON." },
-              { role: "user", content: prompt }
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
             ],
-            temperature: 0.9,
-            max_tokens: 6144
+            max_tokens: mc.maxTokens || 8192,
+            temperature: 0.85
           }),
           signal: ctrl.signal
         });
@@ -1032,7 +1032,7 @@ app.post("/api/lesson-v2", async (req, res) => {
 
   async function tryLessonV2Model(mc: ModelConfig): Promise<any | null> {
     const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 7000, 5000);
+    const timeout = Math.min(mc.timeout || 7000, 8000);
 
     if (mc.provider === 'gemini') {
       if (!googleApiKey) return null;
@@ -1052,7 +1052,7 @@ app.post("/api/lesson-v2", async (req, res) => {
               { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
             ],
-            generationConfig: { temperature: 0.85, maxOutputTokens: mc.maxTokens || 4096 }
+            generationConfig: { temperature: 0.85, maxOutputTokens: mc.maxTokens || 8192 }
           }),
           signal: ctrl.signal
         });
@@ -1113,7 +1113,7 @@ app.post("/api/lesson-v2", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: mc.maxTokens || 4096,
+            max_tokens: mc.maxTokens || 8192,
             temperature: 0.85
           }),
           signal: ctrl.signal

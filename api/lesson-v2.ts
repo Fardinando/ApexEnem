@@ -121,18 +121,21 @@ export default async function handler(req: any, res: any) {
 Área: ${context}
 Nível: ${level || 5}/10. ${weakSection}
 
-### ESTRUTURA: 3 CICLOS × 6 BLOCOS (18 blocos total)
+### ESTRUTURA: 3 CICLOS × 8 BLOCOS (24 blocos total)
 
 Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
+Cada ciclo tem EXATAMENTE 8 blocos nesta ordem:
 
-**Bloco "story"**: Situação-problema real com dados/cenário brasileiro (250+ chars).
-**Bloco "explanation"**: Teoria progressiva com 1 exemplo resolvido, fórmulas, pegadinhas ENEM, Resumo Rápido (350+ chars).
-**Bloco "interactive"**: Questão intermediária estilo ENEM com 4 alternativas plausíveis, explicação (200+ chars).
-**Bloco "explanation"**: Aprofundamento do subtema, mais detalhes e aplicação prática (350+ chars).
-**Bloco "challenge"**: Questão avançada com raciocínio em 2+ etapas, 4 alternativas, explicação detalhada (250+ chars).
-**Bloco "story"**: Nova situação-problema aplicando o subtema em contexto real (250+ chars).
+**Bloco 1 "story"**: Situação-problema real com dados/cenário brasileiro (300+ chars).
+**Bloco 2 "explanation"**: Teoria completa, fórmulas, exemplo resolvido, Resumo Rápido (400+ chars).
+**Bloco 3 "interactive"**: Questão intermediária estilo ENEM, 4 alternativas, explicação (200+ chars).
+**Bloco 4 "explanation"**: Aprofundamento, conexões com outros tópicos ENEM (400+ chars).
+**Bloco 5 "challenge"**: Questão avançada com pegadinha, 4 alternativas, análise dos distratores (250+ chars).
+**Bloco 6 "explanation"**: Erros comuns e o que a banca espera (350+ chars).
+**Bloco 7 "interactive"**: Questão rápida de fixação, 4 alternativas, explicação concisa (150+ chars).
+**Bloco 8 "story"**: Segunda situação-problema em contexto diferente (300+ chars).
 
-### JSON exato:
+### JSON exato com 24 blocos:
 {
   "title": "Título chamativo",
   "subtitle": "Subtítulo",
@@ -142,38 +145,44 @@ Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = inte
     {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
     {"type":"explanation","cabritoSpeech":"...","content":"..."},
     {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão rápida...","options":["A","B","C","D"],"correctIndex":1,"explanation":"..."},
     {"type":"story","cabritoSpeech":"...","content":"..."},
     {"type":"story","cabritoSpeech":"...","content":"..."},
     {"type":"explanation","cabritoSpeech":"...","content":"..."},
     {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":1,"explanation":"..."},
     {"type":"explanation","cabritoSpeech":"...","content":"..."},
     {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":3,"explanation":"..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão rápida...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
     {"type":"story","cabritoSpeech":"...","content":"..."},
     {"type":"story","cabritoSpeech":"...","content":"..."},
     {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},
     {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},
+    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão rápida...","options":["A","B","C","D"],"correctIndex":3,"explanation":"..."},
     {"type":"story","cabritoSpeech":"...","content":"..."}
   ]
 }
 
-Retorne APENAS o JSON.`;
+Retorne APENAS o JSON válido.`;
 
-    const userPrompt = `Gere a aula de "${area}" com 3 ciclos (básico, intermediário, avançado). Retorne APENAS o JSON:`;
+    const userPrompt = `Gere a aula de "${area}" com 3 ciclos completos (básico, intermediário, avançado), cada um com 8 blocos. Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const geminiPromise = geminiCall(fullPrompt, 8192, 5000).then(text => {
+    const geminiPromise = geminiCall(fullPrompt, 12288, 8000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
 
-    const groqPromise = groqCall(systemPrompt, userPrompt, 8192, 5000).then(text => {
+    const groqPromise = groqCall(systemPrompt, userPrompt, 12288, 8000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
 
-    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 8192, 5000).then(text => {
+    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 12288, 8000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });

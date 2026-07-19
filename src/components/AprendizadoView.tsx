@@ -432,8 +432,9 @@ export default function AprendizadoView({
     setLoadingQuestions(false);
   };
 
-  const adGateContinueRef = React.useRef<() => void>(() => {});
-  adGateContinueRef.current = () => {
+  const [prefetchTarget, setPrefetchTarget] = useState<{ type: 'cursinho'; cat: CategoryCard; idx: number } | { type: 'questoes'; area: string } | null>(null);
+
+  const handleAdGateContinue = useCallback(() => {
     setAdGateActive(false);
     setAdGateSecondsLeft(0);
     if (adGateTarget === 'cursinho' && activeCategory) {
@@ -445,30 +446,25 @@ export default function AprendizadoView({
       setLessonXpEarned(0);
       setInteractiveAnswer(null);
       setInteractiveChecked(false);
-      if (!aiLessonCycle && !loadingLesson) {
-        const nextIdx = lessonTopicIndex + 1;
-        setLessonTopicIndex(nextIdx);
-        fetchLessonCycle(activeCategory, nextIdx);
-      } else {
-        const nextIdx = lessonTopicIndex + 1;
-        setLessonTopicIndex(nextIdx);
-      }
     } else if (adGateTarget === 'questoes' && questoesArea) {
       setViewMode('questoes-play');
-      if (aiQuestoes.length === 0 && !loadingQuestions) {
-        fetchQuestoesAI(questoesArea);
-      }
     }
     setAdGateTarget(null);
-  };
-  const handleAdGateContinue = useCallback(() => adGateContinueRef.current(), []);
+  }, [adGateTarget, activeCategory, questoesArea]);
+
+  useEffect(() => {
+    if (!adGateActive || !prefetchTarget) return;
+    if (prefetchTarget.type === 'cursinho') {
+      fetchLessonCycle(prefetchTarget.cat, prefetchTarget.idx);
+    } else if (prefetchTarget.type === 'questoes') {
+      fetchQuestoesAI(prefetchTarget.area);
+    }
+    setPrefetchTarget(null);
+  }, [adGateActive, prefetchTarget]);
 
   const handleStartCursinhoCategory = (cat: CategoryCard) => {
     setActiveCategory(cat);
     if (cat.area === 'Recomendado' && wrongAnswers && wrongAnswers.length < 3) return;
-    setAdGateTarget('cursinho');
-    setAdGateActive(true);
-    setAdGateSecondsLeft(30);
     setLessonStep(0);
     setLessonCompleted(false);
     setLessonCorrectCount(0);
@@ -477,7 +473,11 @@ export default function AprendizadoView({
     setInteractiveAnswer(null);
     setInteractiveChecked(false);
     const nextIdx = lessonTopicIndex + 1;
-    fetchLessonCycle(cat, nextIdx);
+    setLessonTopicIndex(nextIdx);
+    setPrefetchTarget({ type: 'cursinho', cat, idx: nextIdx });
+    setAdGateTarget('cursinho');
+    setAdGateActive(true);
+    setAdGateSecondsLeft(30);
   };
 
   const handleStartQuestoes = (area: string) => {
@@ -493,10 +493,10 @@ export default function AprendizadoView({
     setQuestaoFeedback('');
     setQuestaoTopic('');
     setAiQuestoes([]);
+    setPrefetchTarget({ type: 'questoes', area });
     setAdGateTarget('questoes');
     setAdGateActive(true);
     setAdGateSecondsLeft(30);
-    fetchQuestoesAI(area);
   };
 
   useEffect(() => {
@@ -1582,10 +1582,10 @@ export default function AprendizadoView({
               <button
                 type="button"
                 onClick={() => {
-                  setShowAdGate(false);
                   setAdGateTarget(null);
                   setAdGateActive(false);
                   setAdGateSecondsLeft(0);
+                  setPrefetchTarget(null);
                 }}
                 className="flex-1 py-2.5 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
               >
