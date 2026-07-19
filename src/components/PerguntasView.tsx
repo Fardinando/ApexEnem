@@ -6,7 +6,7 @@ import MathRenderer from './MathRenderer';
 import LoadingOverlay from './LoadingOverlay';
 
 interface PerguntasViewProps {
-  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia') => void;
+  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula') => void;
   hardSubjects?: string[];
 }
 

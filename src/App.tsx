@@ -158,7 +158,7 @@ export default function App() {
     return () => { cancelled = true; };
   }, [session?.user?.id]);
 
-  const handleWrongAnswer = (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao') => {
+  const handleWrongAnswer = (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula') => {
     const updated = [{ subject, source, timestamp: Date.now() }, ...wrongAnswers];
     setWrongAnswers(updated);
     if (session?.user?.email) {
@@ -451,6 +451,7 @@ export default function App() {
               currentUser={currentUser as any}
               accessToken={session.access_token}
               wrongAnswers={wrongAnswers}
+              onWrongAnswer={handleWrongAnswer}
             />
           )}
           {activeTab === 'configuracoes' && (

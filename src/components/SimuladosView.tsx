@@ -33,7 +33,7 @@ import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './R
 
 interface SimuladosViewProps {
   onSaveSimuladoResult: (scorePercent: number, subject: string) => void;
-  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia') => void;
+  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula') => void;
   accessToken?: string;
   wrongAnswers?: WrongAnswer[];
 }

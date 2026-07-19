@@ -142,7 +142,7 @@ export interface ActivityLog {
 
 export interface WrongAnswer {
   subject: string;
-  source: 'simulado' | 'pergunta-ia' | 'redacao';
+  source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula';
   timestamp: number;
 }
 

@@ -151,6 +151,7 @@ export default function PerfilView({
     'simulado': 'Simulados',
     'pergunta-ia': 'Questões IA',
     'redacao': 'Redações',
+    'aula': 'Aulas IA',
   };
 
   const recentActivity = activityLogs.slice(0, 6);
