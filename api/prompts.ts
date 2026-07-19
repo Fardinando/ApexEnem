@@ -467,11 +467,11 @@ Nível: ${level}/10. ${weakSection}
 Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
 Cada ciclo tem EXATAMENTE 6 blocos:
 
-**Bloco "story"**: Situação-problema REAL e DETALHADA com dados, cenário brasileiro, personagens. Deve ser uma narrativa envolvente com começo, meio e fim. (500-700+ chars).
-**Bloco "explanation"**: Teoria COMPLETA e DETALHADA: definições, fórmulas, leis, conceitos-chave, 1 exemplo resolvido passo a passo, "Resumo Rápido" com bullets, pegadinhas ENEM. Texto denso e informativo. (600-800+ chars).
-**Bloco "interactive"**: Questão intermediária estilo ENEM com enunciado longo e contextualizado, 4 alternativas plausíveis, explicação detalhada da resposta correta e análise dos distratores. (300-500+ chars no total).
-**Bloco "challenge"**: Questão AVANÇADA com raciocínio em 2+ etapas, dados/contexto complexo, 4 alternativas traiçoeiras, explicação detalhada com análise de cada distrator. (400-600+ chars no total).
-**Bloco "explanation"**: Aprofundamento — erros comuns no ENEM, o que a banca espera, conexões com outros tópicos, dicas de prova. Texto rico e detalhado. (500-700+ chars).
+**Bloco "story"**: Situação-problema REAL e DETALHADA com dados, cenário brasileiro, personagens. Deve ser uma narrativa envolvente com começo, meio e fim, contexto rico. (700-1000+ chars).
+**Bloco "explanation"**: Teoria COMPLETA e DETALHADA: definições, fórmulas, leis, conceitos-chave, 1 exemplo resolvido passo a passo, "Resumo Rápido" com bullets, pegadinhas ENEM. Texto denso e informativo. (800-1100+ chars).
+**Bloco "interactive"**: Questão intermediária estilo ENEM com enunciado longo e contextualizado, 4 alternativas plausíveis, explicação detalhada da resposta correta e análise dos distratores. (400-600+ chars no total).
+**Bloco "challenge"**: Questão AVANÇADA com raciocínio em 2+ etapas, dados/contexto complexo, 4 alternativas traiçoeiras, explicação detalhada com análise de cada distrator. (500-700+ chars no total).
+**Bloco "explanation"**: Aprofundamento — erros comuns no ENEM, o que a banca espera, conexões com outros tópicos, dicas de prova. Texto rico e detalhado. (700-1000+ chars).
 
 Ordem por ciclo: story → explanation → interactive → explanation → challenge → explanation
 

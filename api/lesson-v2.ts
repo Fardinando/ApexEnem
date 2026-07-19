@@ -126,12 +126,12 @@ Nível: ${level || 5}/10. ${weakSection}
 Cada ciclo = 1 subtema diferente. Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
 
 Cada ciclo tem EXATAMENTE 6 blocos:
-**story**: Situação-problema REAL e DETALHADA com dados, cenário brasileiro, personagens (500-700+ chars).
-**explanation**: Teoria COMPLETA: definições, fórmulas, leis, exemplo resolvido passo a passo, Resumo Rápido, pegadinhas ENEM (600-800+ chars).
-**interactive**: Questão intermediária estilo ENEM com enunciado longo, 4 alternativas, explicação detalhada (300-500+ chars).
-**explanation**: Aprofundamento — erros comuns, o que a banca espera, conexões, dicas de prova (500-700+ chars).
-**challenge**: Questão AVANÇADA com raciocínio em 2+ etapas, 4 alternativas traiçoeiras, análise completa dos distratores (400-600+ chars).
-**explanation**: Consolidação do ciclo, revisão, dicas práticas (500-700+ chars).
+**story**: Situação-problema REAL e DETALHADA com dados, cenário brasileiro, personagens, narrativa com começo, meio e fim (700-1000+ chars).
+**explanation**: Teoria COMPLETA: definições, fórmulas, leis, exemplo resolvido passo a passo, Resumo Rápido, pegadinhas ENEM (800-1100+ chars).
+**interactive**: Questão intermediária estilo ENEM com enunciado longo, 4 alternativas, explicação detalhada (400-600+ chars).
+**explanation**: Aprofundamento — erros comuns, o que a banca espera, conexões, dicas de prova (700-1000+ chars).
+**challenge**: Questão AVANÇADA com raciocínio em 2+ etapas, 4 alternativas traiçoeiras, análise completa dos distratores (500-700+ chars).
+**explanation**: Consolidação do ciclo, revisão, dicas práticas (700-1000+ chars).
 
 Ordem por ciclo: story → explanation → interactive → explanation → challenge → explanation
 
