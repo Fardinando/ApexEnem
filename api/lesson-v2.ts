@@ -74,12 +74,8 @@ async function openrouterCall(key: string, systemPrompt: string, userPrompt: str
 }
 
 async function tryOpenRouter(systemPrompt: string, userPrompt: string, maxTokens: number, timeoutMs: number): Promise<string | null> {
-  for (let i = 0; i < Math.min(OPENROUTER_KEYS.length, 2); i++) {
-    const key = nextOrKey();
-    const r = await openrouterCall(key, systemPrompt, userPrompt, maxTokens, timeoutMs);
-    if (r) return r;
-  }
-  return null;
+  const key = nextOrKey();
+  return openrouterCall(key, systemPrompt, userPrompt, maxTokens, timeoutMs);
 }
 
 export default async function handler(req: any, res: any) {
@@ -127,12 +123,12 @@ Retorne APENAS o JSON.`;
     const userPrompt = `Gere a aula de "${area}" com 2 ciclos. Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const geminiPromise = geminiCall(fullPrompt, 4096, 4000).then(text => {
+    const geminiPromise = geminiCall(fullPrompt, 3072, 3000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
 
-    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 4096, 3000).then(text => {
+    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 3072, 3000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
