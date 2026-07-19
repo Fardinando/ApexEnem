@@ -1,5 +1,6 @@
 const GEMINI_KEY = process.env.GOOGLE_API_KEY || '';
 const OPENROUTER_KEYS = [
+  process.env.OPENROUTER_API_KEY,
   process.env.OPENROUTER_API_KEY_V1,
   process.env.OPENROUTER_API_KEY_V2,
   process.env.OPENROUTER_API_KEY_V3,
@@ -86,6 +87,10 @@ export default async function handler(req: any, res: any) {
   res.setHeader('Cache-Control', 'no-cache');
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
+  const diag: string[] = [];
+  diag.push(`geminiKey=${GEMINI_KEY ? 'SET' : 'EMPTY'}`);
+  diag.push(`orKeys=${OPENROUTER_KEYS.length}`);
+
   try {
     const { area, level, weakTopics, topicIndex } = req.body;
     if (!area) return res.status(400).json({ error: 'area is required' });
@@ -128,18 +133,26 @@ Retorne APENAS o JSON.`;
 
     const text = await geminiCall(fullPrompt, 4096, 7000);
     if (text) {
+      diag.push('gemini=OK');
       const lesson = parseLessonJson(text);
       if (lesson) return res.json(lesson);
+      diag.push('gemini=PARSE_FAIL');
+    } else {
+      diag.push('gemini=FAIL');
     }
 
     const orText = await tryOpenRouter(systemPrompt, userPrompt, 4096, 7000);
     if (orText) {
+      diag.push('or=OK');
       const lesson = parseLessonJson(orText);
       if (lesson) return res.json(lesson);
+      diag.push('or=PARSE_FAIL');
+    } else {
+      diag.push('or=FAIL');
     }
 
-    return res.status(503).json({ error: 'IA não conseguiu gerar a aula. Tente novamente.' });
-  } catch (err) {
-    return res.status(503).json({ error: 'Erro ao gerar aula.' });
+    return res.status(503).json({ error: 'IA não conseguiu gerar a aula. Tente novamente.', diag: diag.join(', ') });
+  } catch (err: any) {
+    return res.status(503).json({ error: 'Erro ao gerar aula.', diag: diag.join(', ') + ', err=' + (err?.message || err) });
   }
 };

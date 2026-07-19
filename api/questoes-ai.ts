@@ -1,5 +1,6 @@
 const GEMINI_KEY = process.env.GOOGLE_API_KEY || '';
 const OPENROUTER_KEYS = [
+  process.env.OPENROUTER_API_KEY,
   process.env.OPENROUTER_API_KEY_V1,
   process.env.OPENROUTER_API_KEY_V2,
   process.env.OPENROUTER_API_KEY_V3,
