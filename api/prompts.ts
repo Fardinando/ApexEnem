@@ -1,5 +1,5 @@
 export interface ModelConfig {
-  provider: 'gemini' | 'openrouter'
+  provider: 'gemini' | 'openrouter' | 'groq'
   modelId: string
   temperature?: number
   maxTokens?: number
@@ -56,6 +56,13 @@ const MODELS = {
     temperature: 0.3,
     maxTokens: 4096,
     timeout: 9000,
+  }),
+  groqLlama33: (): ModelConfig => ({
+    provider: 'groq',
+    modelId: 'llama-3.3-70b-versatile',
+    temperature: 0.85,
+    maxTokens: 4096,
+    timeout: 7000,
   }),
 }
 
@@ -486,6 +493,7 @@ Importante: correctIndex deve variar (0,1,2,3) entre os 4 blocos com questões. 
     },
     models: [
       MODELS.geminiFlash(),
+      MODELS.groqLlama33(),
       MODELS.openRouterFree(),
     ],
   },
@@ -530,6 +538,7 @@ Retorne APENAS o JSON.`,
     },
     models: [
       MODELS.geminiFlash(),
+      MODELS.groqLlama33(),
       MODELS.openRouterFree(),
     ],
   },

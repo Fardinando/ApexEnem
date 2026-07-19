@@ -224,6 +224,7 @@ function extractJsonFromText(rawText: string): any {
 }
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
+const groqApiKey = process.env.GROQ_API_KEY;
 
 const openRouterKeys = [
   process.env.OPENROUTER_API_KEY,
@@ -1064,6 +1065,34 @@ app.post("/api/lesson-v2", async (req, res) => {
       } catch { clearTimeout(tid); return null; }
     }
 
+    if (mc.provider === 'groq') {
+      if (!groqApiKey) return null;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), timeout);
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqApiKey}` },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            max_tokens: mc.maxTokens || 4096,
+            temperature: 0.85
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) return null;
+        return parseLessonJson(content);
+      } catch { clearTimeout(tid); return null; }
+    }
+
     for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 1); attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
@@ -1181,6 +1210,34 @@ app.post("/api/questoes-ai", async (req, res) => {
         const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
         if (!text) return null;
         return parseQuestoesJson(text);
+      } catch { clearTimeout(tid); return null; }
+    }
+
+    if (mc.provider === 'groq') {
+      if (!groqApiKey) return null;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), timeout);
+      try {
+        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqApiKey}` },
+          body: JSON.stringify({
+            model,
+            messages: [
+              { role: "system", content: systemPrompt },
+              { role: "user", content: userPrompt }
+            ],
+            max_tokens: mc.maxTokens || 2048,
+            temperature: 0.85
+          }),
+          signal: ctrl.signal
+        });
+        clearTimeout(tid);
+        if (!res.ok) return null;
+        const data = await res.json();
+        const content = data.choices?.[0]?.message?.content;
+        if (!content) return null;
+        return parseQuestoesJson(content);
       } catch { clearTimeout(tid); return null; }
     }
 

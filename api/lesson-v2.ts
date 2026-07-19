@@ -1,4 +1,5 @@
 const GEMINI_KEY = process.env.GOOGLE_API_KEY || '';
+const GROQ_KEY = process.env.GROQ_API_KEY || '';
 const OPENROUTER_KEYS = [
   process.env.OPENROUTER_API_KEY,
   process.env.OPENROUTER_API_KEY_V1,
@@ -73,6 +74,24 @@ async function openrouterCall(key: string, systemPrompt: string, userPrompt: str
   } catch { clearTimeout(tid); return null; }
 }
 
+async function groqCall(systemPrompt: string, userPrompt: string, maxTokens: number, timeoutMs: number): Promise<string | null> {
+  if (!GROQ_KEY) return null;
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${GROQ_KEY}` },
+      body: JSON.stringify({ model: 'llama-3.3-70b-versatile', messages: [{ role: 'system', content: systemPrompt }, { role: 'user', content: userPrompt }], max_tokens: maxTokens, temperature: 0.85 }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(tid);
+    if (!res.ok) return null;
+    const data = await res.json();
+    return data.choices?.[0]?.message?.content || null;
+  } catch { clearTimeout(tid); return null; }
+}
+
 async function tryOpenRouter(systemPrompt: string, userPrompt: string, maxTokens: number, timeoutMs: number): Promise<string | null> {
   const key = nextOrKey();
   return openrouterCall(key, systemPrompt, userPrompt, maxTokens, timeoutMs);
@@ -137,12 +156,17 @@ Retorne APENAS o JSON.`;
       return parseLessonJson(text);
     });
 
+    const groqPromise = groqCall(systemPrompt, userPrompt, 3072, 3000).then(text => {
+      if (!text) return null;
+      return parseLessonJson(text);
+    });
+
     const orPromise = tryOpenRouter(systemPrompt, userPrompt, 3072, 3000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
 
-    const results = await Promise.allSettled([geminiPromise, orPromise]);
+    const results = await Promise.allSettled([geminiPromise, groqPromise, orPromise]);
     for (const r of results) {
       if (r.status === 'fulfilled' && r.value) return res.json(r.value);
     }
