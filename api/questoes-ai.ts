@@ -116,16 +116,19 @@ Retorne APENAS o JSON.`;
     const userPrompt = `Gere ${count || 3} questões estilo ENEM para "${area}". Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const text = await geminiCall(fullPrompt, 2048, 5000);
-    if (text) {
-      const questions = parseQuestoesJson(text);
-      if (questions && questions.length > 0) return res.json({ questions });
-    }
+    const geminiPromise = geminiCall(fullPrompt, 2048, 4000).then(text => {
+      if (!text) return null;
+      return parseQuestoesJson(text);
+    });
 
-    const orText = await tryOpenRouter(systemPrompt, userPrompt, 2048, 3000);
-    if (orText) {
-      const questions = parseQuestoesJson(orText);
-      if (questions && questions.length > 0) return res.json({ questions });
+    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 2048, 3000).then(text => {
+      if (!text) return null;
+      return parseQuestoesJson(text);
+    });
+
+    const results = await Promise.allSettled([geminiPromise, orPromise]);
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value && r.value.length > 0) return res.json({ questions: r.value });
     }
 
     return res.status(503).json({ error: 'IA não conseguiu gerar questões. Tente novamente.' });

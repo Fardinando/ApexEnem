@@ -127,16 +127,19 @@ Retorne APENAS o JSON.`;
     const userPrompt = `Gere a aula de "${area}" com 2 ciclos. Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const text = await geminiCall(fullPrompt, 4096, 5000);
-    if (text) {
-      const lesson = parseLessonJson(text);
-      if (lesson) return res.json(lesson);
-    }
+    const geminiPromise = geminiCall(fullPrompt, 4096, 4000).then(text => {
+      if (!text) return null;
+      return parseLessonJson(text);
+    });
 
-    const orText = await tryOpenRouter(systemPrompt, userPrompt, 4096, 3000);
-    if (orText) {
-      const lesson = parseLessonJson(orText);
-      if (lesson) return res.json(lesson);
+    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 4096, 3000).then(text => {
+      if (!text) return null;
+      return parseLessonJson(text);
+    });
+
+    const results = await Promise.allSettled([geminiPromise, orPromise]);
+    for (const r of results) {
+      if (r.status === 'fulfilled' && r.value) return res.json(r.value);
     }
 
     return res.status(503).json({ error: 'IA não conseguiu gerar a aula. Tente novamente.' });
