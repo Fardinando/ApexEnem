@@ -109,7 +109,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/supabase/keep-alive",
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
-    "/lesson", "/lesson-v2", "/questoes-ai", "/stats"
+    "/lesson", "/lesson-v2", "/questoes-ai", "/stats", "/simulado-explanation"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
   if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath)) return next();
