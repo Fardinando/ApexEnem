@@ -89,8 +89,16 @@ export default async function handler(req: any, res: any) {
 
     const topicNum = typeof topicIndex === 'number' ? topicIndex : Math.floor(Math.random() * 100);
     const weakSection = weakTopics?.length ? `\nPontos fracos do aluno: ${weakTopics.join(', ')}. Foque nesses tópicos quando possível.` : '';
+    const areaContext: Record<string, string> = {
+      'Matemática': 'Matemática do ENEM: Álgebra, Geometria (plana, espacial, analítica), Trigonometria, Estatística, Probabilidade, Funções, Números e Operações.',
+      'Natureza': 'Ciências da Natureza do ENEM: Física (mecânica, ótica, eletromagnetismo), Química (ligações, estequiometria, orgânica), Biologia (genética, ecologia, citologia).',
+      'Humanas': 'Ciências Humanas do ENEM: História do Brasil e Mundial, Geografia (clima, população, urbanização), Filosofia, Sociologia, Atualidades.',
+      'Linguagens': 'Linguagens e Códigos do ENEM: Interpretação de textos (literários e não-literários), gramática (sintaxe, concordância, regência, ortografia), figurino de linguagem, gêneros textuais, oralidade, literatura brasileira, língua inglesa e espanhola.',
+    };
+    const context = areaContext[area] || `ENEM: tópicos de "${area}".`;
 
     const systemPrompt = `Você é o Cabrito 🐐, tutor do ENEM. Gere uma aula completa em JSON sobre "${area}" (tópico #${topicNum}).
+Área: ${context}
 Nível: ${level || 5}/10. ${weakSection}
 
 ### ESTRUTURA: 2 CICLOS × 4 BLOCOS (8 blocos total)

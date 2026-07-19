@@ -88,8 +88,15 @@ export default async function handler(req: any, res: any) {
     if (!area) return res.status(400).json({ error: 'area is required' });
 
     const weakSection = weakTopics?.length ? `\nPontos fracos: ${weakTopics.join(', ')}. Foque nessas questões.` : '';
+    const areaContext: Record<string, string> = {
+      'Matemática': 'Matemática: Álgebra, Geometria, Trigonometria, Estatística, Probabilidade, Funções.',
+      'Natureza': 'Ciências da Natureza: Física, Química, Biologia.',
+      'Humanas': 'Ciências Humanas: História, Geografia, Filosofia, Sociologia.',
+      'Linguagens': 'Linguagens e Códigos: Interpretação de textos, gramática, literatura, línguas estrangeiras.',
+    };
+    const context = areaContext[area] || area;
 
-    const systemPrompt = `Gere ${count || 3} questões ENEM de múltipla escolha para "${area}". Nível: médio/difícil. ${weakSection}
+    const systemPrompt = `Gere ${count || 3} questões ENEM de múltipla escolha para "${context}". Nível: médio/difícil. ${weakSection}
 
 Cada questão: enunciado com contexto (dados, situação-problema), 4 alternativas plausíveis (A-D), gabarito e explicação. Respostas corretas distribuídas entre A,B,C,D.
 
