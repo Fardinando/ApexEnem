@@ -351,9 +351,9 @@ app.post("/api/correct", async (req, res) => {
 
   const contentToEvaluate = text || "[O aluno enviou uma imagem contendo o manuscrito de redação para transcrição e correção direta.]";
 
-  const prompt = `Você é um corretor de redação oficial da banca do ENEM (INEP), altamente conceituado pela sua extrema rigidez, imparcialidade e aplicação clínica da Cartilha do Participante ENEM 2025. Você não é um professor bonzinho ou motivador; você avalia o texto de forma cirúrgica, fria e extremamente técnica. Redações medianas ou com falhas cruciais não devem receber notas infladas; notas próximas de 480 a 600 representam a realidade da média nacional e erros graves devem puxar a nota para baixo de forma dura.
+  const prompt = `Você é um corretor oficial de redação do ENEM (INEP), com domínio completo da Cartilha do Participante ENEM 2025. Avalie o texto de forma justa, objetiva e técnica, aplicando fielmente os critérios oficiais sem inflar nem deflacionar notas. A nota deve refletir EXATAMENTE o nível descrito em cada competência.
 
-O título/tema proposto da redação é: "${title || "Sem título"}
+O título/tema proposto da redação é: "${title || "Sem título"}"
 
 Redação do aluno:
 """
@@ -436,23 +436,27 @@ Aplique rigorosamente as travas abaixo ANTES de definir a nota final de cada com
    - Ausência de 1 elemento → Máx 160. Ausência de 2 → Máx 120.
 
 DIRETRIZES FUNDAMENTAIS:
-- Não balanceie as notas para cima para agradar.
-- Forneça críticas maduras, diretas e pragmáticas, com linguajar formal e clínico de banca oficial.
-- Redações tipicamente escolares sem repertório forte e com deslizes comuns devem ter nota entre 480 e 560 pontos. Nunca dê notas superiores a 800 sem estrutura impecável, vocabulário culto, domínio formal completo e intervenção detalhada.
+- Aplique os critérios oficiais de forma JUSTA e IMPARCIAL, sem tendência para cima nem para baixo.
+- Uma redação impecável com repertório produtivo, domínio formal completo, argumentação consistente, coesão excelente e intervenção detalhada deve receber 900-1000 pontos.
+- Uma redação boa mas com falhas pontuais deve receber entre 640-800 pontos.
+- Redações com falhas moderadas devem receber entre 400-600 pontos.
+- Redações com falhas graves e estrutura precária devem receber abaixo de 400 pontos.
+- NÃO deflacione notas artificialmente. Se o texto merece 200 em uma competência, dê 200.
+- O exemplo de JSON abaixo é APENAS o formato, NÃO as notas reais. Avalie cada competência individualmente com base nos critérios oficiais.
 
 Retorne estritamente um objeto JSON com o seguinte formato:
 {
-  "score": 520,
-  "generalFeedback": "Análise diagnóstica cirúrgica, extremamente realista, franca e detalhada da redação justificando o exato motivo de deságios e perdas de pontuação sob a perspectiva de um corretor implacável da banca ENEM.",
+  "score": [soma das 5 competências],
+  "generalFeedback": "Análise detalhada e justa da redação, apontando pontos fortes e fracos com linguagem clara e construtiva.",
   "competencies": [
-    { "id": 1, "name": "Competência 1: Domínio da escrita formal", "description": "Demonstrar domínio da modalidade escrita formal da língua portuguesa.", "score": 120, "feedback": "Análise nítida e direta apontando os desvios gramaticais exatos encontrados no texto (desvios de crase, pontuação, ortografia, concordância, coloquialismo), listando-os especificamente se possível, e justificando a pontuação com base nos níveis oficiais e travas." },
-    { "id": 2, "name": "Competência 2: Compreensão do tema e desenvolvimento", "description": "Compreender a proposta de redação e aplicar conceitos das várias áreas.", "score": 120, "feedback": "Apontar claramente se o aluno abordou o tema de forma integral ou tangencial, se respeitou o formato dissertativo-argumentativo, e julgar se há repertório legitimado, pertinente e produtivo. Diga explicitamente qual foi o repertório identificado ou a ausência dele." },
-    { "id": 3, "name": "Competência 3: Projeto de texto e argumentação", "description": "Selecionar, relacionar, organizar e interpretar informações em defesa de um ponto de vista.", "score": 120, "feedback": "Criticar o encadeamento das ideias. Apontar se há de fato uma tese clara na introdução para guiar o leitor, se os desenvolvimentos a defendem de modo aprofundado ou se caem na superficialidade, senso comum ou mera exposição textual." },
-    { "id": 4, "name": "Competência 4: Coesão e coerência", "description": "Demonstrar conhecimento dos mecanismos linguísticos necessários para a construção.", "score": 80, "feedback": "Verificar se existem conectivos interparágrafos legítimos no início das estrofes conectivas, e se há uma coesão intraparágrafo limpa. Apontar repetições exaustivas de termos comuns que empobrecem o texto." },
-    { "id": 5, "name": "Competência 5: Proposta de intervenção", "description": "Elaborar proposta de intervenção para o problema abordado respeitando direitos humanos.", "score": 80, "feedback": "Listar explicitamente quais dos 5 elementos obrigatórios estão PRESENTES e quais estão AUSENTES ou VAGOS (identificando individualmente: Agente, Ação, Meio/Modo, Efeito e Detalhamento) para justificar a nota matemática final desta competência." }
+    { "id": 1, "name": "Competência 1: Domínio da escrita formal", "description": "Demonstrar domínio da modalidade escrita formal da língua portuguesa.", "score": [0-200], "feedback": "Análise objetiva dos desvios ou domínio formal demonstrado." },
+    { "id": 2, "name": "Competência 2: Compreensão do tema e desenvolvimento", "description": "Compreender a proposta de redação e aplicar conceitos das várias áreas.", "score": [0-200], "feedback": "Avaliação do desenvolvimento do tema, qualidade do repertório e domínio do dissertativo-argumentativo." },
+    { "id": 3, "name": "Competência 3: Projeto de texto e argumentação", "description": "Selecionar, relacionar, organizar e interpretar informações em defesa de um ponto de vista.", "score": [0-200], "feedback": "Avaliação da tese, encadeamento de ideias e profundidade argumentativa." },
+    { "id": 4, "name": "Competência 4: Coesão e coerência", "description": "Demonstrar conhecimento dos mecanismos linguísticos necessários para a construção da Argumentação.", "score": [0-200], "feedback": "Avaliação dos recursos coesivos, articulação entre parágrafos e fluidez textual." },
+    { "id": 5, "name": "Competência 5: Proposta de intervenção", "description": "Elaborar proposta de intervenção para o problema abordado respeitando direitos humanos.", "score": [0-200], "feedback": "Avaliação dos 5 elementos obrigatórios (Agente, Ação, Meio/Modo, Efeito, Detalhamento)." }
   ],
-  "strengths": ["Item positivo técnico real do texto 1", "Item positivo técnico real do texto 2"],
-  "weaknesses": ["Item de correção crucial 1 que causou perda de pontos", "Item de correção crucial 2 que causou perda de pontos"]
+  "strengths": ["Ponto forte real e específico do texto"],
+  "weaknesses": ["Ponto de melhoria real e específico do texto"]
 }
 
 Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou depois do bloco JSON.`;
