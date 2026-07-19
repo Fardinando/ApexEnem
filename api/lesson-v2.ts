@@ -1,5 +1,3 @@
-export const config = { runtime: 'edge' };
-
 const GEMINI_KEY = process.env.GOOGLE_API_KEY || '';
 const OPENROUTER_KEYS = [
   process.env.OPENROUTER_API_KEY_V1,
@@ -83,14 +81,14 @@ async function tryOpenRouter(systemPrompt: string, userPrompt: string, maxTokens
   return null;
 }
 
-const jsonHeaders = { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' };
-
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: jsonHeaders });
+export default async function handler(req: any, res: any) {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { area, level, weakTopics, topicIndex } = await req.json();
-    if (!area) return new Response(JSON.stringify({ error: 'area is required' }), { status: 400, headers: jsonHeaders });
+    const { area, level, weakTopics, topicIndex } = req.body;
+    if (!area) return res.status(400).json({ error: 'area is required' });
 
     const topicNum = typeof topicIndex === 'number' ? topicIndex : Math.floor(Math.random() * 100);
     const weakSection = weakTopics?.length ? `\nPontos fracos do aluno: ${weakTopics.join(', ')}. Foque nesses tópicos quando possível.` : '';
@@ -128,20 +126,20 @@ Retorne APENAS o JSON.`;
     const userPrompt = `Gere a aula de "${area}" com 2 ciclos. Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const text = await geminiCall(fullPrompt, 4096, 25000);
+    const text = await geminiCall(fullPrompt, 4096, 7000);
     if (text) {
       const lesson = parseLessonJson(text);
-      if (lesson) return new Response(JSON.stringify(lesson), { headers: jsonHeaders });
+      if (lesson) return res.json(lesson);
     }
 
-    const orText = await tryOpenRouter(systemPrompt, userPrompt, 4096, 25000);
+    const orText = await tryOpenRouter(systemPrompt, userPrompt, 4096, 7000);
     if (orText) {
       const lesson = parseLessonJson(orText);
-      if (lesson) return new Response(JSON.stringify(lesson), { headers: jsonHeaders });
+      if (lesson) return res.json(lesson);
     }
 
-    return new Response(JSON.stringify({ error: 'IA não conseguiu gerar a aula. Tente novamente.' }), { status: 503, headers: jsonHeaders });
+    return res.status(503).json({ error: 'IA não conseguiu gerar a aula. Tente novamente.' });
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Erro ao gerar aula.' }), { status: 503, headers: jsonHeaders });
+    return res.status(503).json({ error: 'Erro ao gerar aula.' });
   }
-}
+};

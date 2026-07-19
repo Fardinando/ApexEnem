@@ -10,6 +10,16 @@
   "rewrites": [
     { "source": "/api/lesson-v2", "destination": "/api/lesson-v2" },
     { "source": "/api/questoes-ai", "destination": "/api/questoes-ai" },
+    { "source": "/api/stats", "destination": "/api" },
+    { "source": "/api/correct", "destination": "/api" },
+    { "source": "/api/questions", "destination": "/api" },
+    { "source": "/api/delete-account", "destination": "/api" },
+    { "source": "/api/credentials-status", "destination": "/api" },
+    { "source": "/api/supabase/(.*)", "destination": "/api" },
+    { "source": "/api/auth/(.*)", "destination": "/api" },
+    { "source": "/api/gamification/(.*)", "destination": "/api" },
+    { "source": "/api/streak/(.*)", "destination": "/api" },
+    { "source": "/api/weekly-ranking", "destination": "/api" },
     { "source": "/api/(.*)", "destination": "/api" }
   ],
   "crons": [

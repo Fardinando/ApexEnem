@@ -1,5 +1,3 @@
-export const config = { runtime: 'edge' };
-
 const GEMINI_KEY = process.env.GOOGLE_API_KEY || '';
 const OPENROUTER_KEYS = [
   process.env.OPENROUTER_API_KEY_V1,
@@ -83,14 +81,14 @@ async function tryOpenRouter(systemPrompt: string, userPrompt: string, maxTokens
   return null;
 }
 
-const jsonHeaders = { 'Content-Type': 'application/json', 'Cache-Control': 'no-cache' };
-
-export default async function handler(req: Request): Promise<Response> {
-  if (req.method !== 'POST') return new Response(JSON.stringify({ error: 'Method not allowed' }), { status: 405, headers: jsonHeaders });
+export default async function handler(req: any, res: any) {
+  res.setHeader('Content-Type', 'application/json');
+  res.setHeader('Cache-Control', 'no-cache');
+  if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { area, count, weakTopics } = await req.json();
-    if (!area) return new Response(JSON.stringify({ error: 'area is required' }), { status: 400, headers: jsonHeaders });
+    const { area, count, weakTopics } = req.body;
+    if (!area) return res.status(400).json({ error: 'area is required' });
 
     const weakSection = weakTopics?.length ? `\nPontos fracos: ${weakTopics.join(', ')}. Foque nessas questões.` : '';
 
@@ -117,20 +115,20 @@ Retorne APENAS o JSON.`;
     const userPrompt = `Gere ${count || 3} questões estilo ENEM para "${area}". Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const text = await geminiCall(fullPrompt, 2048, 25000);
+    const text = await geminiCall(fullPrompt, 2048, 7000);
     if (text) {
       const questions = parseQuestoesJson(text);
-      if (questions && questions.length > 0) return new Response(JSON.stringify({ questions }), { headers: jsonHeaders });
+      if (questions && questions.length > 0) return res.json({ questions });
     }
 
-    const orText = await tryOpenRouter(systemPrompt, userPrompt, 2048, 25000);
+    const orText = await tryOpenRouter(systemPrompt, userPrompt, 2048, 7000);
     if (orText) {
       const questions = parseQuestoesJson(orText);
-      if (questions && questions.length > 0) return new Response(JSON.stringify({ questions }), { headers: jsonHeaders });
+      if (questions && questions.length > 0) return res.json({ questions });
     }
 
-    return new Response(JSON.stringify({ error: 'IA não conseguiu gerar questões. Tente novamente.' }), { status: 503, headers: jsonHeaders });
+    return res.status(503).json({ error: 'IA não conseguiu gerar questões. Tente novamente.' });
   } catch (err) {
-    return new Response(JSON.stringify({ error: 'Erro ao gerar questões.' }), { status: 503, headers: jsonHeaders });
+    return res.status(503).json({ error: 'Erro ao gerar questões.' });
   }
 }
