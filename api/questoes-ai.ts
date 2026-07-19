@@ -93,6 +93,7 @@ export default async function handler(req: any, res: any) {
       'Natureza': 'Ciências da Natureza: Física, Química, Biologia.',
       'Humanas': 'Ciências Humanas: História, Geografia, Filosofia, Sociologia.',
       'Linguagens': 'Linguagens e Códigos: Interpretação de textos, gramática, literatura, línguas estrangeiras.',
+      'Redação': 'Redação do ENEM: 5 competências, estrutura de texto dissertativo-argumentativo, teses, argumentos, coesão, proposta de intervenção.',
     };
     const context = areaContext[area] || area;
 

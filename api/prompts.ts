@@ -447,6 +447,7 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
         'Natureza': 'Ciências da Natureza do ENEM: Física (mecânica, ótica, eletromagnetismo), Química (ligações, estequiometria, orgânica), Biologia (genética, ecologia, citologia).',
         'Humanas': 'Ciências Humanas do ENEM: História do Brasil e Mundial, Geografia (clima, população, urbanização), Filosofia, Sociologia, Atualidades.',
         'Linguagens': 'Linguagens e Códigos do ENEM: Interpretação de textos (literários e não-literários), gramática (sintaxe, concordância, regência, ortografia), figurino de linguagem, gêneros textuais, oralidade, literatura brasileira, língua inglesa e espanhola.',
+        'Redação': 'Redação do ENEM: 5 competências (domínio da norma culta, compreensão da proposta, seleção de argumentos, conhecimento dos mecanismos linguísticos, proposta de intervenção). Estrutura: introdução, desenvolvimento, conclusão. Teses, argumentos, coesão.',
       };
       const context = areaContext[area] || `ENEM: tópicos de "${area}".`;
       return {
@@ -501,6 +502,7 @@ Importante: correctIndex deve variar (0,1,2,3) entre os 4 blocos com questões. 
         'Natureza': 'Ciências da Natureza: Física, Química, Biologia.',
         'Humanas': 'Ciências Humanas: História, Geografia, Filosofia, Sociologia.',
         'Linguagens': 'Linguagens e Códigos: Interpretação de textos, gramática, literatura, línguas estrangeiras.',
+        'Redação': 'Redação do ENEM: 5 competências, estrutura de texto dissertativo-argumentativo, teses, argumentos, coesão, proposta de intervenção.',
       };
       const context = areaContext[area] || area;
       return {
