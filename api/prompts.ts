@@ -17,17 +17,17 @@ export interface PromptDefinition {
 const MODELS = {
   geminiFlash: (): ModelConfig => ({
     provider: 'gemini',
-    modelId: 'gemini-2.5-flash',
+    modelId: 'gemini-2.0-flash',
     temperature: 0.9,
     maxTokens: 8192,
-    timeout: 9500,
+    timeout: 9000,
   }),
   groqLlama33: (): ModelConfig => ({
     provider: 'groq',
     modelId: 'llama-3.3-70b-versatile',
     temperature: 0.85,
     maxTokens: 8192,
-    timeout: 7000,
+    timeout: 9000,
   }),
   geminiFlashV2: (): ModelConfig => ({
     provider: 'gemini',
@@ -462,59 +462,52 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
 Área: ${context}
 Nível: ${level}/10. ${weakSection}
 
-### ESTRUTURA: 3 CICLOS × 8 BLOCOS (24 blocos total)
+### ESTRUTURA: 3 CICLOS × 6 BLOCOS (18 blocos total)
 
 Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
-Cada ciclo tem EXATAMENTE 8 blocos nesta ordem:
+Cada ciclo tem EXATAMENTE 6 blocos:
 
-**Bloco 1 "story"**: Situação-problema real com dados/cenário brasileiro, envolvendo o subtema (300+ chars). Tom envolvente.
-**Bloco 2 "explanation"**: Teoria completa com definições, fórmulas, leis, conceitos-chave. Inclua 1 exemplo resolvido passo a passo e um "Resumo Rápido" com bullets (400+ chars).
-**Bloco 3 "interactive"**: Questão intermediária estilo ENEM com enunciado contextualizado, 4 alternativas plausíveis e explicação detalhada (200+ chars).
-**Bloco 4 "explanation"**: Aprofundamento do subtema — mais detalhes técnicos, connections com outros tópicos do ENEM, dicas de estudo (400+ chars).
-**Bloco 5 "challenge"**: Questão avançada com raciocínio em 2+ etapas, possíveis pegadinhas do ENEM, 4 alternativas, explicação detalhada com análise dos distratores (250+ chars).
-**Bloco 6 "explanation"**: Erros comuns e pegadinhas do ENEM relacionadas ao subtema. "O que a banca espera de você" (350+ chars).
-**Bloco 7 "interactive"**: Questão rápida de fixação (conceito essencial), 4 alternativas, explicação concisa (150+ chars).
-**Bloco 8 "story"**: Segunda situação-problema aplicando o subtema em contexto real diferente (300+ chars).
+**Bloco "story"**: Situação-problema REAL e DETALHADA com dados, cenário brasileiro, personagens. Deve ser uma narrativa envolvente com começo, meio e fim. (500-700+ chars).
+**Bloco "explanation"**: Teoria COMPLETA e DETALHADA: definições, fórmulas, leis, conceitos-chave, 1 exemplo resolvido passo a passo, "Resumo Rápido" com bullets, pegadinhas ENEM. Texto denso e informativo. (600-800+ chars).
+**Bloco "interactive"**: Questão intermediária estilo ENEM com enunciado longo e contextualizado, 4 alternativas plausíveis, explicação detalhada da resposta correta e análise dos distratores. (300-500+ chars no total).
+**Bloco "challenge"**: Questão AVANÇADA com raciocínio em 2+ etapas, dados/contexto complexo, 4 alternativas traiçoeiras, explicação detalhada com análise de cada distrator. (400-600+ chars no total).
+**Bloco "explanation"**: Aprofundamento — erros comuns no ENEM, o que a banca espera, conexões com outros tópicos, dicas de prova. Texto rico e detalhado. (500-700+ chars).
+
+Ordem por ciclo: story → explanation → interactive → explanation → challenge → explanation
 
 ### JSON exato:
 {
   "title": "Título chamativo e específico",
   "subtitle": "Subtítulo detalhado",
   "cycles": [
-    {"type":"story","cabritoSpeech":"Frase de abertura envolvente","content":"Situação-problema detalhada..."},
-    {"type":"explanation","cabritoSpeech":"Vamos aprender sobre...","content":"Teoria completa com fórmulas, exemplos, resumo..."},
-    {"type":"interactive","cabritoSpeech":"Hora de praticar!","content":"Questão contextualizada...","options":["A","B","C","D"],"correctIndex":0,"explanation":"Resolução passo a passo..."},
-    {"type":"explanation","cabritoSpeech":"Agora vamos mais fundo...","content":"Aprofundamento com conexões ENEM..."},
-    {"type":"challenge","cabritoSpeech":"Desafio avançado!","content":"Questão complexa com pegadinha...","options":["A","B","C","D"],"correctIndex":2,"explanation":"Análise completa dos distratores..."},
-    {"type":"explanation","cabritoSpeech":"Cuidado com isso no ENEM!","content":"Erros comuns e o que a banca espera..."},
-    {"type":"interactive","cabritoSpeech":"Última verificação!","content":"Questão rápida de fixação...","options":["A","B","C","D"],"correctIndex":1,"explanation":"Explicação concisa..."},
-    {"type":"story","cabritoSpeech":"Outro exemplo!","content":"Nova situação-problema diferente..."},
-    {"type":"story","cabritoSpeech":"Agora no nível intermediário!","content":"Situação-problema intermediária..."},
-    {"type":"explanation","cabritoSpeech":"Vamos complicar um pouco!","content":"Teoria intermediária completa..."},
-    {"type":"interactive","cabritoSpeech":"Teste seus conhecimentos!","content":"Questão intermediária...","options":["A","B","C","D"],"correctIndex":1,"explanation":"Resolução detalhada..."},
-    {"type":"explanation","cabritoSpeech":"Conexões importantes!","content":"Relações entre tópicos do ENEM..."},
-    {"type":"challenge","cabritoSpeech":"Agora ficou sério!","content":"Questão avançada intermediária...","options":["A","B","C","D"],"correctIndex":3,"explanation":"Análise completa..."},
-    {"type":"explanation","cabritoSpeech":"Pegadinhas clássicas!","content":"Erros frequentes e como evitá-los..."},
-    {"type":"interactive","cabritoSpeech":"Mais uma!","content":"Questão de fixação...","options":["A","B","C","D"],"correctIndex":0,"explanation":"Explicação..."},
-    {"type":"story","cabritoSpeech":"Outro cenário!","content":"Nova situação intermediária..."},
-    {"type":"story","cabritoSpeech":"Nível avançado!","content":"Situação-problema avançada com dados reais..."},
-    {"type":"explanation","cabritoSpeech":"Domine este assunto!","content":"Teoria avançada com profundidade ENEM..."},
-    {"type":"interactive","cabritoSpeech":"Questão de provas anteriores!","content":"Questão avançada estilo ENEM real...","options":["A","B","C","D"],"correctIndex":2,"explanation":"Resolução expert..."},
-    {"type":"explanation","cabritoSpeech":"Conexões avançadas!","content":"Integração com múltiplas áreas do conhecimento..."},
-    {"type":"challenge","cabritoSpeech":"Prova de fogo!","content":"Questão难度 máxima com raciocínio complexo...","options":["A","B","C","D"],"correctIndex":0,"explanation":"Análise completa e aprofundada..."},
-    {"type":"explanation","cabritoSpeech":"O diferencial ENEM!","content":"O que separa quem acerta de quem erra..."},
-    {"type":"interactive","cabritoSpeech":"Último teste!","content":"Questão final de consolidação...","options":["A","B","C","D"],"correctIndex":3,"explanation":"Síntese final..."},
-    {"type":"story","cabritoSpeech":"Parabéns! Resumo final!","content":"Revisão em contexto com todos os subtemas..."}
+    {"type":"story","cabritoSpeech":"Frase envolvente","content":"Narrativa longa e detalhada com dados reais..."},
+    {"type":"explanation","cabritoSpeech":"Vamos aprender!","content":"Teoria completa com fórmulas, exemplos passo a passo, resumo rápido com bullets, pegadinhas ENEM..."},
+    {"type":"interactive","cabritoSpeech":"Hora de praticar!","content":"Questão contextualizada com enunciado longo...","options":["A","B","C","D"],"correctIndex":0,"explanation":"Resolução passo a passo com análise dos distratores..."},
+    {"type":"explanation","cabritoSpeech":"Aprofundando!","content":"Erros comuns, o que a banca espera, conexões ENEM, dicas de prova..."},
+    {"type":"challenge","cabritoSpeech":"Desafio avançado!","content":"Questão complexa com raciocínio multi-etapa...","options":["A","B","C","D"],"correctIndex":2,"explanation":"Análise completa de cada alternativa..."},
+    {"type":"explanation","cabritoSpeech":"Reflexão final!","content":"Consolidação do ciclo com dicas práticas e revisão..."},
+    {"type":"story","cabritoSpeech":"Nível intermediário!","content":"Nova narrativa detalhada com dados diferentes..."},
+    {"type":"explanation","cabritoSpeech":"Vamos complicar!","content":"Teoria intermediária densa com conexões..."},
+    {"type":"interactive","cabritoSpeech":"Teste seus conhecimentos!","content":"Questão intermediária com contexto...","options":["A","B","C","D"],"correctIndex":1,"explanation":"Explicação detalhada..."},
+    {"type":"explanation","cabritoSpeech":"Conexões importantes!","content":"Relações entre tópicos, erros frequentes..."},
+    {"type":"challenge","cabritoSpeech":"Desafio intermediário!","content":"Questão avançada intermediária...","options":["A","B","C","D"],"correctIndex":3,"explanation":"Análise completa..."},
+    {"type":"explanation","cabritoSpeech":"Pegadinhas clássicas!","content":"Como a banca tenta te enganar..."},
+    {"type":"story","cabritoSpeech":"Nível avançado!","content":"Narrativa avançada com dados reais complexos..."},
+    {"type":"explanation","cabritoSpeech":"Domine este assunto!","content":"Teoria avançada profunda com múltiplas camadas..."},
+    {"type":"interactive","cabritoSpeech":"Questão de provas anteriores!","content":"Questão avançada estilo ENEM real...","options":["A","B","C","D"],"correctIndex":2,"explanation":"Resolução expert detalhada..."},
+    {"type":"explanation","cabritoSpeech":"Conexões avançadas!","content":"Integração multi-área, raciocínio complexo..."},
+    {"type":"challenge","cabritoSpeech":"Prova de fogo!","content":"Questão de dificuldade máxima com raciocínio complexo...","options":["A","B","C","D"],"correctIndex":0,"explanation":"Análise completa e aprofundada..."},
+    {"type":"explanation","cabritoSpeech":"Resumo e dicas finais!","content":"Síntese completa do ciclo avançado com tudo que foi visto..."}
   ]
 }
 
-Importante: correctIndex deve variar entre 0,1,2,3 nos 9 blocos com questões. Retorne APENAS o JSON válido.`,
-        user: `Gere a aula de "${area}" com 3 ciclos completos (básico, intermediário, avançado), cada um com 8 blocos. Retorne APENAS o JSON:`,
+Importante: correctIndex deve variar entre 0,1,2,3 nos 9 blocos com questões. O conteúdo de cada bloco deve ser LONGO e DETALHADO. Retorne APENAS o JSON válido.`,
+        user: `Gere a aula de "${area}" com 3 ciclos completos (básico, intermediário, avançado), cada um com 6 blocos de conteúdo LONGO e DETALHADO. Retorne APENAS o JSON:`,
       }
     },
     models: [
-      MODELS.geminiFlash(),
       MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
       MODELS.openRouterFree(),
     ],
   },
@@ -558,8 +551,8 @@ Retorne APENAS o JSON.`,
       }
     },
     models: [
-      MODELS.geminiFlash(),
       MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
       MODELS.openRouterFree(),
     ],
   },

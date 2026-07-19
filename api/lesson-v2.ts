@@ -34,7 +34,7 @@ async function geminiCall(prompt: string, maxTokens: number, timeoutMs: number):
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${GEMINI_KEY}`, {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${GEMINI_KEY}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
@@ -121,68 +121,62 @@ export default async function handler(req: any, res: any) {
 Área: ${context}
 Nível: ${level || 5}/10. ${weakSection}
 
-### ESTRUTURA: 3 CICLOS × 8 BLOCOS (24 blocos total)
+### ESTRUTURA: 3 CICLOS × 6 BLOCOS (18 blocos total)
 
-Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
-Cada ciclo tem EXATAMENTE 8 blocos nesta ordem:
+Cada ciclo = 1 subtema diferente. Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
 
-**Bloco 1 "story"**: Situação-problema real com dados/cenário brasileiro (300+ chars).
-**Bloco 2 "explanation"**: Teoria completa, fórmulas, exemplo resolvido, Resumo Rápido (400+ chars).
-**Bloco 3 "interactive"**: Questão intermediária estilo ENEM, 4 alternativas, explicação (200+ chars).
-**Bloco 4 "explanation"**: Aprofundamento, conexões com outros tópicos ENEM (400+ chars).
-**Bloco 5 "challenge"**: Questão avançada com pegadinha, 4 alternativas, análise dos distratores (250+ chars).
-**Bloco 6 "explanation"**: Erros comuns e o que a banca espera (350+ chars).
-**Bloco 7 "interactive"**: Questão rápida de fixação, 4 alternativas, explicação concisa (150+ chars).
-**Bloco 8 "story"**: Segunda situação-problema em contexto diferente (300+ chars).
+Cada ciclo tem EXATAMENTE 6 blocos:
+**story**: Situação-problema REAL e DETALHADA com dados, cenário brasileiro, personagens (500-700+ chars).
+**explanation**: Teoria COMPLETA: definições, fórmulas, leis, exemplo resolvido passo a passo, Resumo Rápido, pegadinhas ENEM (600-800+ chars).
+**interactive**: Questão intermediária estilo ENEM com enunciado longo, 4 alternativas, explicação detalhada (300-500+ chars).
+**explanation**: Aprofundamento — erros comuns, o que a banca espera, conexões, dicas de prova (500-700+ chars).
+**challenge**: Questão AVANÇADA com raciocínio em 2+ etapas, 4 alternativas traiçoeiras, análise completa dos distratores (400-600+ chars).
+**explanation**: Consolidação do ciclo, revisão, dicas práticas (500-700+ chars).
 
-### JSON exato com 24 blocos:
+Ordem por ciclo: story → explanation → interactive → explanation → challenge → explanation
+
+### JSON com 18 blocos:
 {
   "title": "Título chamativo",
-  "subtitle": "Subtítulo",
+  "subtitle": "Subtítulo detalhado",
   "cycles": [
-    {"type":"story","cabritoSpeech":"...","content":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"interactive","cabritoSpeech":"...","content":"Questão rápida...","options":["A","B","C","D"],"correctIndex":1,"explanation":"..."},
-    {"type":"story","cabritoSpeech":"...","content":"..."},
-    {"type":"story","cabritoSpeech":"...","content":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":1,"explanation":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":3,"explanation":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"interactive","cabritoSpeech":"...","content":"Questão rápida...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
-    {"type":"story","cabritoSpeech":"...","content":"..."},
-    {"type":"story","cabritoSpeech":"...","content":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
-    {"type":"explanation","cabritoSpeech":"...","content":"..."},
-    {"type":"interactive","cabritoSpeech":"...","content":"Questão rápida...","options":["A","B","C","D"],"correctIndex":3,"explanation":"..."},
-    {"type":"story","cabritoSpeech":"...","content":"..."}
+    {"type":"story","cabritoSpeech":"...","content":"Narrativa longa e detalhada com dados reais..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Teoria completa com fórmulas, exemplos, resumo..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão contextualizada...","options":["A","B","C","D"],"correctIndex":0,"explanation":"Resolução detalhada..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Erros comuns, conexões ENEM, dicas..."},
+    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada com pegadinha...","options":["A","B","C","D"],"correctIndex":2,"explanation":"Análise completa..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Consolidação do ciclo básico..."},
+    {"type":"story","cabritoSpeech":"...","content":"Nova narrativa intermediária detalhada..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Teoria intermediária densa..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão intermediária...","options":["A","B","C","D"],"correctIndex":1,"explanation":"Explicação detalhada..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Relações entre tópicos, erros frequentes..."},
+    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada intermediária...","options":["A","B","C","D"],"correctIndex":3,"explanation":"Análise completa..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Pegadinhas clássicas do ENEM..."},
+    {"type":"story","cabritoSpeech":"...","content":"Narrativa avançada com dados complexos..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Teoria avançada profunda..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão avançada estilo ENEM real...","options":["A","B","C","D"],"correctIndex":2,"explanation":"Resolução expert..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Integração multi-área, raciocínio complexo..."},
+    {"type":"challenge","cabritoSpeech":"...","content":"Questão de dificuldade máxima...","options":["A","B","C","D"],"correctIndex":0,"explanation":"Análise completa..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"Síntese completa do ciclo avançado..."}
   ]
 }
 
-Retorne APENAS o JSON válido.`;
+Retorne APENAS o JSON válido. Conteúdo LONGO e DETALHADO em cada bloco.`;
 
-    const userPrompt = `Gere a aula de "${area}" com 3 ciclos completos (básico, intermediário, avançado), cada um com 8 blocos. Retorne APENAS o JSON:`;
+    const userPrompt = `Gere a aula de "${area}" com 3 ciclos (básico, intermediário, avançado), cada um com 6 blocos de conteúdo LONGO. Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const geminiPromise = geminiCall(fullPrompt, 12288, 8000).then(text => {
+    const geminiPromise = geminiCall(fullPrompt, 8192, 9000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
 
-    const groqPromise = groqCall(systemPrompt, userPrompt, 12288, 8000).then(text => {
+    const groqPromise = groqCall(systemPrompt, userPrompt, 8192, 9000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
 
-    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 12288, 8000).then(text => {
+    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 8192, 9000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });

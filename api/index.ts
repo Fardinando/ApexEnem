@@ -1032,7 +1032,7 @@ app.post("/api/lesson-v2", async (req, res) => {
 
   async function tryLessonV2Model(mc: ModelConfig): Promise<any | null> {
     const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 7000, 8000);
+    const timeout = Math.min(mc.timeout || 7000, 9000);
 
     if (mc.provider === 'gemini') {
       if (!googleApiKey) return null;
