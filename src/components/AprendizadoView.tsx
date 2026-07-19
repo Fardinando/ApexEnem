@@ -603,6 +603,10 @@ export default function AprendizadoView({
   const [loadingQuestions, setLoadingQuestions] = useState(false);
   const [questaoFeedback, setQuestaoFeedback] = useState('');
   const [questaoTopic, setQuestaoTopic] = useState('');
+  const [lessonCompleted, setLessonCompleted] = useState(false);
+  const [lessonCorrectCount, setLessonCorrectCount] = useState(0);
+  const [lessonTotalInteractive, setLessonTotalInteractive] = useState(0);
+  const [lessonXpEarned, setLessonXpEarned] = useState(0);
   const [adGateSecondsLeft, setAdGateSecondsLeft] = useState(0);
   const [adGateActive, setAdGateActive] = useState(false);
   const [interactiveAnswer, setInteractiveAnswer] = useState<number | null>(null);
@@ -635,7 +639,6 @@ export default function AprendizadoView({
   const [aiSpeechText, setAiSpeechText] = useState<string | null>(null);
   const [originalCount, setOriginalCount] = useState(0);
   const [errorsCount, setErrorsCount] = useState(0);
-  const [lessonCompleted, setLessonCompleted] = useState(false);
   const [lessonPassed, setLessonPassed] = useState(false);
   const [lessonScore, setLessonScore] = useState(0);
   const [showRewardAd, setShowRewardAd] = useState(false);
@@ -804,6 +807,10 @@ export default function AprendizadoView({
     if (adGateTarget === 'cursinho' && activeCategory) {
       setViewMode('lesson');
       setLessonStep(0);
+      setLessonCompleted(false);
+      setLessonCorrectCount(0);
+      setLessonTotalInteractive(0);
+      setLessonXpEarned(0);
       const nextIdx = lessonTopicIndex + 1;
       setLessonTopicIndex(nextIdx);
       fetchLessonCycle(activeCategory, nextIdx);
@@ -857,6 +864,13 @@ export default function AprendizadoView({
       handleAdGateContinue();
     }
   }, [adGateActive, adGateSecondsLeft]);
+
+  useEffect(() => {
+    if (aiLessonCycle?.cycles) {
+      const count = aiLessonCycle.cycles.filter((b: any) => b.type === 'interactive' || b.type === 'challenge').length;
+      setLessonTotalInteractive(count);
+    }
+  }, [aiLessonCycle]);
 
   const handleQuestaoCheck = () => {
     if (!selectedLetter || hasChecked) return;
@@ -1019,14 +1033,14 @@ export default function AprendizadoView({
                     })}
                   </div>
                   {!interactiveChecked ? (
-                    <button type="button" disabled={interactiveAnswer === null} onClick={() => setInteractiveChecked(true)} className={`px-5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${interactiveAnswer !== null ? 'bg-blue-600 hover:bg-blue-700 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}>Verificar Resposta</button>
+                    <button type="button" disabled={interactiveAnswer === null} onClick={() => { setInteractiveChecked(true); if (interactiveAnswer === block.correctIndex) { setLessonCorrectCount(prev => prev + 1); setLessonXpEarned(prev => prev + 10); } else { setLessonXpEarned(prev => prev + 2); } }} className={`px-5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${interactiveAnswer !== null ? 'bg-blue-600 hover:bg-blue-700 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}>Verificar Resposta</button>
                   ) : (
                     <div className="space-y-3">
                       <div className={`p-3 rounded-xl text-xs font-semibold ${interactiveAnswer === block.correctIndex ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'}`}>
                         {interactiveAnswer === block.correctIndex ? '✅ Correto! Excelente!' : '❌ Incorreto!'}
                         {block.explanation && <p className="mt-1 font-normal opacity-80">{block.explanation}</p>}
                       </div>
-                      <button type="button" onClick={() => { setLessonStep(prev => prev + 1); setInteractiveAnswer(null); setInteractiveChecked(false); }} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                      <button type="button" onClick={() => { if (lessonStep + 1 >= totalLessonSteps) { setLessonCompleted(true); } else { setLessonStep(prev => prev + 1); setInteractiveAnswer(null); setInteractiveChecked(false); } }} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
                         <span>{lessonStep + 1 >= totalLessonSteps ? 'Finalizar' : 'Próximo'}</span> <ArrowRight className="h-4 w-4" />
                       </button>
                     </div>
@@ -1037,19 +1051,104 @@ export default function AprendizadoView({
               {!isInteractive && (
                 <div className="flex justify-end gap-2">
                   <button type="button" onClick={handleBackToCategories} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">Sair</button>
-                  <button type="button" onClick={() => { setLessonStep(prev => prev + 1); setInteractiveAnswer(null); setInteractiveChecked(false); }} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
+                  <button type="button" onClick={() => { if (lessonStep + 1 >= totalLessonSteps) { setLessonCompleted(true); } else { setLessonStep(prev => prev + 1); setInteractiveAnswer(null); setInteractiveChecked(false); } }} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md">
                     <span>{lessonStep + 1 >= totalLessonSteps ? 'Finalizar' : 'Próximo'}</span> <ArrowRight className="h-4 w-4" />
                   </button>
                 </div>
               )}
+            </div>
+          </div>
+        );
+      }
 
-              {lessonStep + 1 >= totalLessonSteps && interactiveChecked && (
-                <div className="text-center pt-2">
-                  <button type="button" onClick={() => { const nextIdx = lessonTopicIndex + 1; setLessonTopicIndex(nextIdx); setLessonStep(0); setInteractiveAnswer(null); setInteractiveChecked(false); fetchLessonCycle(activeCategory, nextIdx); }} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md mx-auto">
-                    <Sparkles className="h-4 w-4" /><span>Próxima Aula</span>
-                  </button>
+      if (lessonCompleted && aiLessonCycle) {
+        const totalBlocks = aiLessonCycle.cycles.length;
+        const accuracy = lessonTotalInteractive > 0 ? Math.round((lessonCorrectCount / lessonTotalInteractive) * 100) : 100;
+        const passed = accuracy >= 50;
+        return (
+          <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
+            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-2xl text-center space-y-6">
+              {passed ? (
+                <div className="space-y-4">
+                  <div className="inline-flex p-4 bg-yellow-50 dark:bg-yellow-950/40 text-yellow-500 rounded-3xl shadow-sm animate-bounce">
+                    <Trophy className="h-12 w-12" />
+                  </div>
+                  <h3 className="text-2xl font-black text-slate-800 dark:text-white">
+                    Aula Concluída!
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+                    Parabéns! Você completou a aula de <strong>{activeCategory?.title}</strong> e acertou{' '}
+                    <strong>{lessonCorrectCount}/{lessonTotalInteractive}</strong> dos desafios. Continue assim!
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  <span className="text-5xl block">🐐</span>
+                  <h3 className="text-2xl font-black text-blue-600 dark:text-blue-400">
+                    Aula Finalizada!
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+                    Você acertou <strong>{lessonCorrectCount}/{lessonTotalInteractive}</strong> dos desafios de{' '}
+                    <strong>{activeCategory?.title}</strong>. Revise o conteúdo e tente novamente para melhorar!
+                  </p>
                 </div>
               )}
+
+              <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 dark:bg-[#0f172a]/70 rounded-2xl border border-slate-200 dark:border-slate-800/60 text-center">
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                    Precisão
+                  </span>
+                  <span className={`text-xl font-black font-mono block ${passed ? 'text-green-600' : 'text-amber-500'}`}>
+                    {accuracy}%
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                    XP Ganho
+                  </span>
+                  <span className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono block">
+                    +{lessonXpEarned}
+                  </span>
+                </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                    Blocos
+                  </span>
+                  <span className="text-xl font-black text-purple-600 dark:text-purple-400 font-mono block">
+                    {totalBlocks}
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2 pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const nextIdx = lessonTopicIndex + 1;
+                    setLessonTopicIndex(nextIdx);
+                    setLessonStep(0);
+                    setLessonCompleted(false);
+                    setLessonCorrectCount(0);
+                    setLessonTotalInteractive(0);
+                    setLessonXpEarned(0);
+                    setInteractiveAnswer(null);
+                    setInteractiveChecked(false);
+                    fetchLessonCycle(activeCategory!, nextIdx);
+                  }}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                >
+                  <Sparkles className="h-4 w-4" />
+                  <span>Próxima Aula</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBackToCategories}
+                  className="w-full py-3 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+                >
+                  Voltar ao Menu
+                </button>
+              </div>
             </div>
           </div>
         );
