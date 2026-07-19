@@ -464,7 +464,7 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
   async function callGroq(): Promise<any> {
     if (!groqApiKey) throw new Error('no groq key');
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 8000);
+    const tid = setTimeout(() => ctrl.abort(), 9500);
     try {
       const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',
@@ -492,7 +492,7 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
   async function callGemini(): Promise<any> {
     if (!googleApiKey) throw new Error('no gemini key');
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 8000);
+    const tid = setTimeout(() => ctrl.abort(), 9500);
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
         method: 'POST',
@@ -514,11 +514,11 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
   }
 
   async function callOpenRouter(): Promise<any> {
-    for (let attempt = 0; attempt < Math.min(openRouterKeys.length * 2, 4); attempt++) {
+    for (let attempt = 0; attempt < Math.min(openRouterKeys.length * 2, 6); attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 8000);
+      const tid = setTimeout(() => ctrl.abort(), 9500);
       try {
         const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
           method: 'POST',
@@ -575,8 +575,11 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
       weaknesses: (data.weaknesses || []).slice(0, 3),
       _model: model
     });
-  } catch (err) {
-    console.error('[correct] all models failed:', err);
+  } catch (err: any) {
+    console.error('[correct] all models failed:', err?.message || err);
+    if (err?.errors) {
+      err.errors.forEach((e: any, i: number) => console.error(`[correct] provider ${i}:`, e?.message || e));
+    }
     return res.status(503).json({ error: "Serviço de correção por IA indisponível no momento. Tente novamente." });
   }
 });
