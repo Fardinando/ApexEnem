@@ -1,5 +1,20 @@
 const GEMINI_KEY = import.meta.env.VITE_GOOGLE_API_KEY || '';
-const OPENROUTER_KEY = import.meta.env.VITE_OPENROUTER_API_KEY || '';
+
+const OPENROUTER_KEYS = [
+  import.meta.env.VITE_OPENROUTER_API_KEY_V1 || '',
+  import.meta.env.VITE_OPENROUTER_API_KEY_V2 || '',
+  import.meta.env.VITE_OPENROUTER_API_KEY_V3 || '',
+  import.meta.env.VITE_OPENROUTER_API_KEY_V4 || '',
+  import.meta.env.VITE_OPENROUTER_API_KEY_V5 || '',
+].filter(Boolean);
+
+let orKeyIndex = 0;
+function getNextOrKey(): string {
+  if (OPENROUTER_KEYS.length === 0) return '';
+  const key = OPENROUTER_KEYS[orKeyIndex % OPENROUTER_KEYS.length];
+  orKeyIndex++;
+  return key;
+}
 
 function parseLessonJson(content: string): any | null {
   const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -70,8 +85,8 @@ async function callGemini(prompt: string, maxTokens: number, timeoutMs: number):
   }
 }
 
-async function callOpenRouter(systemPrompt: string, userPrompt: string, maxTokens: number, timeoutMs: number): Promise<string | null> {
-  if (!OPENROUTER_KEY) return null;
+async function callOpenRouterWithKey(key: string, systemPrompt: string, userPrompt: string, maxTokens: number, timeoutMs: number): Promise<string | null> {
+  if (!key) return null;
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), timeoutMs);
   try {
@@ -79,7 +94,7 @@ async function callOpenRouter(systemPrompt: string, userPrompt: string, maxToken
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${OPENROUTER_KEY}`,
+        Authorization: `Bearer ${key}`,
         'HTTP-Referer': window.location.origin,
         'X-Title': 'ApexEnem',
       },
@@ -102,6 +117,16 @@ async function callOpenRouter(systemPrompt: string, userPrompt: string, maxToken
     clearTimeout(tid);
     return null;
   }
+}
+
+async function callOpenRouterFallback(systemPrompt: string, userPrompt: string, maxTokens: number, timeoutMs: number): Promise<string | null> {
+  for (let i = 0; i < OPENROUTER_KEYS.length; i++) {
+    const key = getNextOrKey();
+    if (!key) continue;
+    const result = await callOpenRouterWithKey(key, systemPrompt, userPrompt, maxTokens, timeoutMs);
+    if (result) return result;
+  }
+  return null;
 }
 
 export async function fetchLessonCycleClient(area: string, level: number, topicIndex: number, weakTopics: string[]): Promise<any | null> {
@@ -140,7 +165,6 @@ Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = avan
 Importante: correctIndex deve variar (0,1,2,3) entre os 4 blocos com questões. Retorne APENAS o JSON.`;
 
   const userPrompt = `Gere a aula de "${area}" com 2 ciclos. Retorne APENAS o JSON:`;
-
   const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
   const text = await callGemini(fullPrompt, 4096, 25000);
@@ -149,10 +173,8 @@ Importante: correctIndex deve variar (0,1,2,3) entre os 4 blocos com questões. 
     if (lesson) return lesson;
   }
 
-  const orText = await callOpenRouter(systemPrompt, userPrompt, 4096, 25000);
-  if (orText) {
-    return parseLessonJson(orText);
-  }
+  const orText = await callOpenRouterFallback(systemPrompt, userPrompt, 4096, 25000);
+  if (orText) return parseLessonJson(orText);
 
   return null;
 }
@@ -183,7 +205,6 @@ JSON:
 Retorne APENAS o JSON.`;
 
   const userPrompt = `Gere ${count} questões estilo ENEM para "${area}". Retorne APENAS o JSON:`;
-
   const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
   const text = await callGemini(fullPrompt, 2048, 25000);
@@ -192,7 +213,7 @@ Retorne APENAS o JSON.`;
     if (questions && questions.length > 0) return questions;
   }
 
-  const orText = await callOpenRouter(systemPrompt, userPrompt, 2048, 25000);
+  const orText = await callOpenRouterFallback(systemPrompt, userPrompt, 2048, 25000);
   if (orText) {
     const questions = parseQuestoesJson(orText);
     if (questions && questions.length > 0) return questions;
