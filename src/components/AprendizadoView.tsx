@@ -552,6 +552,23 @@ function getFallbackLesson(area: string): AiLessonContent {
   return fallbacks[area] || fallbacks['Recomendado'];
 }
 
+function AdGateVideo() {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const loadedRef = React.useRef(false);
+  const adCode = `<div id="inter-container" style="display:flex;justify-content:center;align-items:center;width:100%;height:100%;"><iframe src="https://www.effectivecpmnetwork.com/c0wk6m25f0?key=5438e836339cdee7370c0f68bcb24d00" style="width:100%;height:100%;border:none;border-radius:12px;min-height:280px;" scrolling="no" allowfullscreen></iframe></div>`;
+  React.useEffect(() => {
+    if (loadedRef.current || !containerRef.current) return;
+    loadedRef.current = true;
+    containerRef.current.innerHTML = adCode;
+  }, []);
+  return (
+    <div
+      ref={containerRef}
+      className="w-full h-[320px] bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden flex items-center justify-center"
+    />
+  );
+}
+
 export default function AprendizadoView({
   essayCorrections,
   simuladosHistory,
@@ -757,7 +774,7 @@ export default function AprendizadoView({
     if (cat.area === 'Recomendado' && wrongAnswers && wrongAnswers.length < 3) return;
     setAdGateTarget('cursinho');
     setAdGateActive(true);
-    setAdGateSecondsLeft(60);
+    setAdGateSecondsLeft(30);
   };
 
   const handleStartQuestoes = (area: string) => {
@@ -775,7 +792,7 @@ export default function AprendizadoView({
     setAiQuestoes([]);
     setAdGateTarget('questoes');
     setAdGateActive(true);
-    setAdGateSecondsLeft(60);
+    setAdGateSecondsLeft(30);
   };
 
   useEffect(() => {
@@ -1754,20 +1771,11 @@ export default function AprendizadoView({
                 Antes de Continuar...
               </h3>
               <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
-                Assista 1 minuto de anúncio para continuar
+                Assista 30 segundos de anúncio para continuar
               </p>
             </div>
 
-            <div className="bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 text-center space-y-3">
-              <div className="h-32 bg-slate-200 dark:bg-slate-700 rounded-xl flex items-center justify-center">
-                <span className="text-slate-400 dark:text-slate-500 text-xs font-mono">
-                  Espaço para anúncio
-                </span>
-              </div>
-              <p className="text-[10px] text-slate-400 font-mono">
-                Anúncio será exibido aqui em breve
-              </p>
-            </div>
+            <AdGateVideo />
 
             {adGateActive && adGateSecondsLeft > 0 && (
               <div className="flex items-center justify-center gap-2 py-3 bg-blue-50 dark:bg-blue-950/30 rounded-xl border border-blue-200 dark:border-blue-800/40">
