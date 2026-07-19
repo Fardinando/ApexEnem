@@ -4,10 +4,18 @@
   "outputDirectory": "dist",
   "functions": {
     "api/index.ts": {
+      "maxDuration": 10
+    },
+    "api/lesson-v2.ts": {
+      "maxDuration": 30
+    },
+    "api/questoes-ai.ts": {
       "maxDuration": 30
     }
   },
   "routes": [
+    { "src": "/api/lesson-v2", "dest": "/api/lesson-v2.ts" },
+    { "src": "/api/questoes-ai", "dest": "/api/questoes-ai.ts" },
     { "src": "/api/(.*)", "dest": "/api" }
   ],
   "crons": [
