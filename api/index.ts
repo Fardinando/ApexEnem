@@ -349,19 +349,6 @@ app.post("/api/correct", async (req, res) => {
     return res.status(400).json({ error: "É necessário digitar um texto ou enviar uma foto." });
   }
 
-  const models = [
-    "meta-llama/llama-3.3-70b-instruct:free",
-    "deepseek/deepseek-r1:free",
-    "qwen/qwen-2.5-72b-instruct:free",
-    "google/gemma-3-12b-it:free",
-    "mistralai/mistral-small-24b-instruct-2501:free",
-    "deepseek/deepseek-chat:free",
-    "microsoft/phi-3.5-mini-instruct:free",
-    "cohere/command-r7b-12-2025:free",
-    "google/gemma-2-9b-it:free",
-    "nvidia/llama-3.1-nemotron-70b-instruct:free"
-  ];
-
   const contentToEvaluate = text || "[O aluno enviou uma imagem contendo o manuscrito de redação para transcrição e correção direta.]";
 
   const prompt = `Você é um corretor de redação oficial da banca do ENEM (INEP), altamente conceituado pela sua extrema rigidez, imparcialidade e aplicação clínica da Cartilha do Participante ENEM 2025. Você não é um professor bonzinho ou motivador; você avalia o texto de forma cirúrgica, fria e extremamente técnica. Redações medianas ou com falhas cruciais não devem receber notas infladas; notas próximas de 480 a 600 representam a realidade da média nacional e erros graves devem puxar a nota para baixo de forma dura.
@@ -470,122 +457,123 @@ Retorne estritamente um objeto JSON com o seguinte formato:
 
 Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou depois do bloco JSON.`;
 
-  try {
-    const results = await Promise.allSettled(
-      models.map(m => fetchCorrectionFromModel(m, prompt))
-    );
+  async function callGroq(): Promise<any> {
+    if (!groqApiKey) throw new Error('no groq key');
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqApiKey}` },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.' },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 2048,
+          temperature: 0.3,
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`groq ${r.status}`);
+      const d = await r.json();
+      const raw = d.choices?.[0]?.message?.content;
+      if (!raw) throw new Error('empty');
+      return { model: 'Groq Llama 3.3', data: extractJsonFromText(raw) };
+    } catch (e) { clearTimeout(tid); throw e; }
+  }
 
-    const successfulCorrections: any[] = [];
-    const errorsList: string[] = [];
+  async function callGemini(): Promise<any> {
+    if (!googleApiKey) throw new Error('no gemini key');
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 8000);
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{ role: 'user', parts: [{ text: prompt }] }],
+          systemInstruction: { parts: [{ text: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.' }] },
+          generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`gemini ${r.status}`);
+      const d = await r.json();
+      const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (!raw) throw new Error('empty');
+      return { model: 'Gemini 2.0 Flash', data: extractJsonFromText(raw) };
+    } catch (e) { clearTimeout(tid); throw e; }
+  }
 
-    results.forEach((res, idx) => {
-      if (res.status === "fulfilled" && res.value != null) {
-        successfulCorrections.push({
-          model: models[idx],
-          data: res.value
-        });
-      } else if (res.status === 'rejected') {
-        errorsList.push(`${models[idx]}: ${res.reason?.message || res.reason}`);
-      }
-    });
-
-    if (successfulCorrections.length === 0) {
-      console.warn("All parallel models failed. Attempting single backup with openrouter/free...");
+  async function callOpenRouter(): Promise<any> {
+    for (let attempt = 0; attempt < Math.min(openRouterKeys.length * 2, 4); attempt++) {
+      const key = getNextOpenRouterKey();
+      if (!key) continue;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 8000);
       try {
-        const backupData = await fetchCorrectionFromModel("openrouter/free", prompt);
-        if (backupData) {
-          successfulCorrections.push({ model: "openrouter/free", data: backupData });
-        } else {
-          return res.status(503).json({ error: "Todos os modelos de IA falharam ao processar sua redação.", details: errorsList.slice(0, 5) });
-        }
-      } catch (backupErr: any) {
-        console.error("Backup model call failed too:", backupErr);
-        return res.status(503).json({ error: "Serviço de correção por IA indisponível no momento.", details: errorsList.slice(0, 5) });
-      }
+        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${key}`,
+            'HTTP-Referer': 'https://apexenem.app',
+            'X-Title': 'ApexEnem',
+          },
+          body: JSON.stringify({
+            model: 'meta-llama/llama-3.3-70b-instruct:free',
+            messages: [
+              { role: 'system', content: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.' },
+              { role: 'user', content: prompt },
+            ],
+            temperature: 0.3,
+          }),
+          signal: ctrl.signal,
+        });
+        clearTimeout(tid);
+        if (r.status === 429) continue;
+        if (!r.ok) continue;
+        const d = await r.json();
+        const raw = d.choices?.[0]?.message?.content;
+        if (!raw) continue;
+        return { model: 'OpenRouter Llama 3.3', data: extractJsonFromText(raw) };
+      } catch (e) { clearTimeout(tid); continue; }
+    }
+    throw new Error('openrouter exhausted');
+  }
+
+  try {
+    const winner = await Promise.any([callGroq(), callGemini(), callOpenRouter()]);
+    const { model, data } = winner;
+    if (!data?.competencies) {
+      return res.status(503).json({ error: "Resposta da IA inválida. Tente novamente." });
     }
 
-    const numSuccessful = successfulCorrections.length;
+    const finalCompetencies = (data.competencies || []).map((c: any) => ({
+      id: c.id,
+      name: c.name || `Competência ${c.id}`,
+      description: c.description || "",
+      score: Math.min(200, Math.max(0, c.score || 0)),
+      feedback: c.feedback || ""
+    }));
 
-    const finalCompetencies = [1, 2, 3, 4, 5].map(compId => {
-      let compSum = 0;
-      let scoreCount = 0;
-      const feedbacks: string[] = [];
-      let compName = "";
-      let compDesc = "";
+    const consolidatedScore = finalCompetencies.reduce((acc: number, curr: any) => acc + curr.score, 0);
 
-      successfulCorrections.forEach(suc => {
-        if (!suc?.data?.competencies) return;
-        const comp = suc.data.competencies.find((c: any) => c.id === compId) || suc.data.competencies[compId - 1];
-        if (comp) {
-          compName = comp.name || `Competência ${compId}`;
-          compDesc = comp.description || "";
-          
-          let scoreVal = typeof comp.score === 'number' ? comp.score : 0;
-          compSum += scoreVal;
-          scoreCount++;
-
-          const modelNameClean = (suc.model || '').split('/')[1] || suc.model;
-          if (comp.feedback) {
-            feedbacks.push(`🤖 **${modelNameClean}**: ${comp.feedback}`);
-          }
-        }
-      });
-
-      const rawAvg = scoreCount > 0 ? compSum / scoreCount : 120;
-      const roundedScore = Math.round(rawAvg / 40) * 40;
-
-      return {
-        id: compId,
-        name: compName || `Competência ${compId}`,
-        description: compDesc,
-        score: Math.min(200, Math.max(0, roundedScore)),
-        feedback: feedbacks.join("\n\n")
-      };
-    });
-
-    const consolidatedScore = finalCompetencies.reduce((acc, curr) => acc + curr.score, 0);
-
-    const modelBreakdown = successfulCorrections.map(suc => {
-      const mn = suc.model.split('/')[1] || suc.model;
-      const compAvg = (suc.data.competencies || []).filter(Boolean).reduce((s: number, c: any) => s + (c.score || 0), 0);
-      return `- **${mn}**: ${compAvg} pontos`;
-    }).join("\n");
-
-    const mergedGeneralFeedback = `### 🌟 Consenso Multi-IA (${numSuccessful} modelos)
-Sua nota foi construída de forma justa, matemática e transparente avaliando o texto simultaneamente em **${numSuccessful} modelos de Inteligência Artificial diferentes** através do OpenRouter.
-
-**Pontuações atribuídas por ferramenta individual:**
-${modelBreakdown}
-
----
-
-### 📝 Diagnóstico Coletivo e Recomendações:
-${successfulCorrections.map(suc => {
-  const mn = suc.model.split('/')[1] || suc.model;
-      return `##### Análise de ${mn}:
-${suc.data.generalFeedback || "Estudo estrutural adequado."}`;
-}).slice(0, 5).join("\n\n")}`;
-
-    const finalStrengths = Array.from(new Set(
-      successfulCorrections.flatMap(suc => suc.data.strengths || [])
-    )).filter(s => typeof s === 'string' && s.length > 5).slice(0, 3);
-
-    const finalWeaknesses = Array.from(new Set(
-      successfulCorrections.flatMap(suc => suc.data.weaknesses || [])
-    )).filter(w => typeof w === 'string' && w.length > 5).slice(0, 3);
-
-    const responsePayload = {
+    return res.json({
       score: consolidatedScore,
-      generalFeedback: mergedGeneralFeedback,
+      generalFeedback: data.generalFeedback || "Correção realizada com sucesso.",
       competencies: finalCompetencies,
-      strengths: finalStrengths.length > 0 ? finalStrengths : ["Boa argumentação estrutural global."],
-      weaknesses: finalWeaknesses.length > 0 ? finalWeaknesses : ["Ajustar conectores interparágrafos periféricos para maximizar nota."]
-    };
-
-    return res.json(responsePayload);
-  } catch (error: any) {
-    console.error("OpenRouter correction pipeline failure:", error);
-    res.status(500).json({ error: "Erro crítico na correção paralela das IAs. Tente novamente." });
+      strengths: (data.strengths || []).slice(0, 3),
+      weaknesses: (data.weaknesses || []).slice(0, 3),
+      _model: model
+    });
+  } catch (err) {
+    console.error('[correct] all models failed:', err);
+    return res.status(503).json({ error: "Serviço de correção por IA indisponível no momento. Tente novamente." });
   }
 });
 
