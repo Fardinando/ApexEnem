@@ -80,15 +80,6 @@ interface CategoryCard {
   borderColor: string;
 }
 
-interface PlaceholderQuestion {
-  id: string;
-  area: string;
-  statement: string;
-  options: { letter: string; text: string }[];
-  correctLetter: string;
-  explanation: string;
-}
-
 const CATEGORIES: CategoryCard[] = [
   {
     id: 'redacao',
@@ -193,365 +184,6 @@ function getWeakAreas(
   return weak;
 }
 
-function generatePlaceholderQuestions(
-  area: string,
-  count: number
-): PlaceholderQuestion[] {
-  const allQuestions: PlaceholderQuestion[] = [
-    {
-      id: 'p-mat-1',
-      area: 'Matemática',
-      statement:
-        'Qual é o resultado da equação 2x + 5 = 15? Qual é o valor de x?',
-      options: [
-        { letter: 'A', text: 'x = 5' },
-        { letter: 'B', text: 'x = 10' },
-        { letter: 'C', text: 'x = 3' },
-        { letter: 'D', text: 'x = 7' },
-        { letter: 'E', text: 'x = 2' },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'Isolando x: 2x = 15 - 5 = 10, logo x = 5. Equação linear simples!',
-    },
-    {
-      id: 'p-mat-2',
-      area: 'Matemática',
-      statement:
-        'Em uma progressão aritmética, o primeiro termo é 3 e a razão é 4. Qual é o 5º termo?',
-      options: [
-        { letter: 'A', text: '19' },
-        { letter: 'B', text: '23' },
-        { letter: 'C', text: '15' },
-        { letter: 'D', text: '27' },
-        { letter: 'E', text: '21' },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'O termo geral é a_n = a₁ + (n-1)r = 3 + 4×4 = 3 + 16 = 19.',
-    },
-    {
-      id: 'p-hum-1',
-      area: 'Humanas',
-      statement:
-        'A Proclamação da República no Brasil ocorreu em qual ano?',
-      options: [
-        { letter: 'A', text: '1889' },
-        { letter: 'B', text: '1822' },
-        { letter: 'C', text: '1500' },
-        { letter: 'D', text: '1930' },
-        { letter: 'E', text: '1888' },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'A Proclamação da República foi em 15 de novembro de 1889, liderada pelo Marechal Deodoro da Fonseca.',
-    },
-    {
-      id: 'p-hum-2',
-      area: 'Humanas',
-      statement:
-        'Qual é a principal característica do sistema econômico capitalista?',
-      options: [
-        {
-          letter: 'A',
-          text: 'Propriedade privada dos meios de produção',
-        },
-        { letter: 'B', text: 'Propriedade coletiva da terra' },
-        { letter: 'C', text: 'Alocação centralizada do governo' },
-        { letter: 'D', text: 'Troca por escambo' },
-        { letter: 'E', text: 'Produção artesanal' },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'No capitalismo, os meios de produção são de propriedade privada, regidos pela oferta e demanda.',
-    },
-    {
-      id: 'p-nat-1',
-      area: 'Natureza',
-      statement:
-        'Qual organela celular é responsável pela respiração celular?',
-      options: [
-        { letter: 'A', text: 'Mitocôndria' },
-        { letter: 'B', text: 'Ribossomo' },
-        { letter: 'C', text: 'Lisossomo' },
-        { letter: 'D', text: 'Complexo de Golgi' },
-        { letter: 'E', text: 'Retículo endoplasmático' },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'A mitocôndria é a "usina de energia" da célula, onde ocorre a fosforilação oxidativa e produção de ATP.',
-    },
-    {
-      id: 'p-nat-2',
-      area: 'Natureza',
-      statement:
-        'Na tabela periódica, qual elemento químico possui o símbolo "Fe"?',
-      options: [
-        { letter: 'A', text: 'Ferro' },
-        { letter: 'B', text: 'Flúor' },
-        { letter: 'C', text: 'Fósforo' },
-        { letter: 'D', text: 'Fermium' },
-        { letter: 'E', text: 'Francium' },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'Fe vem do latim "Ferrum". O ferro é essencial para a hemoglobina e transporte de oxigênio no sangue.',
-    },
-    {
-      id: 'p-ling-1',
-      area: 'Linguagens',
-      statement:
-        'Na frase "Os livros que comprei ontem são interessantes", qual é o sujeito?',
-      options: [
-        { letter: 'A', text: 'Os livros' },
-        { letter: 'B', text: 'Que comprei ontem' },
-        { letter: 'C', text: 'Eu' },
-        { letter: 'D', text: 'São interessantes' },
-        { letter: 'E', text: 'Ontem' },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'O sujeito da oração principal é "Os livros". "Que comprei ontem" é oração subordinada adjetiva restritiva.',
-    },
-    {
-      id: 'p-ling-2',
-      area: 'Linguagens',
-      statement:
-        'Em Machado de Assis, qual obra é considerada a obra-prima do realismo brasileiro?',
-      options: [
-        { letter: 'A', text: 'Dom Casmurro' },
-        { letter: 'B', text: 'Memórias Póstumas de Brás Cubas' },
-        { letter: 'C', text: 'O Alquimista' },
-        { letter: 'D', text: 'Quincas Borba' },
-        { letter: 'E', text: 'A Carta' },
-      ],
-      correctLetter: 'B',
-      explanation:
-        'Memórias Póstumas de Brás Cubas (1881) é considerado a obra-prima de Machado e marco do realismo brasileiro.',
-    },
-    {
-      id: 'p-red-1',
-      area: 'Redação',
-      statement:
-        'Qual é a primeira competência avaliada na redação do ENEM?',
-      options: [
-        {
-          letter: 'A',
-          text: 'Demonstrar domínio da norma culta da língua portuguesa',
-        },
-        {
-          letter: 'B',
-          text: 'Compreender a proposta e aplicar conceitos de várias áreas',
-        },
-        {
-          letter: 'C',
-          text: 'Selecionar, relacionar, organizar e interpretar informações',
-        },
-        {
-          letter: 'D',
-          text: 'Demonstrar conhecimento dos mecanismos linguísticos de argumentação',
-        },
-        {
-          letter: 'E',
-          text: 'Elaborar proposta de intervenção detalhada',
-        },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'A Competência 1 do ENEM avalia o domínio da norma culta, incluindo gramática, ortografia e coesão.',
-    },
-    {
-      id: 'p-red-2',
-      area: 'Redação',
-      statement:
-        'Uma boa redação nota 1000 no ENEM deve ter no mínimo:',
-      options: [
-        {
-          letter: 'A',
-          text: '30 linhas escritas com texto dissertativo-argumentativo',
-        },
-        { letter: 'B', text: '10 linhas com texto narrativo' },
-        {
-          letter: 'C',
-          text: '5 linhas com uma lista de argumentos',
-        },
-        { letter: 'D', text: 'Apenas a proposta de intervenção' },
-        {
-          letter: 'E',
-          text: 'Não existe mínimo de linhas',
-        },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'O ENEM exige no mínimo 30 linhas de texto dissertativo-argumentativo com proposta de intervenção.',
-    },
-    {
-      id: 'p-rec-1',
-      area: 'Recomendado',
-      statement:
-        'Em estatística, qual medida de tendência central é mais afetada por valores extremos?',
-      options: [
-        { letter: 'A', text: 'Média aritmética' },
-        { letter: 'B', text: 'Mediana' },
-        { letter: 'C', text: 'Moda' },
-        { letter: 'D', text: 'Variância' },
-        { letter: 'E', text: 'Desvio padrão' },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'A média aritmética é sensível a outliers (valores extremos), enquanto a mediana é mais robusta.',
-    },
-    {
-      id: 'p-rec-2',
-      area: 'Recomendado',
-      statement:
-        'Qual é a principal função da literatura de acordo com o ENEM?',
-      options: [
-        {
-          letter: 'A',
-          text: 'Refletir sobre a condição humana e a sociedade',
-        },
-        { letter: 'B', text: 'Apenas entreter o leitor' },
-        { letter: 'C', text: 'Descrever fatos históricos' },
-        {
-          letter: 'D',
-          text: 'Ensinhar regras gramaticais',
-        },
-        {
-          letter: 'E',
-          text: 'Promover um único ponto de vista',
-        },
-      ],
-      correctLetter: 'A',
-      explanation:
-        'A literatura no ENEM é vista como ferramenta de reflexão crítica sobre a humanidade e seus contextos sociais.',
-    },
-  ];
-
-  const filtered =
-    area === 'Recomendado'
-      ? allQuestions
-      : allQuestions.filter(q => q.area === area);
-
-  const pool = filtered.length > 0 ? filtered : allQuestions;
-  const shuffled = [...pool].sort(() => Math.random() - 0.5);
-  return shuffled.slice(0, Math.min(count, shuffled.length));
-}
-
-interface AiLessonContent {
-  title: string;
-  subtitle: string;
-  content: string[];
-  tips: string[];
-}
-
-function getFallbackLesson(area: string): AiLessonContent {
-  const fallbacks: Record<string, AiLessonContent> = {
-    Redação: {
-      title: 'Redação Nota 1000',
-      subtitle: 'Estratégias que garantem pontuação máxima',
-      content: [
-        'A redação do ENEM é avaliada em 5 competências, cada uma valendo até 200 pontos. Dominar cada uma é essencial para atingir a nota 1000.',
-        'Competência 1: Domínio da norma culta. Isso significa escrever com gramática impecável, usar coesão correta e evitar erros grosseiros de português.',
-        'Competência 2: Compreensão da proposta. Leia atentamente o texto motivador e aplique conceitos de várias áreas do conhecimento ao seu argumento.',
-        'Competência 3: Seleção de informações. Organize seus argumentos de forma lógica e relevante, sempre conectando com o tema proposto.',
-        'Competência 4: Mecanismos linguísticos. Use conectivos variados e organize seus parágrafos com clareza e coerência.',
-        'Competência 5: Proposta de intervenção detalhada. Quem faz, o quê, como, onde e quando — tudo deve estar claro e ser viável.'
-      ],
-      tips: [
-        'Comece com uma contextualização que use repertório legitimo (filosofia, história, sociologia).',
-        'Desenvolva pelo menos 2 argumentos consistentes em parágrafos separados.',
-        'Sempre inclua a proposta de intervenção detalhada com os 5 elementos obrigatórios.'
-      ]
-    },
-    Linguagens: {
-      title: 'Linguagens e Códigos',
-      subtitle: 'Interpretação, literatura e gramática no ENEM',
-      content: [
-        'A prova de Linguagens abrange Português, Literatura, Língua Estrangeira, Artes e Educação Física. É a área que mais exige interpretação profunda.',
-        'Na interpretação textual, identifique o tema central, os argumentos do autor e a intencionalidade comunicativa. O ENEM cobra leitura crítica, não decoreba.',
-        'Na gramática contextualizada, foque em concordância verbal e nominal, regência, crase e pontuação. Cada questão traz um texto real como base.',
-        'A literatura brasileira cai todos os anos: Modernismo, Realismo, Naturalismo e movimentos contemporâneos. Conheça os principais autores e suas obras.',
-        'Para Língua Estrangeira, pratique com textos autênticos. O nível é intermediário — foque em vocabulário temático e estruturas gramaticais essenciais.',
-        'Artes e Educação Física são interdisciplinares. Relacione expressões artísticas e práticas esportivas com aspectos sociais e culturais.'
-      ],
-      tips: [
-        'Pratique interpretação de textos variados: crônicas, poemas, charges, textos argumentativos.',
-        'Revise concordância verbal com sujeito composto e orações impessoais.',
-        'Estude os movimentos literários com foco no que mais cai: Modernismo de 22 e Generação de 30.'
-      ]
-    },
-    Humanas: {
-      title: 'Ciências Humanas',
-      subtitle: 'História, Geografia, Filosofia e Sociologia aplicadas',
-      content: [
-        'As Ciências Humanas do ENEM misturam História, Geografia, Filosofia e Sociologia em uma única prova interdisciplinar.',
-        'Na História do Brasil, foque em: Colônia (escravidão e ciclo do açúcar), Independência, República Velha, Era Vargas e Redemocratização.',
-        'Geografia cobra muito leitura de mapas, gráficos e dados. Domine urbanização, globalização, geopolítica e questões ambientais como mudanças climáticas.',
-        'Filosofia aparece com pensadores clássicos: Sócrates, Platão, Aristóteles, Marx, Kant e os existencialistas. Entenda suas ideias centrais.',
-        'Sociologia foca em classes sociais, movimentos sociais, educação e trabalho. Relacione com a realidade brasileira contemporânea.',
-        'O segredo é conectar conteúdo histórico com a realidade atual — o ENEM adora questões que pedem essa relação.'
-      ],
-      tips: [
-        'Associe cada evento histórico às suas causas e consequências em cadeia.',
-        'Pratique a leitura de mapas temáticos, gráficos e infográficos.',
-        'Para Filosofia, memorize apenas a ideia central de cada filósofo, não tentdecorar biografias.'
-      ]
-    },
-    Natureza: {
-      title: 'Ciências da Natureza',
-      subtitle: 'Biologia, Química e Física para o ENEM',
-      content: [
-        'A prova de Natureza reúne Biologia, Química e Física. As questões são interdisciplinares e exigem raciocínio lógico aplicado.',
-        'Em Biologia, foque em genética (leis de Mendel, heredogramas), ecologia (cadeias alimentares, bioacumulação) e biotecnologia.',
-        'A Química do ENEM cobra estequiometria, ligações químicas, orgânica e eletroquímica. Saiba aplicar conceitos em situações do dia a dia.',
-        'Na Física, domine cinemática, dinâmica, óptica e circuitos elétricos. O ENEM adora questões com contexto de tecnologia e engenharia.',
-        'Questões de laboratório e métodos científicos aparecem todos os anos. Entenda hipótese, tese, variáveis e análise de dados.',
-        'A interdisciplinaridade é a chave: uma mesma questão pode envolver conceitos de biologia e química ao mesmo tempo.'
-      ],
-      tips: [
-        'Resolva muitos exercícios com dados e gráficos — é assim que o ENEM cobraNatureza.',
-        'Monte um caderno de fórmulas organizado por disciplina e revise semanalmente.',
-        'Estude os ciclos biogeoquímicos e a relação entre poluição e impactos ambientais.'
-      ]
-    },
-    Matemática: {
-      title: 'Matemática',
-      subtitle: 'Domine os tópicos que mais caem no ENEM',
-      content: [
-        'A Matemática do ENEM é puro raciocínio lógico aplicado a situações cotidianas. Não basta decorar fórmulas — é preciso saber quando e como usá-las.',
-        'Funções são o coração da prova: linear, quadrática, exponencial e logarítmica. Entenda como interpretar gráficos e identificar comportamentos.',
-        'Análise combinatória cai todo ano: permutação, arranjo e combinação. Domine as fórmulas e saiba identificar quando cada uma se aplica.',
-        'Estatística e Probabilidade aparecem com frequência: média, mediana, moda, desvio padrão, probabilidade simples e composta.',
-        'Geometria analítica e trigonometria resolvem problemas de áreas, distâncias e ângulos. Saiba aplicar no plano cartesiano.',
-        'Regra de três composta e progressões aritméticas e geométricas são clássicos — domine os conceitos e resolva questões rápidas.'
-      ],
-      tips: [
-        'Resolva provas anteriores com cronômetro — a tempo é crucial na Matemática.',
-        'Aprenda a interpretar gráficos e tabelas rapidamente, identificando padrões.',
-        'Use a técnica de eliminação nas alternativas quando não souber resolver diretamente.'
-      ]
-    },
-    Recomendado: {
-      title: 'Revisão Personalizada',
-      subtitle: 'Plano focado nos seus pontos fracos',
-      content: [
-        'Analisamos seus erros e pontos fracos para criar um plano de estudo personalizado focado onde mais precisa.',
-        'A repetição espaçada é o método mais eficiente para fixar conteúdo: revise o mesmo tema em intervalos crescentes de tempo.',
-        'Foque nos temas onde mais errou — identificar padrões de erro é mais eficiente que estudar tudo igualmente.',
-        'Pratique diariamente, mesmo que por apenas 15 minutos. A consistência supera maratonas de estudo ocasionais.',
-        'Use mapas mentais e resumos visuais para conectar conceitos e facilitar a memorização de longo prazo.'
-      ],
-      tips: [
-        'Não pule etapas — volte aos fundamentos se sentir dificuldade em tópicos avançados.',
-        'Grupos de estudo ajudam a fixar conceitos através da explicação para colegas.',
-        'Revise seus erros de simulados anteriores antes de fazer novos — é onde está seu maior ganho.'
-      ]
-    }
-  };
-  return fallbacks[area] || fallbacks['Recomendado'];
-}
-
 function AdGateVideo() {
   const containerRef = React.useRef<HTMLDivElement>(null);
   const loadedRef = React.useRef(false);
@@ -583,12 +215,10 @@ export default function AprendizadoView({
     null
   );
   const [lessonStep, setLessonStep] = useState(0);
-  const [aiLesson, setAiLesson] = useState<AiLessonContent | null>(null);
   const [loadingLesson, setLoadingLesson] = useState(false);
   const [lessonTopicIndex, setLessonTopicIndex] = useState(0);
 
   const [questoesArea, setQuestoesArea] = useState<string>('');
-  const [questoesList, setQuestoesList] = useState<PlaceholderQuestion[]>([]);
   const [questaoIdx, setQuestaoIdx] = useState(0);
   const [selectedLetter, setSelectedLetter] = useState<string | null>(null);
   const [hasChecked, setHasChecked] = useState(false);
@@ -707,86 +337,45 @@ export default function AprendizadoView({
     }
   };
 
-  const generateFallbackLesson = (area: string, topicIdx: number) => {
-    const stories = [
-      `Em 2024, um estudo da USP mostrou que estudantes que praticam ${area} com questões contextualizadas aumentam em 40% a taxa de acerto no ENEM. A pesquisa analisou 2.000 alunos de 5 estados brasileiros e revelou que o segredo não está em decorar fórmulas, mas em CONectar os conceitos com situações reais do cotidiano. O ${area} no ENEM aparece ligado a temas como sustentabilidade, tecnologia e cidadania — habilidades que exigem raciocínio além da memorização.`,
-      `Durante o ENEM 2023, a banca do INEP surpreendeu muitos candidatos com questões de ${area} que misturavam dados de um relatório do IBGE sobre desigualdade regional. A questão pedia interpretação de um gráfico combinado com raciocínio quantitativo. 70% dos alunos erraram porque não souberam ler o gráfico corretamente. A lição: em ${area}, a habilidade de INTERPRETAR DADOS é tão importante quanto o conhecimento técnico.`
-    ];
-    const explanations = [
-      `**Conceitos essenciais de ${area} para o ENEM:**\n\n• **Habilidade 1:** Interpretação de dados quantitativos — aparece em pelo menos 30% das questões da área\n• **Habilidade 2:** Relação entre variáveis — o ENEM adora pedir correlação entre grandezas\n• **Habilidade 3:** Aplicação a contextos sociais — temas transversais (sustentabilidade, cidadania, saúde pública)\n\n**Pegadinha comum:** Muitos alunos confundem correlação com causalidade. Só porque duas variáveis mudam juntas, isso NÃO significa que uma causa a outra.\n\n**Dica do Cabrito:** Não decore — entenda o CONCEITO por trás. O ENEM cobra aplicação, não memorização.\n\n**Resumo Rápido:** 1) Leia o enunciado inteiro antes de olhar alternativas. 2) Identifique O QUE a questão pede (interpretar? calcular? comparar?). 3) Elimine alternativas absurdas primeiro.`,
-      `**Aprofundando em ${area} para o ENEM:**\n\n• **Ponto-chave 1:** Questões de ${area} exigem interpretação de tabelas, gráficos e textos informativos\n• **Ponto-chave 2:** O ENEM não pergunta "o que é X" — ele dá um CONTEXTO complexo e pede pra VOCÊ aplicar X\n• **Ponto-chave 3:** Pegadinhas clássicas incluem alternativas com unidades ou escalas diferentes\n\n**Exemplo resolvido:** Se um gráfico mostra crescimento de 3% ao ano por 5 anos, o crescimento total NÃO é 15% (soma simples), mas ~16,16% (crescimento composto: 1,03^5 ≈ 1,1616). Isso cai todo ano no ENEM!\n\n**Regra de ouro:** LEIA O ENUNCIADO INTEIRO antes de olhar as alternativas. 70% dos erros são por pressa na leitura.\n\n**Resumo Rápido:** 1) Contextualize o tema. 2) Identifique o tipo de raciocínio pedido. 3) Verifique unidades e escalas.`
-    ];
-    const challenges = [
-      {
-        content: `Um pesquisador da UNICAMP coletou dados de temperatura média mensal de uma cidade durante 12 meses. Ele observou que a temperatura máxima ocorreu em fevereiro (32°C) e a mínima em julho (14°C). Se ele traçar uma curva senoidal ajustada aos dados, qual seria a temperatura média anual estimada e a amplitude da variação?`,
-        options: ['Média 23°C, amplitude 18°C', 'Média 23°C, amplitude 9°C', 'Média 32°C, amplitude 18°C', 'Média 14°C, amplitude 32°C'],
-        correctIndex: 0,
-        explanation: `A temperatura média anual é o ponto central da oscilação senoidal: (32 + 14) / 2 = 23°C. A amplitude total é a diferença entre máximo e mínimo: 32 - 14 = 18°C. A alternativa A está correta. Muitos erram escolhendo B confundindo amplitude total com semi-amplitude (que seria 9°C, metade da oscilação).`
-      },
-      {
-        content: `Em um experimento de biologia, pesquisadores mediram o crescimento de bactérias em 3 meios diferentes. No meio A, a população dobrou a cada hora. No meio B, cresceu 50% por hora. No meio C, cresceu linearmente 1000 bactérias por hora. Se todos começaram com 500 bactérias, qual meio apresentará MAIOR população exatamente após 5 horas?`,
-        options: ['Meio A (crescimento exponencial)', 'Meio B (crescimento geométrico)', 'Meio C (crescimento linear)', 'Meios A e B empatarem'],
-        correctIndex: 0,
-        explanation: `Após 5 horas: Meio A = 500 × 2^5 = 16.000 bactérias. Meio B = 500 × (1,5)^5 ≈ 3.844 bactérias. Meio C = 500 + (1000 × 5) = 5.500 bactérias. O meio A vence claramente. A confusão com B acontece porque 50% parece muito, mas exponencial base 2 sempre supera 1,5^n em tempo suficiente.`
-      }
-    ];
-    const idx = topicIdx % stories.length;
-    return {
-      title: `${area} para o ENEM`,
-      subtitle: `Subtema ${topicIdx + 1} — Conceitos essenciais e práticos`,
-      cycles: [
-        { type: 'story' as const, cabritoSpeech: 'Olha só essa história interessante!', content: stories[idx] },
-        { type: 'explanation' as const, cabritoSpeech: 'Agora vamos entender a teoria!', content: explanations[idx] },
-        { type: 'interactive' as const, cabritoSpeech: 'Testa seus conhecimentos!', content: `Em uma pesquisa sobre o impacto ambiental, observou-se que a poluição dobrou a cada 5 anos. Se em 2010 a poluição era de 20 unidades, qual era o valor em 2020?`, options: ['40 unidades', '60 unidades', '80 unidades', '160 unidades'], correctIndex: 2, explanation: 'De 2010 a 2020 são 10 anos = 2 períodos de 5 anos. A poluição dobra a cada período: 20 → 40 → 80. A alternativa C está correta.' },
-        { type: 'challenge' as const, cabritoSpeech: 'Agora ficou sério!', ...challenges[idx] },
-        { type: 'story' as const, cabritoSpeech: 'Segundo tema, vamos lá!', content: `Durante o ENEM 2023, questões de ${area} apareceram ligadas a dados reais do IBGE e do SUS. O exame cada vez mais mistura interpretação de dados com conceitos da matéria. Saber ler um gráfico, identificar tendências e conectar com a teoria é essencial para acertar essas questões.` },
-        { type: 'explanation' as const, cabritoSpeech: 'Consolidando o aprendizado!', content: `**Pontos-chave de ${area} para revisar:**\n\n• Sempre identifique o TIPO de habilidade que a questão pede (interpretar, calcular, comparar, inferir)\n• Gráficos e tabelas são sua AMIGA — aprenda a ler tendências, não apenas valores pontuais\n• Questões de ${area} no ENEM valorizam o raciocínio sobre o resultado final\n• Erro clássico: confundir correlação com causalidade\n\n**Resumo:** 1) Contextualize. 2) Identifique o que se pede. 3) Verifique unidades. 4) Elimine o absurdo.` },
-        { type: 'interactive' as const, cabritoSpeech: 'Mais uma pra treinar!', content: `Uma cidade planeja reduzir o consumo de água em 20% em 3 anos. No primeiro ano, conseguiu reduzir 5%. Para atingir a meta total, qual seria a redução necessária nos dois anos seguintes?`, options: ['Reduzir 15% ao ano', 'Reduzir 8% ao ano', 'Reduzir cerca de 7,8% ao ano', 'Reduzir 10% ao ano'], correctIndex: 2, explanation: 'Meta: 20% em 3 anos = fator 0,80. Após 1 ano: fator 0,95. Falta: 0,80/0,95 ≈ 0,842 por ano = ~7,8% ao ano.' },
-        { type: 'challenge' as const, cabritoSpeech: 'Último desafio!', content: `Pesquisadores compararam dois medicamentos. O medicamento A reduziu em média 12 mmHg com desvio padrão de 3 mmHg. O B reduziu 10 mmHg com desvio de 5 mmHg. Qual afirmação é estatisticamente mais correta?`, options: ['O A é sempre melhor que o B', 'O A tem resultado mais consistente e maior efeito médio', 'O B é melhor porque tem mais variabilidade', 'Não dá pra comparar sem teste estatístico'], correctIndex: 1, explanation: 'O A tem maior efeito médio (12 > 10) E menor variabilidade (desvio 3 < 5), indicando resultado mais consistente e previsível.' },
-      ]
-    };
-  };
+  const [lessonError, setLessonError] = useState(false);
+  const [questoesError, setQuestoesError] = useState(false);
 
   const fetchLessonCycle = async (cat: CategoryCard, topicIdx: number) => {
-    setAiLessonCycle(generateFallbackLesson(cat.area, topicIdx));
-    setLoadingLesson(false);
+    setLoadingLesson(true);
+    setAiLessonCycle(null);
+    setLessonError(false);
     try {
       const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 9000);
       const resp = await fetch('/api/lesson-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ area: cat.area, level: 5, weakTopics: wrongSubjects, topicIndex: topicIdx }),
-        signal: ctrl.signal,
       });
-      clearTimeout(tid);
       const text = await resp.text();
-      if (!resp.ok || !text) return;
+      if (!resp.ok || !text) { setLessonError(true); setLoadingLesson(false); return; }
       try {
         const data = JSON.parse(text);
         if (data && data.title && Array.isArray(data.cycles) && data.cycles.length >= 4) {
           setAiLessonCycle(data);
-        }
-      } catch {}
-    } catch {}
+        } else { setLessonError(true); }
+      } catch { setLessonError(true); }
+    } catch { setLessonError(true); }
+    setLoadingLesson(false);
   };
 
   const fetchQuestoesAI = async (area: string) => {
-    setLoadingQuestions(false);
+    setLoadingQuestions(true);
+    setAiQuestoes([]);
+    setQuestoesError(false);
     try {
       const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 8000);
       const resp = await fetch('/api/questoes-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ area, count: 3, weakTopics: wrongSubjects }),
-        signal: ctrl.signal,
       });
-      clearTimeout(tid);
       const text = await resp.text();
-      if (!resp.ok || !text) { setAiQuestoes([]); return; }
+      if (!resp.ok || !text) { setQuestoesError(true); setLoadingQuestions(false); return; }
       try {
         const data = JSON.parse(text);
         if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
@@ -795,9 +384,10 @@ export default function AprendizadoView({
             options: q.options || [], correctAnswer: q.correctAnswer || 'A',
             explanation: q.explanation || '', topic: q.topic || '',
           })));
-        } else { setAiQuestoes([]); }
-      } catch { setAiQuestoes([]); }
-    } catch { setAiQuestoes([]); }
+        } else { setQuestoesError(true); }
+      } catch { setQuestoesError(true); }
+    } catch { setQuestoesError(true); }
+    setLoadingQuestions(false);
   };
 
   const adGateContinueRef = React.useRef<() => void>(() => {});
@@ -874,7 +464,7 @@ export default function AprendizadoView({
 
   const handleQuestaoCheck = () => {
     if (!selectedLetter || hasChecked) return;
-    const activeList = aiQuestoes.length > 0 ? aiQuestoes : questoesList;
+    const activeList = aiQuestoes;
     const currentQ: any = activeList[questaoIdx];
     if (!currentQ) return;
     const correctLetter = currentQ.correctAnswer || currentQ.correctLetter;
@@ -892,7 +482,7 @@ export default function AprendizadoView({
   };
 
   const handleQuestaoContinue = () => {
-    const activeList = aiQuestoes.length > 0 ? aiQuestoes : questoesList;
+    const activeList = aiQuestoes;
     if (questaoHearts <= 0 || questaoIdx + 1 >= activeList.length) {
       setQuestaoCompleted(true);
       const bonus = questaoCorrectCount >= activeList.length * 0.7 ? 15 : 0;
@@ -914,24 +504,14 @@ export default function AprendizadoView({
     setQuestoesArea('');
     setLessonActive(false);
     setActiveChapter(null);
-    setAiLesson(null);
     setAiLessonCycle(null);
     setAiQuestoes([]);
     setLoadingLesson(false);
   };
 
-  const getLessonContent = (): AiLessonContent | null => {
-    if (!activeCategory) return null;
-    if (aiLesson) return aiLesson;
-    return getFallbackLesson(activeCategory.area);
-  };
-
-  const lessonContent = getLessonContent();
   const totalLessonSteps = aiLessonCycle
     ? aiLessonCycle.cycles.length
-    : lessonContent
-      ? lessonContent.content.length + lessonContent.tips.length
-      : 0;
+    : 0;
 
   const renderCursinhoTab = () => {
     if (viewMode === 'lesson' && activeCategory && loadingLesson) {
@@ -960,6 +540,44 @@ export default function AprendizadoView({
                 style={{ animationDelay: `${i * 0.15}s` }}
               />
             ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (viewMode === 'lesson' && activeCategory && lessonError) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+          <div className="relative">
+            <span className="text-7xl">🐐</span>
+            <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full border border-white">
+              ✕
+            </div>
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
+              A IA não conseguiu gerar a aula
+            </h3>
+            <p className="text-xs text-slate-400 max-w-xs">
+              O serviço de IA pode estar sobrecarregado. Tente novamente em alguns segundos.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 w-full max-w-xs">
+            <button
+              type="button"
+              onClick={() => fetchLessonCycle(activeCategory!, lessonTopicIndex)}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Tentar Novamente</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleBackToCategories}
+              className="w-full py-3 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+            >
+              Voltar ao Menu
+            </button>
           </div>
         </div>
       );
@@ -1154,79 +772,6 @@ export default function AprendizadoView({
         );
       }
 
-      if (lessonContent) {
-        const cabritoSpeeches = ['Vamos lá! Eu, o Cabrito, vou te ensinar o essencial! 🐐', 'Preste atenção nestas dicas valiosas!', 'Quase lá! Você está ficando mais forte!', 'Continue! O conhecimento é o melhor caminho!', 'Essa é uma parte crucial — anote! 📝', 'Você está indo muito bem! Continue assim!'];
-        const speechIdx = Math.min(lessonStep, cabritoSpeeches.length - 1);
-
-        if (lessonStep < lessonContent.content.length) {
-          return (
-            <div className="space-y-6 animate-fade-in">
-              <div className="flex items-center justify-between">
-                <button type="button" onClick={handleBackToCategories} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
-                <div className="flex items-center gap-2">
-                  <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${((lessonStep + 1) / totalLessonSteps) * 100}%` }} /></div>
-                  <span className="text-[10px] font-mono text-slate-400">{lessonStep + 1}/{totalLessonSteps}</span>
-                </div>
-              </div>
-              <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-6">
-                <div className="flex items-center gap-4">
-                  <div className="relative animate-bounce"><span className="text-5xl">🐐</span><div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[8px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">IA</div></div>
-                  <div className="bg-blue-50 dark:bg-[#0f172a] p-4 rounded-2xl border border-blue-200/50 dark:border-slate-800 relative text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
-                    <div className="absolute -left-2 top-4 w-4 h-4 bg-blue-50 dark:bg-[#0f172a] border-t border-l border-blue-200/50 dark:border-slate-800 rotate-45" />
-                    <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Cabrito do Mil:</p><p>{cabritoSpeeches[speechIdx]}</p>
-                  </div>
-                </div>
-                <div className={`p-4 rounded-2xl border ${activeCategory.bgColor} ${activeCategory.darkBgColor} ${activeCategory.borderColor}`}>
-                  <div className="flex items-center gap-2 mb-3"><span className={activeCategory.color}>{activeCategory.icon}</span><div><h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">{lessonContent.title}</h3>{lessonContent.subtitle && <p className="text-[10px] text-slate-400 font-medium mt-0.5">{lessonContent.subtitle}</p>}</div></div>
-                  <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{lessonContent.content[lessonStep]}</p>
-                </div>
-                <div className="flex justify-end gap-2">
-                  <button type="button" onClick={handleBackToCategories} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">Sair</button>
-                  <button type="button" onClick={() => setLessonStep(prev => prev + 1)} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"><span>Próximo</span><ArrowRight className="h-4 w-4" /></button>
-                </div>
-              </div>
-            </div>
-          );
-        }
-
-        const tipIdx = lessonStep - lessonContent.content.length;
-        const tip = lessonContent.tips[tipIdx];
-        return (
-          <div className="space-y-6 animate-fade-in">
-            <div className="flex items-center justify-between">
-              <button type="button" onClick={handleBackToCategories} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
-              <div className="flex items-center gap-2">
-                <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden"><div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${((lessonStep + 1) / totalLessonSteps) * 100}%` }} /></div>
-                <span className="text-[10px] font-mono text-slate-400">{lessonStep + 1}/{totalLessonSteps}</span>
-              </div>
-            </div>
-            <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="relative animate-bounce"><span className="text-5xl">🐐</span><div className="absolute -top-1 -right-1 h-4 w-4 bg-blue-500 text-white text-[8px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">IA</div></div>
-                <div className="bg-blue-50 dark:bg-[#0f172a] p-4 rounded-2xl border border-blue-200/50 dark:border-slate-800 relative text-sm text-slate-700 dark:text-slate-300 leading-relaxed flex-1">
-                  <div className="absolute -left-2 top-4 w-4 h-4 bg-blue-50 dark:bg-[#0f172a] border-t border-l border-blue-200/50 dark:border-slate-800 rotate-45" />
-                  <p className="font-semibold text-blue-600 dark:text-blue-400 mb-1">Cabrito do Mil:</p><p>Última parte! Essas dicas são ouro para o ENEM!</p>
-                </div>
-              </div>
-              <div className="p-4 rounded-2xl bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800/40">
-                <div className="flex items-center gap-2 mb-3"><Sparkles className="h-5 w-5 text-amber-500" /><h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">Dica #{tipIdx + 1}</h3></div>
-                <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{tip}</p>
-              </div>
-              <div className="flex justify-end gap-2">
-                <button type="button" onClick={handleBackToCategories} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">Sair</button>
-                {tipIdx < lessonContent.tips.length - 1 ? (
-                  <button type="button" onClick={() => setLessonStep(prev => prev + 1)} className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"><span>Próximo</span><ArrowRight className="h-4 w-4" /></button>
-                ) : (
-                  <div className="flex gap-2">
-                    <button type="button" onClick={handleBackToCategories} className="px-4 py-2 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold cursor-pointer transition">Menu</button>
-                    <button type="button" onClick={() => { const nextIdx = lessonTopicIndex + 1; setLessonTopicIndex(nextIdx); setLessonStep(0); fetchLessonCycle(activeCategory, nextIdx); }} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"><Sparkles className="h-4 w-4" /><span>Próxima Aula</span></button>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        );
-      }
     }
 
     return (
@@ -1321,7 +866,39 @@ export default function AprendizadoView({
           </div>
         );
       }
-      const activeQListForStats = aiQuestoes.length > 0 ? aiQuestoes : questoesList;
+
+      if (questoesError) {
+        return (
+          <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+            <div className="relative">
+              <span className="text-7xl">🐐</span>
+              <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full border border-white">✕</div>
+            </div>
+            <div className="text-center space-y-2">
+              <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">A IA não conseguiu gerar questões</h3>
+              <p className="text-xs text-slate-400 max-w-xs">O serviço de IA pode estar sobrecarregado. Tente novamente em alguns segundos.</p>
+            </div>
+            <div className="flex flex-col gap-2 w-full max-w-xs">
+              <button
+                type="button"
+                onClick={() => fetchQuestoesAI(questoesArea)}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <RefreshCw className="h-4 w-4" />
+                <span>Tentar Novamente</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleBackToCategories}
+                className="w-full py-3 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Voltar ao Menu
+              </button>
+            </div>
+          </div>
+        );
+      }
+      const activeQListForStats = aiQuestoes;
       if (questaoCompleted) {
         const passed =
           questaoCorrectCount >= activeQListForStats.length * 0.7;
@@ -1418,9 +995,9 @@ export default function AprendizadoView({
         );
       }
 
-      const activeQList = aiQuestoes.length > 0 ? aiQuestoes : questoesList;
+      const activeQList = aiQuestoes;
       const q = activeQList[questaoIdx];
-      if (!q) return null;
+      if (!q || activeQList.length === 0) return null;
 
       const qAny = q as any;
       const qTopic = qAny.topic || '';
