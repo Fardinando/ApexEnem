@@ -5,6 +5,12 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 10
+    },
+    "api/lesson-v2.ts": {
+      "maxDuration": 10
+    },
+    "api/questoes-ai.ts": {
+      "maxDuration": 10
     }
   },
   "rewrites": [

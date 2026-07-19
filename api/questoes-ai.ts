@@ -74,7 +74,7 @@ async function openrouterCall(key: string, systemPrompt: string, userPrompt: str
 }
 
 async function tryOpenRouter(systemPrompt: string, userPrompt: string, maxTokens: number, timeoutMs: number): Promise<string | null> {
-  for (let i = 0; i < OPENROUTER_KEYS.length; i++) {
+  for (let i = 0; i < Math.min(OPENROUTER_KEYS.length, 2); i++) {
     const key = nextOrKey();
     const r = await openrouterCall(key, systemPrompt, userPrompt, maxTokens, timeoutMs);
     if (r) return r;
@@ -116,13 +116,13 @@ Retorne APENAS o JSON.`;
     const userPrompt = `Gere ${count || 3} questões estilo ENEM para "${area}". Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const text = await geminiCall(fullPrompt, 2048, 7000);
+    const text = await geminiCall(fullPrompt, 2048, 5000);
     if (text) {
       const questions = parseQuestoesJson(text);
       if (questions && questions.length > 0) return res.json({ questions });
     }
 
-    const orText = await tryOpenRouter(systemPrompt, userPrompt, 2048, 7000);
+    const orText = await tryOpenRouter(systemPrompt, userPrompt, 2048, 3000);
     if (orText) {
       const questions = parseQuestoesJson(orText);
       if (questions && questions.length > 0) return res.json({ questions });

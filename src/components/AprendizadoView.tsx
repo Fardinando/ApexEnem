@@ -342,7 +342,7 @@ export default function AprendizadoView({
   const [lessonError, setLessonError] = useState(false);
   const [questoesError, setQuestoesError] = useState(false);
 
-  const fetchLessonCycle = async (cat: CategoryCard, topicIdx: number) => {
+  const fetchLessonCycle = async (cat: CategoryCard, topicIdx: number, retry = 0) => {
     setLoadingLesson(true);
     setAiLessonCycle(null);
     setLessonError(false);
@@ -353,20 +353,39 @@ export default function AprendizadoView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ area: cat.area, level: 5, weakTopics: wrongSubjects, topicIndex: topicIdx }),
       });
-      if (!resp.ok) { setLessonError(true); setLoadingLesson(false); return; }
+      if (!resp.ok) {
+        if (retry < 2) {
+          await new Promise(r => setTimeout(r, 2000));
+          setLoadingLesson(false);
+          return fetchLessonCycle(cat, topicIdx, retry + 1);
+        }
+        setLessonError(true);
+        setLoadingLesson(false);
+        return;
+      }
       const data = await resp.json();
       if (data && data.title && Array.isArray(data.cycles) && data.cycles.length >= 4) {
         setAiLessonCycle(data);
       } else {
+        if (retry < 2) {
+          await new Promise(r => setTimeout(r, 2000));
+          setLoadingLesson(false);
+          return fetchLessonCycle(cat, topicIdx, retry + 1);
+        }
         setLessonError(true);
       }
     } catch {
+      if (retry < 2) {
+        await new Promise(r => setTimeout(r, 2000));
+        setLoadingLesson(false);
+        return fetchLessonCycle(cat, topicIdx, retry + 1);
+      }
       setLessonError(true);
     }
     setLoadingLesson(false);
   };
 
-  const fetchQuestoesAI = async (area: string) => {
+  const fetchQuestoesAI = async (area: string, retry = 0) => {
     setLoadingQuestions(true);
     setAiQuestoes([]);
     setQuestoesError(false);
@@ -377,7 +396,16 @@ export default function AprendizadoView({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ area, count: 3, weakTopics: wrongSubjects }),
       });
-      if (!resp.ok) { setQuestoesError(true); setLoadingQuestions(false); return; }
+      if (!resp.ok) {
+        if (retry < 2) {
+          await new Promise(r => setTimeout(r, 2000));
+          setLoadingQuestions(false);
+          return fetchQuestoesAI(area, retry + 1);
+        }
+        setQuestoesError(true);
+        setLoadingQuestions(false);
+        return;
+      }
       const data = await resp.json();
       if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
         setAiQuestoes(data.questions.map((q: any, i: number) => ({
@@ -386,9 +414,19 @@ export default function AprendizadoView({
           explanation: q.explanation || '', topic: q.topic || '',
         })));
       } else {
+        if (retry < 2) {
+          await new Promise(r => setTimeout(r, 2000));
+          setLoadingQuestions(false);
+          return fetchQuestoesAI(area, retry + 1);
+        }
         setQuestoesError(true);
       }
     } catch {
+      if (retry < 2) {
+        await new Promise(r => setTimeout(r, 2000));
+        setLoadingQuestions(false);
+        return fetchQuestoesAI(area, retry + 1);
+      }
       setQuestoesError(true);
     }
     setLoadingQuestions(false);
