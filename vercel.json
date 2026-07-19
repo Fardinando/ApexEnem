@@ -5,12 +5,18 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 10
+    },
+    "api/lesson-v2.ts": {
+      "runtime": "edge"
+    },
+    "api/questoes-ai.ts": {
+      "runtime": "edge"
     }
   },
-  "routes": [
-    { "src": "/api/lesson-v2", "dest": "/api/lesson-v2.ts" },
-    { "src": "/api/questoes-ai", "dest": "/api/questoes-ai.ts" },
-    { "src": "/api/(.*)", "dest": "/api" }
+  "rewrites": [
+    { "source": "/api/lesson-v2", "destination": "/api/lesson-v2" },
+    { "source": "/api/questoes-ai", "destination": "/api/questoes-ai" },
+    { "source": "/api/(.*)", "destination": "/api" }
   ],
   "crons": [
     {
