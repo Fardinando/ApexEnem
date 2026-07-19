@@ -593,7 +593,7 @@ export default function AprendizadoView({
         challenge: '🏆 Desafio de fixação',
       };
 
-      if (aiLessonCycle && lessonStep < aiLessonCycle.cycles.length) {
+      if (aiLessonCycle && lessonStep < aiLessonCycle.cycles.length && !lessonCompleted) {
         const block = aiLessonCycle.cycles[lessonStep];
         const isInteractive = block.type === 'interactive' || block.type === 'challenge';
 
