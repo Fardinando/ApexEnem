@@ -351,115 +351,26 @@ app.post("/api/correct", async (req, res) => {
 
   const contentToEvaluate = text || "[O aluno enviou uma imagem contendo o manuscrito de redação para transcrição e correção direta.]";
 
-  const prompt = `Você é um corretor oficial de redação do ENEM (INEP), com domínio completo da Cartilha do Participante ENEM 2025. Avalie o texto de forma justa, objetiva e técnica, aplicando fielmente os critérios oficiais sem inflar nem deflacionar notas. A nota deve refletir EXATAMENTE o nível descrito em cada competência.
+  const prompt = `Corretor oficial ENEM 2025. Avalie justa e objetivamente.
 
-O título/tema proposto da redação é: "${title || "Sem título"}"
+Tema: "${title || "Sem título"}"
 
-Redação do aluno:
+Redação:
 """
 ${contentToEvaluate}
 """
 
-CRITÉRIOS OFICIAIS DO ENEM 2025 (CARTILHA DO PARTICIPANTE) - Use EXATAMENTE estes níveis:
+NOTAS POR COMPETÊNCIA (0, 40, 80, 120, 160 ou 200):
+C1 - Domínio escrita formal: 200=excelente, 160=bom, 120=mediano, 80=insuficiente, 40=precário, 0=desconhecimento
+C2 - Compreensão tema: 200=argumentação consistente+repertório produtivo, 160=bom, 120=previsível, 80=cópia/insuficiente, 40=tangencia, 0=fuga
+C3 - Organização argumentos: 200=consistente+autoria, 160=organizada, 120=limitada, 80=desorganizada, 40=pouco relacionado, 0=sem relação
+C4 - Coesão: 200=excelente, 160=bom, 120=mediano, 80=insuficiente, 40=precário, 0=sem articulação
+C5 - Proposta intervenção: 200=detalhada+5 elementos (Agente,Ação,Meio,Efeito,Detalhe), 160=bom, 120=mediana, 80=insuficiente, 40=vaga, 0=ausente
 
-=== COMPETÊNCIA 1: Domínio da escrita formal ===
-200: "Demonstra excelente domínio da modalidade escrita formal da língua portuguesa e de escolha de registro. Desvios gramaticais ou de convenções da escrita serão aceitos somente como excepcionalidade e quando não caracterizarem reincidência."
-160: "Demonstra bom domínio da modalidade escrita formal da língua portuguesa e de escolha de registro, com poucos desvios gramaticais e de convenções da escrita."
-120: "Demonstra domínio mediano da modalidade escrita formal da língua portuguesa e de escolha de registro, com alguns desvios gramaticais e de convenções da escrita."
-80: "Demonstra domínio insuficiente da modalidade escrita formal da língua portuguesa, com muitos desvios gramaticais, de escolha de registro e de convenções da escrita."
-40: "Demonstra domínio precário da modalidade escrita formal da língua portuguesa, de forma sistemática, com diversificados e frequentes desvios gramaticais, de escolha de registro e de convenções da escrita."
-0: "Demonstra desconhecimento da modalidade escrita formal da língua portuguesa."
-Avalie: convenções da escrita (acentuação, ortografia, hífen, maiúsculas/minúsculas, translineação), aspectos gramaticais (regência, concordância, tempos verbais, pontuação, paralelismos, pronomes, crase), escolha de registro (adequação à escrita formal, ausência de oralidade), escolha vocabular (precisão semântica).
+TRAVAS: 200 requer texto impecável. Redação mediana=480-560. Impecável=900-1000. Boa=640-800. Ruim<400.
 
-=== COMPETÊNCIA 2: Compreensão do tema e aplicação de conceitos ===
-200: "Desenvolve o tema por meio de argumentação consistente, a partir de um repertório sociocultural produtivo, e apresenta excelente domínio do texto dissertativo-argumentativo."
-160: "Desenvolve o tema por meio de argumentação consistente e apresenta bom domínio do texto dissertativo-argumentativo, com proposição, argumentação e conclusão."
-120: "Desenvolve o tema por meio de argumentação previsível e apresenta domínio mediano do texto dissertativo-argumentativo, com proposição, argumentação e conclusão."
-80: "Desenvolve o tema recorrendo à cópia de trechos dos textos motivadores ou apresenta domínio insuficiente do texto dissertativo-argumentativo, não atendendo à estrutura com proposição, argumentação e conclusão."
-40: "Apresenta o assunto, tangenciando o tema, ou demonstra domínio precário do texto dissertativo-argumentativo, com traços constantes de outros tipos textuais."
-0: "Fuga ao tema/não atendimento à estrutura dissertativo-argumentativa."
-Avalie: compreensão da proposta, desenvolvimento do tema dentro dos limites do texto dissertativo-argumentativo em prosa, presença de repertório sociocultural produtivo (informação, fato, citação ou experiência relacionada ao tema que contribua como argumento). CUIDADO com repertório de bolso (referências prontas e decoradas sem conexão genuína com o tema).
-
-=== COMPETÊNCIA 3: Seleção e organização dos argumentos ===
-200: "Apresenta informações, fatos e opiniões relacionados ao tema proposto, de forma consistente e organizada, configurando autoria, em defesa de um ponto de vista."
-160: "Apresenta informações, fatos e opiniões relacionados ao tema, de forma organizada, com indícios de autoria, em defesa de um ponto de vista."
-120: "Apresenta informações, fatos e opiniões relacionados ao tema, limitados aos argumentos dos textos motivadores e pouco organizados, em defesa de um ponto de vista."
-80: "Apresenta informações, fatos e opiniões relacionados ao tema, mas desorganizados ou contraditórios e limitados aos argumentos dos textos motivadores, em defesa de um ponto de vista."
-40: "Apresenta informações, fatos e opiniões pouco relacionados ao tema ou incoerentes e sem defesa de um ponto de vista."
-0: "Apresenta informações, fatos e opiniões não relacionados ao tema e sem defesa de um ponto de vista."
-Avalie: existência de projeto de texto (planejamento prévio perceptível), seleção e organização estratégica dos argumentos, progressão textual fluente, desenvolvimento dos argumentos (explicitação da relevância das ideias para defesa do ponto de vista).
-
-=== COMPETÊNCIA 4: Coesão e mecanismos linguísticos ===
-200: "Articula bem as partes do texto e apresenta repertório diversificado de recursos coesivos."
-160: "Articula as partes do texto, com poucas inadequações, e apresenta repertório diversificado de recursos coesivos."
-120: "Articula as partes do texto, de forma mediana, com inadequações, e apresenta repertório pouco diversificado de recursos coesivos."
-80: "Articula as partes do texto, de forma insuficiente, com muitas inadequações, e apresenta repertório limitado de recursos coesivos."
-40: "Articula as partes do texto de forma precária."
-0: "Não articula as informações."
-Avalie: estruturação dos parágrafos, estruturação dos períodos (complexidade com orações subordinadas e intercaladas), referenciação (pronomes, advérbios, artigos, sinônimos, expressões resumitivas), uso variado de operadores argumentativos (conjunções, preposições, advérbios) que estabeleçam relações semânticas de causa, consequência, adversidade, conclusão, etc.
-
-=== COMPETÊNCIA 5: Proposta de intervenção ===
-200: "Elabora muito bem proposta de intervenção, detalhada, relacionada ao tema e articulada à discussão desenvolvida no texto."
-160: "Elabora bem proposta de intervenção relacionada ao tema e articulada à discussão desenvolvida no texto."
-120: "Elabora, de forma mediana, proposta de intervenção relacionada ao tema e articulada à discussão desenvolvida no texto."
-80: "Elabora, de forma insuficiente, proposta de intervenção relacionada ao tema, ou não articulada com a discussão desenvolvida no texto."
-40: "Apresenta proposta de intervenção vaga, precária ou relacionada apenas ao assunto."
-0: "Não apresenta proposta de intervenção ou apresenta proposta não relacionada ao tema ou ao assunto."
-Avalie objetivamente cada um dos 5 elementos obrigatórios (Agente, Ação, Meio/Modo, Efeito/Finalidade, Detalhamento) - 40 pts cada. A proposta deve estar relacionada ao tema e integrada ao projeto de texto.
-
-PROCEDIMENTO DE CALIBRAÇÃO DE NOTA E TRAVAS OBRIGATÓRIAS (CAPPING RULES):
-Aplique rigorosamente as travas abaixo ANTES de definir a nota final de cada competência:
-
-1. TRAVAS PARA A COMPETÊNCIA 1:
-   - Mais de 2 falhas gramaticais/ortográficas leves → Máx 160
-   - 3 a 5 falhas (crase, concordância, regência, acentuação) → Máx 120
-   - Mais de 5 desvios, gírias, períodos truncados → Máx 80
-   - Desestruturação sintática frequente → Máx 40
-
-2. TRAVAS PARA A COMPETÊNCIA 2:
-   - Sem repertório sociocultural externo → Máx 120
-   - Repertório citado sem uso produtivo → Máx 160
-   - Tangenciamento do tema → Máx 80
-
-3. TRAVAS PARA A COMPETÊNCIA 3:
-   - Sem tese clara na introdução → Máx 120
-   - Argumentação puramente expositiva → Máx 120
-   - Argumentos com lacunas/superficialidade → Máx 160
-
-4. TRAVAS PARA A COMPETÊNCIA 4:
-   - Menos de 2 conectivos interparágrafos legítimos → Máx 120
-   - Coesão intraparágrafo fraca/repetitiva → Máx 120-160
-
-5. TRAVAS PARA A COMPETÊNCIA 5:
-   - Avalie matematicamente: 40 pts para cada elemento (Agente, Ação, Meio/Modo, Efeito, Detalhamento)
-   - Termos genéricos como "nós", "a sociedade" NÃO pontuam como agente
-   - Ausência de 1 elemento → Máx 160. Ausência de 2 → Máx 120.
-
-DIRETRIZES FUNDAMENTAIS:
-- Aplique os critérios oficiais de forma JUSTA e IMPARCIAL, sem tendência para cima nem para baixo.
-- Uma redação impecável com repertório produtivo, domínio formal completo, argumentação consistente, coesão excelente e intervenção detalhada deve receber 900-1000 pontos.
-- Uma redação boa mas com falhas pontuais deve receber entre 640-800 pontos.
-- Redações com falhas moderadas devem receber entre 400-600 pontos.
-- Redações com falhas graves e estrutura precária devem receber abaixo de 400 pontos.
-- NÃO deflacione notas artificialmente. Se o texto merece 200 em uma competência, dê 200.
-- O exemplo de JSON abaixo é APENAS o formato, NÃO as notas reais. Avalie cada competência individualmente com base nos critérios oficiais.
-
-Retorne estritamente um objeto JSON com o seguinte formato:
-{
-  "score": [soma das 5 competências],
-  "generalFeedback": "Análise detalhada e justa da redação, apontando pontos fortes e fracos com linguagem clara e construtiva.",
-  "competencies": [
-    { "id": 1, "name": "Competência 1: Domínio da escrita formal", "description": "Demonstrar domínio da modalidade escrita formal da língua portuguesa.", "score": [0-200], "feedback": "Análise objetiva dos desvios ou domínio formal demonstrado." },
-    { "id": 2, "name": "Competência 2: Compreensão do tema e desenvolvimento", "description": "Compreender a proposta de redação e aplicar conceitos das várias áreas.", "score": [0-200], "feedback": "Avaliação do desenvolvimento do tema, qualidade do repertório e domínio do dissertativo-argumentativo." },
-    { "id": 3, "name": "Competência 3: Projeto de texto e argumentação", "description": "Selecionar, relacionar, organizar e interpretar informações em defesa de um ponto de vista.", "score": [0-200], "feedback": "Avaliação da tese, encadeamento de ideias e profundidade argumentativa." },
-    { "id": 4, "name": "Competência 4: Coesão e coerência", "description": "Demonstrar conhecimento dos mecanismos linguísticos necessários para a construção da Argumentação.", "score": [0-200], "feedback": "Avaliação dos recursos coesivos, articulação entre parágrafos e fluidez textual." },
-    { "id": 5, "name": "Competência 5: Proposta de intervenção", "description": "Elaborar proposta de intervenção para o problema abordado respeitando direitos humanos.", "score": [0-200], "feedback": "Avaliação dos 5 elementos obrigatórios (Agente, Ação, Meio/Modo, Efeito, Detalhamento)." }
-  ],
-  "strengths": ["Ponto forte real e específico do texto"],
-  "weaknesses": ["Ponto de melhoria real e específico do texto"]
-}
-
-Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou depois do bloco JSON.`;
+Retorne JSON: {score, generalFeedback, competencies:[{id,name,description,score,feedback}x5], strengths:[], weaknesses:[]}
+Apenas JSON puro.`;
 
   async function callGroq(): Promise<any> {
     if (!groqApiKey) throw new Error('no groq key');
@@ -595,31 +506,43 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
   const discipline = QUESTIONS_SUBJECT_MAP[area];
   if (!discipline) return [];
   const years = [2024, 2023, 2022, 2021, 2020];
+  const offsets = [0, 25, 50, 75];
+
+  const fetchBatch = async (year: number, offset: number): Promise<any[]> => {
+    try {
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 4000);
+      const res = await fetch(`https://api.enem.dev/v1/exams/${year}/questions?limit=25&offset=${offset}`, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!res.ok) return [];
+      const data = await res.json();
+      return (data.questions || []).filter((q: any) =>
+        q.discipline === discipline &&
+        q.correctAlternative &&
+        ["A","B","C","D","E"].includes(q.correctAlternative) &&
+        q.alternatives?.some((a: any) => a.text?.trim())
+      ).map((q: any) => ({
+        statement: ((q.context || "") + "\n" + (q.alternativesIntroduction || "")).trim() + (q.title ? " (" + q.title + ")" : ""),
+        options: q.alternatives.filter((a: any) => a.text).map((a: any) => ({ letter: a.letter, text: a.text })),
+        correctAnswer: q.correctAlternative,
+      }));
+    } catch { return []; }
+  };
+
   const all: any[] = [];
   for (const year of years) {
     if (all.length >= count) break;
-    try {
-      const offsets = [0, 25, 50, 75];
-      for (const offset of offsets) {
+    const batches = await Promise.all(offsets.map(o => fetchBatch(year, o)));
+    for (const batch of batches) {
+      for (const q of batch) {
         if (all.length >= count) break;
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 5000);
-        const res = await fetch(`https://api.enem.dev/v1/exams/${year}/questions?limit=25&offset=${offset}`, { signal: ctrl.signal });
-        clearTimeout(tid);
-        if (!res.ok) continue;
-        const data = await res.json();
-        const questions = data.questions || [];
-        for (const q of questions) {
-          if (all.length >= count) break;
-          if (q.discipline !== discipline) continue;
-          if (!q.correctAlternative || !["A","B","C","D","E"].includes(q.correctAlternative)) continue;
-          if (!q.alternatives?.some((a: any) => a.text?.trim())) continue;
-          all.push({
-            statement: ((q.context || "") + "\n" + (q.alternativesIntroduction || "")).trim() + (q.title ? " (" + q.title + ")" : ""),
-            options: q.alternatives.filter((a: any) => a.text).map((a: any) => ({ letter: a.letter, text: a.text })),
-            correctAnswer: q.correctAlternative,
-          });
-        }
+        all.push(q);
+      }
+      if (all.length >= count) break;
+    }
+  }
+  return all;
+}
       }
     } catch {}
   }
