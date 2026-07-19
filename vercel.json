@@ -5,12 +5,6 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 10
-    },
-    "api/lesson-v2.ts": {
-      "runtime": "edge"
-    },
-    "api/questoes-ai.ts": {
-      "runtime": "edge"
     }
   },
   "rewrites": [
