@@ -5,17 +5,9 @@
   "functions": {
     "api/index.ts": {
       "maxDuration": 10
-    },
-    "api/lesson-v2.ts": {
-      "maxDuration": 10
-    },
-    "api/questoes-ai.ts": {
-      "maxDuration": 10
     }
   },
   "rewrites": [
-    { "source": "/api/lesson-v2", "destination": "/api/lesson-v2" },
-    { "source": "/api/questoes-ai", "destination": "/api/questoes-ai" },
     { "source": "/api/stats", "destination": "/api" },
     { "source": "/api/correct", "destination": "/api" },
     { "source": "/api/questions", "destination": "/api" },

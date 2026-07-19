@@ -1031,7 +1031,7 @@ app.post("/api/lesson-v2", async (req, res) => {
 
   async function tryLessonV2Model(mc: ModelConfig): Promise<any | null> {
     const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 7000, 7000);
+    const timeout = Math.min(mc.timeout || 7000, 3000);
 
     if (mc.provider === 'gemini') {
       if (!googleApiKey) return null;
@@ -1064,7 +1064,7 @@ app.post("/api/lesson-v2", async (req, res) => {
       } catch { clearTimeout(tid); return null; }
     }
 
-    for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 2); attempt++) {
+    for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 1); attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
@@ -1151,7 +1151,7 @@ app.post("/api/questoes-ai", async (req, res) => {
 
   async function tryQuestoesModel(mc: ModelConfig): Promise<any | null> {
     const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 7000, 7000);
+    const timeout = Math.min(mc.timeout || 7000, 3000);
 
     if (mc.provider === 'gemini') {
       if (!googleApiKey) return null;
@@ -1184,7 +1184,7 @@ app.post("/api/questoes-ai", async (req, res) => {
       } catch { clearTimeout(tid); return null; }
     }
 
-    for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 2); attempt++) {
+    for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 1); attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
