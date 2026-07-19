@@ -1679,6 +1679,9 @@ DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='essay_corrections' AND policyname='insert') THEN
     CREATE POLICY "insert" ON public.essay_corrections FOR INSERT WITH CHECK (auth.uid() = user_id);
   END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='essay_corrections' AND policyname='update') THEN
+    CREATE POLICY "update" ON public.essay_corrections FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
 END $$;`;
 
     case "simulado_history":

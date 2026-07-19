@@ -68,9 +68,21 @@ export async function fetchEssays(userId: string) {
 
 export async function saveEssay(essay: any) {
   try {
+    const mapped = {
+      id: essay.id,
+      user_id: essay.user_id,
+      title: essay.title,
+      text: essay.text,
+      score: essay.score,
+      general_feedback: essay.generalFeedback || essay.general_feedback || '',
+      competencies: essay.competencies || [],
+      strengths: essay.strengths || [],
+      weaknesses: essay.weaknesses || [],
+      date: essay.date,
+    };
     const { error } = await supabase
       .from('essay_corrections')
-      .upsert(essay, { onConflict: 'id' });
+      .upsert(mapped, { onConflict: 'id' });
     return !error;
   } catch {
     return false;

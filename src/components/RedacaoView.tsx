@@ -170,6 +170,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       const newId = `cor-${Date.now()}`;
       const finalCorrection: EssayCorrection = {
         ...correctionResult,
+        generalFeedback: correctionResult.generalFeedback || correctionResult.general_feedback || '',
         id: newId,
         title: title || 'O Papel da Tecnologia na Educação',
         text: activeTab === 'digitar' ? text : 'Texto manuscrito processado por IA',
