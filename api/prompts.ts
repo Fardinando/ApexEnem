@@ -486,57 +486,29 @@ Importante: correctIndex deve variar (0,1,2,3) entre os 4 blocos com questões. 
     label: 'Gerar questões com feedback do Cabrito',
     buildPrompt: (area: string, count: number, weakTopics?: string[]) => {
       const weakSection = weakTopics?.length
-        ? `\n\n### PONTOS FRACOS DO ALUNO\nO aluno errou questões nestes tópicos: ${weakTopics.join(', ')}. Cada questão DEVE atacar diretamente um desses pontos fracos.`
+        ? `\nPontos fracos: ${weakTopics.join(', ')}. Foque nessas questões.`
         : '';
       return {
-        system: `Você é o Cabrito 🐐, professor especialista em elaboração de itens para o ENEM. Gere exatamente ${count} questões de múltipla escolha de NÍVEL AVANÇADO para a área "${area}".
+        system: `Gere ${count} questões ENEM de múltipla escolha para "${area}". Nível: médio/difícil. ${weakSection}
 
-Nível: médio a difícil (dificuldade 4-5 em escala de 5).
-${weakSection}
+Cada questão: enunciado com contexto (dados, situação-problema), 4 alternativas plausíveis (A-D), gabarito e explicação. Respostas corretas distribuídas entre A,B,C,D.
 
-### REGRAS DE CONSTRUÇÃO DAS QUESTÕES (OBRIGATÓRIAS):
-
-1. **ENUNCIADO** — Mínimo 350 caracteres:
-   - Deve ser LONGO, com contexto real (dados estatísticos, trecho de texto, situação-problema, descricção de gráfico)
-   - Apresente um CONTEXTO primeiro e depois a pergunta
-   - NUNCA faça perguntas diretas ("O que é X?")
-   - Use situacoes que exigem interpretação, raciocínio e aplicação de conceitos
-
-2. **ALTERNATIVAS** — 4 alternativas (A-D), cada uma com mínimo 30 caracteres:
-   - Todas devem ser PLÁUSAVEIS e com extensão similar
-   - Distratores devem representar ERROS CONCEITUAIS COMUNS (não absurdos)
-   - A resposta correta deve ser NÃO-ÓBVIA
-
-3. **EXPLICAÇÃO** — Mínimo 250 caracteres:
-   - Primeiro explique POR QUE a alternativa correta está certa (com passo a passo)
-   - Depois explique brevemente por que cada alternativa incorreta está errada
-   - Use linguagem didática, como um professor explicando na lousa
-
-4. **TÓPICO** — Especifique o assunto específico (ex: "Equação de 2º grau", "Imperialismo europeu", "Células-tronco")
-
-### FORMATO JSON:
+JSON:
 {
   "questions": [
     {
       "id": "q1",
-      "statement": "Enunciado longo com contexto...",
-      "options": [
-        {"letter": "A", "text": "Alternativa A completa"},
-        {"letter": "B", "text": "Alternativa B completa"},
-        {"letter": "C", "text": "Alternativa C completa"},
-        {"letter": "D", "text": "Alternativa D completa"}
-      ],
-      "correctAnswer": "A",
-      "explanation": "Explicação detalhada com passo a passo...",
-      "topic": "Nome do tópico específico"
+      "statement": "Enunciado com contexto...",
+      "options": [{"letter":"A","text":"..."},{"letter":"B","text":"..."},{"letter":"C","text":"..."},{"letter":"D","text":"..."}],
+      "correctAnswer": "B",
+      "explanation": "Por que B está certo...",
+      "topic": "Tópico específico"
     }
   ]
 }
 
-IMPORTANTE: A alternativa correta (correctAnswer) DEVE ser ALEATÓRIA entre A, B, C e D. NÃO coloque sempre a mesma letra. Distribua as respostas corretas de forma equilibrada entre todas as questões geradas.
-
-Retorne APENAS o JSON, sem markdown, sem texto antes ou depois.`,
-        user: `Gere ${count} questões de nível avançado estilo ENEM para a área "${area}". Cada questão deve ter enunciado longo (mínimo 350 caracteres), 4 alternativas plausíveis, gabarito e explicação detalhada. Varie os tópicos dentro da área. Distribua as respostas corretas entre A, B, C e D de forma equilibrada.`,
+Retorne APENAS o JSON.`,
+        user: `Gere ${count} questões estilo ENEM para "${area}". Retorne APENAS o JSON:`,
       }
     },
     models: [

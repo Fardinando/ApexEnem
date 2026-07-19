@@ -81,7 +81,7 @@ app.use((req, res, next) => {
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline'; frame-src https://*.hcaptcha.com; connect-src 'self' https://*.supabase.co https://openrouter.ai https://enem.dev; img-src 'self' data: https://storage.googleapis.com;");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pl30323980.effectivecpmnetwork.com https://pl30323978.effectivecpmnetwork.com https://www.highperformanceformat.com https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline'; frame-src https://*.hcaptcha.com https://*.effectivecpmnetwork.com https://www.highperformanceformat.com https://br.wps.com https://www.effectivecpmnetwork.com; connect-src 'self' https://*.supabase.co https://openrouter.ai https://enem.dev; img-src 'self' data: https://storage.googleapis.com;");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   next();
 });
@@ -1193,7 +1193,7 @@ app.post("/api/questoes-ai", async (req, res) => {
               { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
             ],
-            generationConfig: { temperature: 0.85, maxOutputTokens: 4096 }
+            generationConfig: { temperature: 0.85, maxOutputTokens: 2048 }
           }),
           signal: ctrl.signal
         });
@@ -1226,7 +1226,7 @@ app.post("/api/questoes-ai", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: 4096,
+            max_tokens: 2048,
             temperature: 0.85
           }),
           signal: ctrl.signal

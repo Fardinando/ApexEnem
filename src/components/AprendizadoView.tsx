@@ -777,11 +777,11 @@ export default function AprendizadoView({
     try {
       const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 9000);
+      const tid = setTimeout(() => ctrl.abort(), 8000);
       const resp = await fetch('/api/questoes-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area, count: 5, weakTopics: wrongSubjects }),
+        body: JSON.stringify({ area, count: 3, weakTopics: wrongSubjects }),
         signal: ctrl.signal,
       });
       clearTimeout(tid);
