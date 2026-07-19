@@ -476,7 +476,7 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
             { role: 'user', content: prompt },
           ],
           max_tokens: 2048,
-          temperature: 0.3,
+          temperature: 0,
         }),
         signal: ctrl.signal,
       });
@@ -500,7 +500,7 @@ Retorne APENAS o JSON puro. Não escreva textos explicativos adicionais antes ou
         body: JSON.stringify({
           contents: [{ role: 'user', parts: [{ text: prompt }] }],
           systemInstruction: { parts: [{ text: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.' }] },
-          generationConfig: { temperature: 0.3, maxOutputTokens: 2048 },
+          generationConfig: { temperature: 0, maxOutputTokens: 2048 },
         }),
         signal: ctrl.signal,
       });
@@ -820,7 +820,50 @@ app.post("/api/questions", async (req, res) => {
   }
 
   const errors: string[] = [];
+  async function tryGroq(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
+    if (!groqApiKey) { errors.push('Groq: GROQ_API_KEY não configurada'); return null; }
+    if (Date.now() - endpointStart > MAX_TOTAL_TIME) return null;
+    const ctrl = new AbortController();
+    const remaining = Math.max(2000, MAX_TOTAL_TIME - (Date.now() - endpointStart));
+    const tid = setTimeout(() => ctrl.abort(), Math.min(timeoutMs, remaining));
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqApiKey}` },
+        body: JSON.stringify({
+          model,
+          messages: [
+            { role: 'system', content: 'Você é um professor especialista em elaboração de itens para o ENEM.' },
+            { role: 'user', content: prompt },
+          ],
+          max_tokens: 8192,
+          temperature: 0.85,
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!res.ok) {
+        const errBody = await res.text().catch(() => '');
+        errors.push(`Groq ${model}: ${res.status} ${errBody.slice(0, 200)}`);
+        return null;
+      }
+      const data = await res.json();
+      const content = data?.choices?.[0]?.message?.content;
+      if (!content) { errors.push(`Groq ${model}: resposta vazia`); return null; }
+      const raw = extractJsonFromText(content);
+      const questions = Array.isArray(raw) ? validateQuestions(raw) : [];
+      if (questions.length > 0) return questions;
+      errors.push(`Groq ${model}: JSON inválido ou validação rejeitou`);
+      return null;
+    } catch (err: any) {
+      clearTimeout(tid);
+      errors.push(`Groq ${model}: ${err?.message || err}`);
+      return null;
+    }
+  }
+
   const modelAttempts = PROMPTS.questions.models.map(m => {
+    if (m.provider === 'groq') return tryGroq(m.modelId, m.timeout || 9500, errors);
     if (m.provider === 'gemini') return tryGemini(m.modelId, m.timeout || 9500, errors);
     if (m.provider === 'openrouter') return tryOpenRouter(m.modelId, m.timeout || 9900, errors);
     return Promise.resolve(null);
@@ -948,10 +991,10 @@ Para a área "${area}", sugira tópicos variados como:
           body: JSON.stringify({
             model,
             messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
+              { role: "system", content: "Você é um professor especialista em elaboração de itens para o ENEM." },
+              { role: "user", content: prompt }
             ],
-            max_tokens: 1536,
+            max_tokens: 8192,
             temperature: 0.85
           }),
           signal: ctrl.signal
@@ -1343,7 +1386,7 @@ Resposta correta: ${q.correctAnswer}`;
               model: 'llama-3.3-70b-versatile',
               messages: [{ role: 'user', content: prompt }],
               max_tokens: 512,
-              temperature: 0.3,
+            temperature: 0,
             }),
             signal: ctrl.signal,
           });

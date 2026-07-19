@@ -186,19 +186,10 @@ function getWeakAreas(
 }
 
 function AdGateVideo() {
-  const containerRef = React.useRef<HTMLDivElement>(null);
-  const loadedRef = React.useRef(false);
-  const adCode = `<div id="inter-container" style="display:flex;justify-content:center;align-items:center;width:100%;height:100%;"><iframe src="https://www.effectivecpmnetwork.com/c0wk6m25f0?key=5438e836339cdee7370c0f68bcb24d00" style="width:100%;height:100%;border:none;border-radius:12px;min-height:280px;" scrolling="no" allowfullscreen></iframe></div>`;
-  React.useEffect(() => {
-    if (loadedRef.current || !containerRef.current) return;
-    loadedRef.current = true;
-    containerRef.current.innerHTML = adCode;
-  }, []);
   return (
-    <div
-      ref={containerRef}
-      className="w-full h-[320px] bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden flex items-center justify-center"
-    />
+    <div className="w-full h-[320px] bg-slate-100 dark:bg-slate-800 rounded-2xl overflow-hidden flex items-center justify-center">
+      <div className="text-[10px] text-slate-300 dark:text-slate-700 italic select-none">Aqui seria um anúncio</div>
+    </div>
   );
 }
 

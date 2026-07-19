@@ -95,6 +95,7 @@ export const PROMPTS: Record<string, PromptDefinition> = {
       return basePrompt;
     },
     models: [
+      MODELS.groqLlama33(),
       MODELS.geminiFlash(),
       MODELS.openRouterFree(),
     ],
