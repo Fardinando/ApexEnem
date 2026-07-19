@@ -443,12 +443,21 @@ export default function AprendizadoView({
       setLessonCorrectCount(0);
       setLessonTotalInteractive(0);
       setLessonXpEarned(0);
-      const nextIdx = lessonTopicIndex + 1;
-      setLessonTopicIndex(nextIdx);
-      fetchLessonCycle(activeCategory, nextIdx);
+      setInteractiveAnswer(null);
+      setInteractiveChecked(false);
+      if (!aiLessonCycle && !loadingLesson) {
+        const nextIdx = lessonTopicIndex + 1;
+        setLessonTopicIndex(nextIdx);
+        fetchLessonCycle(activeCategory, nextIdx);
+      } else {
+        const nextIdx = lessonTopicIndex + 1;
+        setLessonTopicIndex(nextIdx);
+      }
     } else if (adGateTarget === 'questoes' && questoesArea) {
       setViewMode('questoes-play');
-      fetchQuestoesAI(questoesArea);
+      if (aiQuestoes.length === 0 && !loadingQuestions) {
+        fetchQuestoesAI(questoesArea);
+      }
     }
     setAdGateTarget(null);
   };
@@ -460,6 +469,15 @@ export default function AprendizadoView({
     setAdGateTarget('cursinho');
     setAdGateActive(true);
     setAdGateSecondsLeft(30);
+    setLessonStep(0);
+    setLessonCompleted(false);
+    setLessonCorrectCount(0);
+    setLessonTotalInteractive(0);
+    setLessonXpEarned(0);
+    setInteractiveAnswer(null);
+    setInteractiveChecked(false);
+    const nextIdx = lessonTopicIndex + 1;
+    fetchLessonCycle(cat, nextIdx);
   };
 
   const handleStartQuestoes = (area: string) => {
@@ -478,6 +496,7 @@ export default function AprendizadoView({
     setAdGateTarget('questoes');
     setAdGateActive(true);
     setAdGateSecondsLeft(30);
+    fetchQuestoesAI(area);
   };
 
   useEffect(() => {
@@ -1537,6 +1556,12 @@ export default function AprendizadoView({
               <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">
                 Assista 30 segundos de anúncio para continuar
               </p>
+              {(loadingLesson || loadingQuestions) && (
+                <div className="flex items-center justify-center gap-2 text-[11px] text-blue-600 dark:text-blue-400 font-semibold">
+                  <div className="w-3.5 h-3.5 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
+                  <span>Preparando conteúdo em segundo plano...</span>
+                </div>
+              )}
             </div>
 
             <AdGateVideo />

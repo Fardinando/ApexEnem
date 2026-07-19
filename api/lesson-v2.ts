@@ -121,14 +121,16 @@ export default async function handler(req: any, res: any) {
 Área: ${context}
 Nível: ${level || 5}/10. ${weakSection}
 
-### ESTRUTURA: 2 CICLOS × 4 BLOCOS (8 blocos total)
+### ESTRUTURA: 3 CICLOS × 6 BLOCOS (18 blocos total)
 
-Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = avançado.
+Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
 
-**Bloco "story"**: Situação-problema real com dados/cenário brasileiro (200+ chars).
-**Bloco "explanation"**: Teoria progressiva com 1 exemplo resolvido, fórmulas, pegadinhas ENEM, Resumo Rápido (300+ chars).
-**Bloco "interactive"**: Questão intermediária estilo ENEM com 4 alternativas plausíveis, explicação (150+ chars).
-**Bloco "challenge"**: Questão avançada com raciocínio em 2+ etapas, 4 alternativas, explicação detalhada (200+ chars).
+**Bloco "story"**: Situação-problema real com dados/cenário brasileiro (250+ chars).
+**Bloco "explanation"**: Teoria progressiva com 1 exemplo resolvido, fórmulas, pegadinhas ENEM, Resumo Rápido (350+ chars).
+**Bloco "interactive"**: Questão intermediária estilo ENEM com 4 alternativas plausíveis, explicação (200+ chars).
+**Bloco "explanation"**: Aprofundamento do subtema, mais detalhes e aplicação prática (350+ chars).
+**Bloco "challenge"**: Questão avançada com raciocínio em 2+ etapas, 4 alternativas, explicação detalhada (250+ chars).
+**Bloco "story"**: Nova situação-problema aplicando o subtema em contexto real (250+ chars).
 
 ### JSON exato:
 {
@@ -138,30 +140,40 @@ Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = avan
     {"type":"story","cabritoSpeech":"...","content":"..."},
     {"type":"explanation","cabritoSpeech":"...","content":"..."},
     {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
     {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},
+    {"type":"story","cabritoSpeech":"...","content":"..."},
     {"type":"story","cabritoSpeech":"...","content":"..."},
     {"type":"explanation","cabritoSpeech":"...","content":"..."},
     {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":1,"explanation":"..."},
-    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":3,"explanation":"..."}
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
+    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":3,"explanation":"..."},
+    {"type":"story","cabritoSpeech":"...","content":"..."},
+    {"type":"story","cabritoSpeech":"...","content":"..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
+    {"type":"interactive","cabritoSpeech":"...","content":"Questão...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."},
+    {"type":"explanation","cabritoSpeech":"...","content":"..."},
+    {"type":"challenge","cabritoSpeech":"...","content":"Questão avançada...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},
+    {"type":"story","cabritoSpeech":"...","content":"..."}
   ]
 }
 
 Retorne APENAS o JSON.`;
 
-    const userPrompt = `Gere a aula de "${area}" com 2 ciclos. Retorne APENAS o JSON:`;
+    const userPrompt = `Gere a aula de "${area}" com 3 ciclos (básico, intermediário, avançado). Retorne APENAS o JSON:`;
     const fullPrompt = systemPrompt + '\n\n' + userPrompt;
 
-    const geminiPromise = geminiCall(fullPrompt, 3072, 3000).then(text => {
+    const geminiPromise = geminiCall(fullPrompt, 8192, 5000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
 
-    const groqPromise = groqCall(systemPrompt, userPrompt, 3072, 3000).then(text => {
+    const groqPromise = groqCall(systemPrompt, userPrompt, 8192, 5000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
 
-    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 3072, 3000).then(text => {
+    const orPromise = tryOpenRouter(systemPrompt, userPrompt, 8192, 5000).then(text => {
       if (!text) return null;
       return parseLessonJson(text);
     });
