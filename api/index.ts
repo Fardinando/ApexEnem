@@ -1031,7 +1031,7 @@ app.post("/api/lesson-v2", async (req, res) => {
 
   async function tryLessonV2Model(mc: ModelConfig): Promise<any | null> {
     const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 8000, 8500);
+    const timeout = Math.min(mc.timeout || 7000, 7000);
 
     if (mc.provider === 'gemini') {
       if (!googleApiKey) return null;
@@ -1051,7 +1051,7 @@ app.post("/api/lesson-v2", async (req, res) => {
               { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
             ],
-            generationConfig: { temperature: 0.85, maxOutputTokens: 4096 }
+            generationConfig: { temperature: 0.85, maxOutputTokens: mc.maxTokens || 4096 }
           }),
           signal: ctrl.signal
         });
@@ -1064,7 +1064,7 @@ app.post("/api/lesson-v2", async (req, res) => {
       } catch { clearTimeout(tid); return null; }
     }
 
-    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
+    for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 2); attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
@@ -1084,7 +1084,7 @@ app.post("/api/lesson-v2", async (req, res) => {
               { role: "system", content: systemPrompt },
               { role: "user", content: userPrompt }
             ],
-            max_tokens: 4096,
+            max_tokens: mc.maxTokens || 4096,
             temperature: 0.85
           }),
           signal: ctrl.signal
@@ -1124,38 +1124,16 @@ app.post("/api/lesson-v2", async (req, res) => {
   ).catch(() => null);
 
   if (!lesson) {
-    return res.json({
-      title: `Aula de ${area}`,
-      subtitle: 'Conceitos essenciais para o ENEM',
-      cycles: [
-        { type: 'story', cabritoSpeech: 'Deixa eu te contar uma história!', content: ` Imagina que você tá numa feira livre e precisa calcular o preço de uma sacola com frutas de diferentes valores... É EXATAMENTE assim que ${area} aparece no ENEM — ligado a situações do dia a dia que parecem simples mas exigem raciocínio lógico por trás.` },
-        { type: 'explanation', cabritoSpeech: 'Agora vamos entender a teoria!', content: `Os principais conceitos de ${area} para o ENEM:\n\n• Conceito-chave 1: aparece em pelo menos 30% das questões da área\n• Conceito-chave 2: o ENEM adora misturar com interpertação de gráficos\n• Conceito-chave 3: cai sempre em conjunto com temas transversais (sustentabilidade, cidadania)\n\nDica do Cabrito: não decore fórmulas — entenda o CONCEITO por trás delas. O ENEM cobra aplicação, não memorização.` },
-        { type: 'interactive', cabritoSpeech: 'Testa seus conhecimentos!', content: `Em uma pesquisa sobre o impacto ambiental de uma indústria, observou-se que a poluição dobrou a cada 5 anos. Se em 2010 a poluição era de 20 unidades, qual era o valor em 2020?`, options: ['40 unidades', '60 unidades', '80 unidades', '160 unidades'], correctIndex: 2, explanation: 'De 2010 a 2020 são 10 anos = 2 períodos de 5 anos. A poluição dobra a cada período: 20 → 40 → 80. A alternativa C está correta. Muitos erram escolhendo D por aplicar a dobra 3 vezes em vez de 2.' },
-        { type: 'challenge', cabritoSpeech: 'Agora ficou sério!', content: `Desafio: Um gráfico mostra que o PIB per capita de um país cresceu 3% ao ano entre 2015 e 2020. Sabendo que o PIB inicial era R$ 35.000,00, qual era o PIB per capita aproximado em 2020?`, options: ['R$ 38.500,00', 'R$ 40.600,00', 'R$ 42.800,00', 'R$ 45.100,00'], correctIndex: 1, explanation: 'Crescimento composto por 5 anos: 35.000 × (1,03)^5 ≈ 35.000 × 1,159 ≈ R$ 40.600. A chave é entender que crescimento percentual acumulado NÃO é simples soma (3% × 5 = 15%), mas multiplicativo.' },
-        { type: 'story', cabritoSpeech: 'Segundo tema, vamos lá!', content: `Sabe aquele experimento de laboratório que você fez no ensino médio onde misturou dois reagentes e mudou de cor? Pois é — o ENEM adora pegar experimentos parecidos e pedir pra você interpretar o que aconteceu em termos científicos. Em ${area}, a habilidade de ler um experimento e extrair conclusões é fundamental.` },
-        { type: 'explanation', cabritoSpeech: 'Aprofundando o conhecimento!', content: `Como ${area} cai no ENEM de forma mais avançada:\n\n• O ENEM não pergunta "o que é X" — ele dá um CONTEXTO complexo e pede pra você APLICAR X\n• Questões de ${area} exigem interpretação de dados (tabelas, gráficos, mapas)\n• Pegadinhas comuns: alternativas que parecem corretas mas confundem unidades ou escalas\n\nRegra de ouro: LEIA O ENUNCIADO INTEIRO antes de olhar as alternativas. 70% dos erros são por pressa na leitura.` },
-        { type: 'interactive', cabritoSpeech: 'Mais uma pra treinar!', content: `Uma cidade planeja reduzir o consumo de água em 20% em 3 anos. No primeiro ano, conseguiu reduzir 5%. Para atingir a meta total, qual seria a redução necessária nos dois anos seguintes (considerando redução composta)?`, options: ['Reduzir 15% ao ano', 'Reduzir 8% ao ano', 'Reduzir cerca de 7,8% ao ano', 'Reduzir 10% ao ano'], correctIndex: 2, explanation: 'Meta: reduzir 20% em 3 anos = fator 0,80. Após 1 ano: fator 0,95. Falta: 0,80/0,95 ≈ 0,842 por ano nos 2 anos restantes = redução de ~7,8% ao ano. Não é 15%/2 = 7,5% porque a redução é composta!' },
-        { type: 'challenge', cabritoSpeech: 'Último desafio!', content: `Desafio final: Pesquisadores compararam dois medicamentos para reduzir a pressão arterial. O medicamento A reduziu em média 12 mmHg com desvio padrão de 3 mmHg. O medicamento B reduziu em média 10 mmHg com desvio padrão de 5 mmHg. Qual afirmação é estatisticamente mais correta?`, options: ['O A é sempre melhor que o B', 'O A tem resultado mais consistente e maior efeito médio', 'O B é melhor porque tem mais variabilidade', 'Não dá pra comparar sem teste estatístico'], correctIndex: 1, explanation: 'O A tem maior efeito médio (12 > 10) E menor variabilidade (desvio 3 < 5), o que indica resultado mais consistente e previsível. A D seria válida se os desvios fossem próximos, mas aqui a diferença de médias (2 mmHg) é significativa comparada aos desvios.' },
-        { type: 'story', cabritoSpeech: 'Terceiro ciclo, última história!', content: `Imagina que você é um juiz no tribunal da prova do ENEM e precisa decidir qual a melhor resposta com base em evidências. É EXATAMENTE isso que o exame espera de você em ${area}: pensar como um profissional, não como um memorizador de fórmulas. Cada questão é um mini-caso que exige argumentação.` },
-        { type: 'explanation', cabritoSpeech: 'Consolidando o aprendizado!', content: `Pontos-chave de ${area} para revisar:\n\n• Sempre identifique o TIPO de habilidade que a questão pede (interpretar, calcular, comparar, inferir)\n• Gráficos e tabelas são sua AMIGA — aprenda a ler tendências, não apenas valores pontuais\n• Questões de ${area} no ENEM valorizam o raciocínio sobre o resultado final\n• Erro clássico: confundir correlação com causalidade\n• Revise provas anteriores e anote os PADRÕES de como o tema aparece` },
-        { type: 'interactive', cabritoSpeech: 'Última chance de brilhar!', content: `Questão final: Um estudo mostrou que cidades com mais áreas verdes têm taxas menores de doenças respiratórias. Qual a interpretação mais científica para essa relação?`, options: ['Áreas verdes curam doenças respiratórias', 'A relação pode ser explicada pela melhoria da qualidade do ar e redução de poluentes', 'Cidades com menos doenças plantam mais árvores', 'A relação é puramente coincidental'], correctIndex: 1, explanation: 'A resposta B é a mais científica porque apresenta um MECANISMO plausível (vegetação filtra poluentes, melhora qualidade do ar). A confunde correlação com causalidade direta, C inverte a causalidade, e D ignora evidências epidemiológicas consistentes.' },
-        { type: 'challenge', cabritoSpeech: 'Missão cumprida, estudioso!', content: `Parabéns por completar a aula de ${area}! Você trabalhou com interpretação de dados, raciocínio quantitativo e pensamento crítico — tudo isso aparece no ENEM. Revise os pontos-chave e continue praticando com questões reais de provas anteriores.`, options: ['Quero revisar o conteúdo', 'Próxima aula!', 'Voltar ao menu'], correctIndex: 0, explanation: 'Revisar é sempre uma ótima opção! O estudo mostra que a revisão espaçada aumenta em até 200% a retenção de informações. Continue firme, o Cabrito confia em você! 🐐' },
-      ]
+    return res.status(503).json({
+      error: "IA não conseguiu gerar a aula. Tente novamente."
     });
   }
 
   return res.json(lesson);
   } catch (err) {
     console.error('[lesson-v2] fatal:', err);
-    return res.json({
-      title: `Aula de ${req.body?.area || 'Geral'}`,
-      subtitle: 'Conceitos essenciais para o ENEM',
-      cycles: [
-        { type: 'story', cabritoSpeech: 'Vamos lá!', content: 'Infelizmente a aula completa não pôde ser gerada agora. Tente novamente em alguns instantes!' },
-        { type: 'explanation', cabritoSpeech: 'Enquanto isso...', content: 'Revise os conceitos básicos da matéria e tente de novo. O Cabrito está aqui pra te ajudar! 🐐' },
-        { type: 'interactive', cabritoSpeech: 'Testa aí!', content: 'Resumo rápido: revise seus erros anteriores e foque nos pontos fracos. Tente gerar a aula novamente.', options: ['Tentar de novo', 'Voltar ao menu'], correctIndex: 0, explanation: 'Clique em "Tentar de novo" para gerar uma nova aula.' },
-        { type: 'challenge', cabritoSpeech: 'Não desista!', content: 'Às vezes a IA precisa de mais tempo. Tente gerar a aula novamente em alguns segundos.', options: ['Gerar nova aula', 'Voltar ao menu'], correctIndex: 0, explanation: 'Persistência é chave para o ENEM — e para a vida!' },
-      ]
+    return res.status(503).json({
+      error: "Erro ao gerar aula. Tente novamente."
     });
   }
 });
@@ -1173,7 +1151,7 @@ app.post("/api/questoes-ai", async (req, res) => {
 
   async function tryQuestoesModel(mc: ModelConfig): Promise<any | null> {
     const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 8000, 8000);
+    const timeout = Math.min(mc.timeout || 7000, 7000);
 
     if (mc.provider === 'gemini') {
       if (!googleApiKey) return null;
@@ -1193,7 +1171,7 @@ app.post("/api/questoes-ai", async (req, res) => {
               { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
               { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
             ],
-            generationConfig: { temperature: 0.85, maxOutputTokens: 2048 }
+            generationConfig: { temperature: 0.85, maxOutputTokens: mc.maxTokens || 2048 }
           }),
           signal: ctrl.signal
         });
@@ -1206,7 +1184,7 @@ app.post("/api/questoes-ai", async (req, res) => {
       } catch { clearTimeout(tid); return null; }
     }
 
-    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
+    for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 2); attempt++) {
       const key = getNextOpenRouterKey();
       if (!key) continue;
       const ctrl = new AbortController();
@@ -1268,13 +1246,17 @@ app.post("/api/questoes-ai", async (req, res) => {
   ).catch(() => null);
 
   if (!questions) {
-    return res.json({ questions: [] });
+    return res.status(503).json({
+      error: "IA não conseguiu gerar questões. Tente novamente."
+    });
   }
 
   return res.json({ questions });
   } catch (err) {
     console.error('[questoes-ai] fatal:', err);
-    return res.json({ questions: [] });
+    return res.status(503).json({
+      error: "Erro ao gerar questões. Tente novamente."
+    });
   }
 });
 
