@@ -204,8 +204,9 @@ async function processJob(cura, prompt, attempt = 1) {
   }
 
   if (attempt < 3) {
-    console.log(`[${cura}] Retrying (attempt ${attempt + 1})...`);
-    await new Promise(r => setTimeout(r, 1000));
+    const delay = attempt === 1 ? 15000 : 30000;
+    console.log(`[${cura}] Retrying (attempt ${attempt + 1}) in ${delay/1000}s...`);
+    await new Promise(r => setTimeout(r, delay));
     return processJob(cura, prompt, attempt + 1);
   }
 
