@@ -162,6 +162,20 @@ function validateQuestions(qs) {
   );
 }
 
+function cleanText(s) {
+  if (typeof s !== "string") return s;
+  return s.replace(/(?<!\n)\n(?!\n)/g, "").replace(/\r/g, "");
+}
+
+function normalizeQuestions(qs) {
+  return qs.map(q => ({
+    ...q,
+    statement: cleanText(q.statement),
+    explanation: cleanText(q.explanation),
+    options: q.options.map(o => ({ ...o, text: cleanText(o.text) })),
+  }));
+}
+
 async function processJob(cura, prompt, attempt = 1) {
   const job = jobs.get(cura);
   if (!job) return;
@@ -178,7 +192,7 @@ async function processJob(cura, prompt, attempt = 1) {
       const result = await provider.fn();
       if (validateQuestions(result)) {
         job.status = "done";
-        job.result = result;
+        job.result = normalizeQuestions(result);
         job.completedAt = Date.now();
         console.log(`[${cura}] OK via ${provider.name} (attempt ${attempt})`);
         return;
