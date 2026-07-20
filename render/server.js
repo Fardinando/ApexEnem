@@ -133,7 +133,7 @@ async function callOpenRouter(prompt) {
         "X-Title": "ApexAI",
       },
       body: JSON.stringify({
-        model: "meta-llama/llama-3.3-70b-instruct:free",
+        model: "google/gemma-4-31b-it:free",
         messages: [
           { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido." },
           { role: "user", content: prompt },
@@ -204,7 +204,7 @@ async function processJob(cura, prompt, attempt = 1) {
   }
 
   if (attempt < 3) {
-    const delay = attempt === 1 ? 15000 : 30000;
+    const delay = attempt === 1 ? 30000 : 60000;
     console.log(`[${cura}] Retrying (attempt ${attempt + 1}) in ${delay/1000}s...`);
     await new Promise(r => setTimeout(r, delay));
     return processJob(cura, prompt, attempt + 1);
@@ -218,6 +218,98 @@ async function processJob(cura, prompt, attempt = 1) {
 
 app.get("/api/health", (req, res) => {
   res.json({ ok: true, keys: { groq: !!groqApiKey, gemini: !!googleApiKey, openrouter: openRouterKeys.length } });
+});
+
+app.post("/api/chat", async (req, res) => {
+  const { systemPrompt, userPrompt, maxTokens, temperature } = req.body;
+  if (!userPrompt) return res.status(400).json({ error: "userPrompt required" });
+
+  const sys = systemPrompt || "Voce e um professor especialista no ENEM.";
+  const mt = maxTokens || 4096;
+  const temp = temperature || 0.7;
+
+  async function tryGroq() {
+    if (!groqApiKey) throw new Error("no groq key");
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 60000);
+    try {
+      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
+        body: JSON.stringify({
+          model: "llama-3.3-70b-versatile",
+          messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }],
+          max_tokens: mt, temperature: temp,
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`groq ${r.status}`);
+      const d = await r.json();
+      return d.choices?.[0]?.message?.content || null;
+    } catch (e) { clearTimeout(tid); throw e; }
+  }
+
+  async function tryGemini() {
+    if (!googleApiKey) throw new Error("no gemini key");
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 60000);
+    try {
+      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+          systemInstruction: { parts: [{ text: sys }] },
+          generationConfig: { temperature: temp, maxOutputTokens: mt },
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`gemini ${r.status}`);
+      const d = await r.json();
+      return d?.candidates?.[0]?.content?.parts?.[0]?.text || null;
+    } catch (e) { clearTimeout(tid); throw e; }
+  }
+
+  async function tryOpenRouter() {
+    const key = nextOrKey();
+    if (!key) throw new Error("no openrouter keys");
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 60000);
+    try {
+      const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+          "HTTP-Referer": "https://apexenem.app",
+          "X-Title": "ApexAI",
+        },
+        body: JSON.stringify({
+          model: "google/gemma-4-31b-it:free",
+          messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }],
+          max_tokens: mt, temperature: temp,
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`openrouter ${r.status}`);
+      const d = await r.json();
+      return d.choices?.[0]?.message?.content || null;
+    } catch (e) { clearTimeout(tid); throw e; }
+  }
+
+  const providers = [tryGroq, tryGemini, tryOpenRouter];
+  for (const fn of providers) {
+    try {
+      const text = await fn();
+      if (text) return res.json({ text, model: fn.name });
+    } catch (err) {
+      console.error(`[chat] ${fn.name} failed: ${err.message}`);
+    }
+  }
+  return res.status(503).json({ error: "all models failed" });
 });
 
 app.post("/api/process", (req, res) => {

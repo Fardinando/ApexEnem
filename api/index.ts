@@ -244,6 +244,34 @@ function getNextOpenRouterKey(): string {
   return key;
 }
 
+async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxTokens?: number; temperature?: number; timeout?: number }): Promise<string> {
+  const renderUrl = process.env.RENDER_PROCESS_URL;
+  if (!renderUrl) throw new Error("RENDER_PROCESS_URL not set");
+  const ctrl = new AbortController();
+  const tid = setTimeout(() => ctrl.abort(), opts.timeout || 30000);
+  try {
+    const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        systemPrompt: opts.systemPrompt,
+        userPrompt: opts.userPrompt,
+        maxTokens: opts.maxTokens || 4096,
+        temperature: opts.temperature ?? 0.7,
+      }),
+      signal: ctrl.signal,
+    });
+    clearTimeout(tid);
+    if (!r.ok) throw new Error(`Render /api/chat returned ${r.status}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    return data.text || "";
+  } catch (e: any) {
+    clearTimeout(tid);
+    throw e;
+  }
+}
+
 const FREE_MODELS = [
   "openrouter/free"
 ];
@@ -372,98 +400,16 @@ TRAVAS: 200 requer texto impecável. Redação mediana=480-560. Impecável=900-1
 Retorne JSON: {score, generalFeedback, competencies:[{id,name,description,score,feedback}x5], strengths:[], weaknesses:[]}
 Apenas JSON puro.`;
 
-  async function callGroq(): Promise<any> {
-    if (!groqApiKey) throw new Error('no groq key');
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 9500);
-    try {
-      const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqApiKey}` },
-        body: JSON.stringify({
-          model: 'llama-3.3-70b-versatile',
-          messages: [
-            { role: 'system', content: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.' },
-            { role: 'user', content: prompt },
-          ],
-          max_tokens: 2048,
-          temperature: 0,
-        }),
-        signal: ctrl.signal,
-      });
-      clearTimeout(tid);
-      if (!r.ok) throw new Error(`groq ${r.status}`);
-      const d = await r.json();
-      const raw = d.choices?.[0]?.message?.content;
-      if (!raw) throw new Error('empty');
-      return { model: 'Groq Llama 3.3', data: extractJsonFromText(raw) };
-    } catch (e) { clearTimeout(tid); throw e; }
-  }
-
-  async function callGemini(): Promise<any> {
-    if (!googleApiKey) throw new Error('no gemini key');
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 9500);
-    try {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          contents: [{ role: 'user', parts: [{ text: prompt }] }],
-          systemInstruction: { parts: [{ text: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.' }] },
-          generationConfig: { temperature: 0, maxOutputTokens: 2048 },
-        }),
-        signal: ctrl.signal,
-      });
-      clearTimeout(tid);
-      if (!r.ok) throw new Error(`gemini ${r.status}`);
-      const d = await r.json();
-      const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text;
-      if (!raw) throw new Error('empty');
-      return { model: 'Gemini 2.0 Flash', data: extractJsonFromText(raw) };
-    } catch (e) { clearTimeout(tid); throw e; }
-  }
-
-  async function callOpenRouter(): Promise<any> {
-    for (let attempt = 0; attempt < Math.min(openRouterKeys.length * 2, 6); attempt++) {
-      const key = getNextOpenRouterKey();
-      if (!key) continue;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 9500);
-      try {
-        const r = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${key}`,
-            'HTTP-Referer': 'https://apexenem.app',
-            'X-Title': 'ApexEnem',
-          },
-          body: JSON.stringify({
-            model: 'meta-llama/llama-3.3-70b-instruct:free',
-            messages: [
-              { role: 'system', content: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.' },
-              { role: 'user', content: prompt },
-            ],
-            temperature: 0.3,
-          }),
-          signal: ctrl.signal,
-        });
-        clearTimeout(tid);
-        if (r.status === 429) continue;
-        if (!r.ok) continue;
-        const d = await r.json();
-        const raw = d.choices?.[0]?.message?.content;
-        if (!raw) continue;
-        return { model: 'OpenRouter Llama 3.3', data: extractJsonFromText(raw) };
-      } catch (e) { clearTimeout(tid); continue; }
-    }
-    throw new Error('openrouter exhausted');
-  }
-
   try {
-    const winner = await Promise.any([callGroq(), callGemini(), callOpenRouter()]);
-    const { model, data } = winner;
+    const raw = await callAI({
+      systemPrompt: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.',
+      userPrompt: prompt,
+      maxTokens: 2048,
+      temperature: 0,
+      timeout: 25000,
+    });
+
+    const data = extractJsonFromText(raw);
     if (!data?.competencies) {
       return res.status(503).json({ error: "Resposta da IA inválida. Tente novamente." });
     }
@@ -484,13 +430,9 @@ Apenas JSON puro.`;
       competencies: finalCompetencies,
       strengths: (data.strengths || []).slice(0, 3),
       weaknesses: (data.weaknesses || []).slice(0, 3),
-      _model: model
     });
   } catch (err: any) {
-    console.error('[correct] all models failed:', err?.message || err);
-    if (err?.errors) {
-      err.errors.forEach((e: any, i: number) => console.error(`[correct] provider ${i}:`, e?.message || e));
-    }
+    console.error('[correct] AI failed:', err?.message || err);
     return res.status(503).json({ error: "Serviço de correção por IA indisponível no momento. Tente novamente." });
   }
 });
@@ -616,52 +558,17 @@ app.post("/api/openrouter-chat", async (req, res) => {
 
   const cabritoPrompt = `Por favor, explique de forma motivadora este exercício para mim:\nExercício/Pergunta: "${questionText}"\nTipo do desafio: "${instructions}"\nGabarito Oficial: "${correctAnswer}"\n\nRetorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.`;
 
-  async function tryChat(model: string): Promise<string | null> {
-    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
-      const key = getNextOpenRouterKey();
-      if (!key) continue;
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 9900);
-      try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${key}`,
-            "HTTP-Referer": "https://apexenem.vercel.app",
-            "X-Title": "ApexEnem"
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: "Você é o Cabrito, o tutor inteligente e encorajador tipo cabrito do Duolingo do ENEM. Explique conceitos de modo muito lúdico, conciso e instrutivo." },
-              { role: "user", content: cabritoPrompt }
-            ],
-            max_tokens: 512
-          }),
-          signal: controller.signal
-        });
-        clearTimeout(timeoutId);
-        if (res.status === 429) {
-          console.error(`tryChat 429 com chave ${key.slice(-4)}`);
-          continue;
-        }
-        if (!res.ok) return null;
-        const data = await res.json();
-        const text = data.choices?.[0]?.message?.content;
-        if (text) return text;
-      } catch {
-        clearTimeout(timeoutId);
-        continue;
-      }
-    }
-    return null;
+  try {
+    const text = await callAI({
+      systemPrompt: "Você é o Cabrito, o tutor inteligente e encorajador tipo cabrito do Duolingo do ENEM. Explique conceitos de modo muito lúdico, conciso e instrutivo.",
+      userPrompt: cabritoPrompt,
+      maxTokens: 512,
+      timeout: 15000,
+    });
+    return res.json({ text });
+  } catch {
+    return res.json({ text: "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
   }
-
-  const models = ["meta-llama/llama-3.2-3b-instruct:free", "openrouter/free"];
-  const text = await Promise.any(models.map(m => tryChat(m).then(t => t ? Promise.resolve(t) : Promise.reject()))).catch(() => null);
-
-  return res.json({ text: text || "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
 });
 
 app.post("/api/lesson", async (req, res) => {
@@ -700,87 +607,37 @@ Para a área "${area}", sugira tópicos variados como:
   "tips": ["dica 1", "dica 2", "dica 3"]
 }`;
 
-  async function tryLesson(model: string): Promise<any | null> {
-    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
-      const key = getNextOpenRouterKey();
-      if (!key) continue;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 12000);
-      try {
-        const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${key}`,
-            "HTTP-Referer": "https://apexenem.vercel.app",
-            "X-Title": "ApexEnem"
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: "Você é um professor especialista em elaboração de itens para o ENEM." },
-              { role: "user", content: prompt }
-            ],
-            max_tokens: 8192,
-            temperature: 0.85
-          }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (resp.status === 429) continue;
-        if (!resp.ok) continue;
-        const data = await resp.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (!content) continue;
+  try {
+    const raw = await callAI({ systemPrompt, userPrompt, maxTokens: 4096, temperature: 0.85, timeout: 25000 });
 
-        const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
-        try {
-          const parsed = JSON.parse(cleaned);
-          if (parsed.title && Array.isArray(parsed.content) && parsed.content.length >= 3) {
-            return parsed;
-          }
-        } catch {
-          const match = cleaned.match(/\{[\s\S]*\}/);
-          if (match) {
-            try {
-              const parsed = JSON.parse(match[0]);
-              if (parsed.title && Array.isArray(parsed.content)) return parsed;
-            } catch {}
-          }
-        }
-      } catch {
-        clearTimeout(tid);
-        continue;
-      }
+    const cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
+    let lesson = null;
+    try { lesson = JSON.parse(cleaned); } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) try { lesson = JSON.parse(match[0]); } catch {}
     }
-    return null;
-  }
 
-  const models = ["meta-llama/llama-3.2-3b-instruct:free", "openrouter/free"];
-  const lesson = await Promise.any(
-    models.map(m => tryLesson(m).then(l => l ? Promise.resolve(l) : Promise.reject()))
-  ).catch(() => null);
+    if (lesson && lesson.title && Array.isArray(lesson.content) && lesson.content.length >= 3) {
+      return res.json(lesson);
+    }
+  } catch {}
 
-  if (!lesson) {
-    return res.json({
-      title: `Aula de ${area}`,
-      subtitle: 'Conceitos essenciais para o ENEM',
-      content: [
-        `A área de ${area} é uma das mais importantes no ENEM. Cada prova traz questões que exigem não apenas memorização, mas interpretação profunda e aplicação prática.`,
-        `Para ir bem, é essencial dominar os conceitos fundamentais e entender como eles se conectam com situações reais. O ENEM valoriza a capacidade de relacionar conteúdos.`,
-        `Estude com consistência, resolva questões de provas anteriores e sempre revise seus pontos fracos. A prática regular é a chave para a aprovação.`,
-        `Não pule etapas: construa uma base sólida antes de avançar para tópicos complexos. Use resumos, mapas mentais e fichas de revisão.`,
-        `Lembre-se: o ENEM não cobra apenas fórmulas. Ele avalia sua capacidade de pensar criticamente e propor soluções para problemas reais da sociedade brasileira.`
-      ],
-      tips: [
-        'Resolva questões de provas anteriores do ENEM regularmente.',
-        'Revise seus erros e identifique padrões nos temas que erra.',
-        'Use o método de repetição espaçada para fixar o conteúdo.'
-      ]
-    });
-  }
-
-  return res.json(lesson);
+  return res.json({
+    title: `Aula de ${area}`,
+    subtitle: 'Conceitos essenciais para o ENEM',
+    content: [
+      `A área de ${area} é uma das mais importantes no ENEM. Cada prova traz questões que exigem não apenas memorização, mas interpretação profunda e aplicação prática.`,
+      `Para ir bem, é essencial dominar os conceitos fundamentais e entender como eles se conectam com situações reais. O ENEM valoriza a capacidade de relacionar conteúdos.`,
+      `Estude com consistência, resolva questões de provas anteriores e sempre revise seus pontos fracos. A prática regular é a chave para a aprovação.`,
+      `Não pule etapas: construa uma base sólida antes de avançar para tópicos complexos. Use resumos, mapas mentais e fichas de revisão.`,
+      `Lembre-se: o ENEM não cobra apenas fórmulas. Ele avalia sua capacidade de pensar criticamente e propor soluções para problemas reais da sociedade brasileira.`
+    ],
+    tips: [
+      'Resolva questões de provas anteriores do ENEM regularmente.',
+      'Revise seus erros e identifique padrões nos temas que erra.',
+      'Use o método de repetição espaçada para fixar o conteúdo.'
+    ]
+  });
 });
 
 app.post("/api/lesson-v2", async (req, res) => {
@@ -793,107 +650,7 @@ app.post("/api/lesson-v2", async (req, res) => {
   const promptDef = PROMPTS.lessonCycle;
   const built = promptDef.buildPrompt(area, level || 5, topicNum, weakTopics);
   const systemPrompt = typeof built === 'string' ? built : built.system;
-  const userPrompt = typeof built === 'string' ? built : built.user;
-
-  async function tryLessonV2Model(mc: ModelConfig): Promise<any | null> {
-    const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 7000, 9000);
-
-    if (mc.provider === 'gemini') {
-      if (!googleApiKey) return null;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), timeout);
-      try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              { role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }
-            ],
-            safetySettings: [
-              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
-            ],
-            generationConfig: { temperature: 0.85, maxOutputTokens: mc.maxTokens || 8192 }
-          }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (!res.ok) return null;
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) return null;
-        return parseLessonJson(text);
-      } catch { clearTimeout(tid); return null; }
-    }
-
-    if (mc.provider === 'groq') {
-      if (!groqApiKey) return null;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), timeout);
-      try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqApiKey}` },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-            ],
-            max_tokens: mc.maxTokens || 4096,
-            temperature: 0.85
-          }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (!res.ok) return null;
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (!content) return null;
-        return parseLessonJson(content);
-      } catch { clearTimeout(tid); return null; }
-    }
-
-    for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 1); attempt++) {
-      const key = getNextOpenRouterKey();
-      if (!key) continue;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), timeout);
-      try {
-        const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${key}`,
-            "HTTP-Referer": "https://apexenem.vercel.app",
-            "X-Title": "ApexEnem"
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-            ],
-            max_tokens: mc.maxTokens || 8192,
-            temperature: 0.85
-          }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (resp.status === 429) continue;
-        if (!resp.ok) continue;
-        const data = await resp.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (!content) continue;
-        return parseLessonJson(content);
-      } catch { clearTimeout(tid); continue; }
-    }
-    return null;
-  }
+  const userPrompt = typeof built === 'string' ? '' : built.user;
 
   function parseLessonJson(content: string): any | null {
     const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -912,23 +669,16 @@ app.post("/api/lesson-v2", async (req, res) => {
     return null;
   }
 
-  const models = promptDef.models;
-  const lesson = await Promise.any(
-    models.map(m => tryLessonV2Model(m).then(l => l ? Promise.resolve(l) : Promise.reject()))
-  ).catch(() => null);
+  try {
+    const raw = await callAI({ systemPrompt, userPrompt: userPrompt || systemPrompt, maxTokens: 8192, temperature: 0.85, timeout: 25000 });
+    const lesson = parseLessonJson(raw);
+    if (lesson) return res.json(lesson);
+  } catch {}
 
-  if (!lesson) {
-    return res.status(503).json({
-      error: "IA não conseguiu gerar a aula. Tente novamente."
-    });
-  }
-
-  return res.json(lesson);
+  return res.status(503).json({ error: "IA não conseguiu gerar a aula. Tente novamente." });
   } catch (err) {
     console.error('[lesson-v2] fatal:', err);
-    return res.status(503).json({
-      error: "Erro ao gerar aula. Tente novamente."
-    });
+    return res.status(503).json({ error: "Erro ao gerar aula. Tente novamente." });
   }
 });
 
@@ -941,107 +691,7 @@ app.post("/api/questoes-ai", async (req, res) => {
   const promptDef = PROMPTS.questoesComFeedback;
   const built = promptDef.buildPrompt(area, count || 5, weakTopics);
   const systemPrompt = typeof built === 'string' ? built : built.system;
-  const userPrompt = typeof built === 'string' ? built : built.user;
-
-  async function tryQuestoesModel(mc: ModelConfig): Promise<any | null> {
-    const model = mc.modelId;
-    const timeout = Math.min(mc.timeout || 7000, 3000);
-
-    if (mc.provider === 'gemini') {
-      if (!googleApiKey) return null;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), timeout);
-      try {
-        const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [
-              { role: "user", parts: [{ text: systemPrompt + "\n\n" + userPrompt }] }
-            ],
-            safetySettings: [
-              { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-              { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
-            ],
-            generationConfig: { temperature: 0.85, maxOutputTokens: mc.maxTokens || 2048 }
-          }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (!res.ok) return null;
-        const data = await res.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (!text) return null;
-        return parseQuestoesJson(text);
-      } catch { clearTimeout(tid); return null; }
-    }
-
-    if (mc.provider === 'groq') {
-      if (!groqApiKey) return null;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), timeout);
-      try {
-        const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "Authorization": `Bearer ${groqApiKey}` },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-            ],
-            max_tokens: mc.maxTokens || 2048,
-            temperature: 0.85
-          }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (!res.ok) return null;
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (!content) return null;
-        return parseQuestoesJson(content);
-      } catch { clearTimeout(tid); return null; }
-    }
-
-    for (let attempt = 0; attempt < Math.min(openRouterKeys.length, 1); attempt++) {
-      const key = getNextOpenRouterKey();
-      if (!key) continue;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), timeout);
-      try {
-        const resp = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${key}`,
-            "HTTP-Referer": "https://apexenem.vercel.app",
-            "X-Title": "ApexEnem"
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
-            ],
-            max_tokens: 2048,
-            temperature: 0.85
-          }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (resp.status === 429) continue;
-        if (!resp.ok) continue;
-        const data = await resp.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (!content) continue;
-        return parseQuestoesJson(content);
-      } catch { clearTimeout(tid); continue; }
-    }
-    return null;
-  }
+  const userPrompt = typeof built === 'string' ? '' : built.user;
 
   function parseQuestoesJson(content: string): any[] | null {
     const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
@@ -1062,23 +712,16 @@ app.post("/api/questoes-ai", async (req, res) => {
     return null;
   }
 
-  const qModels = promptDef.models;
-  const questions = await Promise.any(
-    qModels.map(m => tryQuestoesModel(m).then(q => q ? Promise.resolve(q) : Promise.reject()))
-  ).catch(() => null);
+  try {
+    const raw = await callAI({ systemPrompt, userPrompt: userPrompt || systemPrompt, maxTokens: 8192, temperature: 0.85, timeout: 25000 });
+    const questions = parseQuestoesJson(raw);
+    if (questions) return res.json({ questions });
+  } catch {}
 
-  if (!questions) {
-    return res.status(503).json({
-      error: "IA não conseguiu gerar questões. Tente novamente."
-    });
-  }
-
-  return res.json({ questions });
+  return res.status(503).json({ error: "IA não conseguiu gerar questões. Tente novamente." });
   } catch (err) {
     console.error('[questoes-ai] fatal:', err);
-    return res.status(503).json({
-      error: "Erro ao gerar questões. Tente novamente."
-    });
+    return res.status(503).json({ error: "Erro ao gerar questões. Tente novamente." });
   }
 });
 
@@ -1103,51 +746,9 @@ ${optsText}
 Resposta correta: ${q.correctAnswer}`;
 
       try {
-        if (groqApiKey) {
-          const ctrl = new AbortController();
-          const tid = setTimeout(() => ctrl.abort(), 6000);
-          const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqApiKey}` },
-            body: JSON.stringify({
-              model: 'llama-3.3-70b-versatile',
-              messages: [{ role: 'user', content: prompt }],
-              max_tokens: 512,
-            temperature: 0,
-            }),
-            signal: ctrl.signal,
-          });
-          clearTimeout(tid);
-          if (r.ok) {
-            const d = await r.json();
-            const text = d.choices?.[0]?.message?.content;
-            if (text) return { id: q.id, explanation: text.trim() };
-          }
-        }
+        const text = await callAI({ userPrompt: prompt, maxTokens: 512, temperature: 0.3, timeout: 15000 });
+        if (text) return { id: q.id, explanation: text.trim() };
       } catch {}
-
-      try {
-        if (googleApiKey) {
-          const ctrl = new AbortController();
-          const tid = setTimeout(() => ctrl.abort(), 6000);
-          const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              contents: [{ role: 'user', parts: [{ text: prompt }] }],
-              generationConfig: { temperature: 0.3, maxOutputTokens: 512 },
-            }),
-            signal: ctrl.signal,
-          });
-          clearTimeout(tid);
-          if (r.ok) {
-            const d = await r.json();
-            const text = d?.candidates?.[0]?.content?.parts?.[0]?.text;
-            if (text) return { id: q.id, explanation: text.trim() };
-          }
-        }
-      } catch {}
-
       return null;
     }
 
@@ -1166,9 +767,6 @@ Resposta correta: ${q.correctAnswer}`;
 
 app.post("/api/generate-learning-exercises", async (req, res) => {
   const { chapterTitle, chapterArea, weakAreas, count } = req.body;
-
-  const controller = new AbortController();
-  const timeoutId = setTimeout(() => controller.abort(), 9900);
 
   const systemMsg = `Você é um gerador de exercícios educacionais para o ENEM. Gere ${count || 3} exercícios no formato JSON sobre "${chapterTitle}" (área: ${chapterArea}).
 Os exercícios DEVEM ser variados entre os tipos: 'choice', 'true-false', 'reorder', 'matching'.
@@ -1193,45 +791,13 @@ Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque ne
     }
   }
 
-  async function tryExercises(model: string): Promise<any[] | null> {
-    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
-      const key = getNextOpenRouterKey();
-      if (!key) continue;
-      const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 9900);
-      try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${key}`,
-            "HTTP-Referer": "https://apexenem.vercel.app",
-            "X-Title": "ApexEnem"
-          },
-          body: JSON.stringify({ model, messages: [{ role: "system", content: systemMsg }, { role: "user", content: userMsg }], max_tokens: 1536 }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (res.status === 429) {
-          console.error(`tryExercises 429 com chave ${key.slice(-4)}`);
-          continue;
-        }
-        if (!res.ok) { console.error(`tryExercises ${model}: ${res.status}`); continue; }
-        const data = await res.json();
-        const content = data.choices?.[0]?.message?.content;
-        if (!content) continue;
-        return parseExercises(content);
-      } catch {
-        continue;
-      }
-    }
-    return null;
+  try {
+    const raw = await callAI({ systemPrompt: systemMsg, userPrompt: userMsg, maxTokens: 1536, timeout: 15000 });
+    const exercises = parseExercises(raw);
+    return res.json({ exercises: exercises && exercises.length > 0 ? exercises : null });
+  } catch {
+    return res.json({ exercises: null });
   }
-
-  const models = ["meta-llama/llama-3.2-3b-instruct:free", "openrouter/free"];
-  const exercises = await Promise.any(models.map(m => tryExercises(m).then(e => e ? Promise.resolve(e) : Promise.reject()))).catch(() => null);
-
-  return res.json({ exercises: exercises && exercises.length > 0 ? exercises : null });
 });
 
 app.post("/api/supabase/save-progress", async (req, res) => {
