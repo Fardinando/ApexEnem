@@ -675,10 +675,10 @@ app.post("/api/questions", async (req, res) => {
   }
 
   const endpointStart = Date.now();
-  const MAX_TOTAL_TIME = 6500;
+  const MAX_TOTAL_TIME = 5000;
 
   async function tryOpenRouter(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
-    for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
+    for (let attempt = 0; attempt < openRouterKeys.length; attempt++) {
       if (Date.now() - endpointStart > MAX_TOTAL_TIME) {
         errors.push(`${model}: tempo total excedido`);
         return null;
@@ -784,9 +784,9 @@ app.post("/api/questions", async (req, res) => {
   }
 
   const modelAttempts = PROMPTS.questions.models.map(m => {
-    if (m.provider === 'groq') return tryGroq(m.modelId, m.timeout || 9500, errors);
-    if (m.provider === 'gemini') return tryGemini(m.modelId, m.timeout || 9500, errors);
-    if (m.provider === 'openrouter') return tryOpenRouter(m.modelId, m.timeout || 9900, errors);
+    if (m.provider === 'groq') return tryGroq(m.modelId, Math.min(m.timeout || 5000, MAX_TOTAL_TIME), errors);
+    if (m.provider === 'gemini') return tryGemini(m.modelId, Math.min(m.timeout || 5000, MAX_TOTAL_TIME), errors);
+    if (m.provider === 'openrouter') return tryOpenRouter(m.modelId, Math.min(m.timeout || 5000, MAX_TOTAL_TIME), errors);
     return Promise.resolve(null);
   });
 
