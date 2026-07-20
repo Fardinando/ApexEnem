@@ -511,7 +511,7 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
   const fetchBatch = async (year: number, offset: number): Promise<any[]> => {
     try {
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 2000);
+      const tid = setTimeout(() => ctrl.abort(), 1500);
       const res = await fetch(`https://api.enem.dev/v1/exams/${year}/questions?limit=25&offset=${offset}`, { signal: ctrl.signal });
       clearTimeout(tid);
       if (!res.ok) return [];
@@ -529,17 +529,14 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
     } catch { return []; }
   };
 
+  const allBatches = await Promise.all(years.flatMap(year => offsets.map(o => fetchBatch(year, o))));
   const all: any[] = [];
-  for (const year of years) {
-    if (all.length >= count) break;
-    const batches = await Promise.all(offsets.map(o => fetchBatch(year, o)));
-    for (const batch of batches) {
-      for (const q of batch) {
-        if (all.length >= count) break;
-        all.push(q);
-      }
+  for (const batch of allBatches) {
+    for (const q of batch) {
       if (all.length >= count) break;
+      all.push(q);
     }
+    if (all.length >= count) break;
   }
   return all;
 }
