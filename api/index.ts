@@ -542,6 +542,8 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
 }
 
 app.post("/api/questions", async (req, res) => {
+  const endpointStart = Date.now();
+  const MAX_TOTAL_TIME = 9900;
   const { area, hardSubjects } = req.body;
   const targetArea = area || "Geral";
   const numQuestions = 3;
@@ -670,9 +672,6 @@ app.post("/api/questions", async (req, res) => {
       clearTimeout(tid);
     }
   }
-
-  const endpointStart = Date.now();
-  const MAX_TOTAL_TIME = 9900;
 
   async function tryOpenRouter(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
     for (let attempt = 0; attempt < openRouterKeys.length; attempt++) {
