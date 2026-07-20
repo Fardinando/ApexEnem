@@ -672,7 +672,7 @@ app.post("/api/questions", async (req, res) => {
   }
 
   const endpointStart = Date.now();
-  const MAX_TOTAL_TIME = 5000;
+  const MAX_TOTAL_TIME = 8000;
 
   async function tryOpenRouter(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
     for (let attempt = 0; attempt < openRouterKeys.length; attempt++) {
