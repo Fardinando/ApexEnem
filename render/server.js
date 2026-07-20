@@ -201,6 +201,10 @@ async function processJob(cura, prompt, attempt = 1) {
   console.log(`[${cura}] FAILED after 3 attempts`);
 }
 
+app.get("/api/health", (req, res) => {
+  res.json({ ok: true, keys: { groq: !!groqApiKey, gemini: !!googleApiKey, openrouter: openRouterKeys.length } });
+});
+
 app.post("/api/process", (req, res) => {
   const { cura, prompt } = req.body;
   if (!cura || !prompt) {
