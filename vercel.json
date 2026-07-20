@@ -11,6 +11,7 @@
     { "source": "/api/stats", "destination": "/api" },
     { "source": "/api/correct", "destination": "/api" },
     { "source": "/api/questions", "destination": "/api" },
+    { "source": "/api/questions/status/(.*)", "destination": "/api" },
     { "source": "/api/delete-account", "destination": "/api" },
     { "source": "/api/credentials-status", "destination": "/api" },
     { "source": "/api/supabase/(.*)", "destination": "/api" },

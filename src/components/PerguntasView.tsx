@@ -69,39 +69,65 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [] }: Perg
       const res = await fetch('/api/questions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area: selectedArea, count: 3, hardSubjects: areaHardSubjects }),
+        body: JSON.stringify({ area: selectedArea, hardSubjects: areaHardSubjects }),
       });
 
       const data = await res.json();
 
-      if (res.ok && Array.isArray(data) && data.length > 0) {
-        setQuestions(data);
+      if (!res.ok || !data?.cura) {
+        const errMsg = data?.error || `Erro ${res.status}: não foi possível iniciar geração.`;
+        setError(errMsg);
         setIsLoading(false);
         return;
       }
 
-      setKeySwitchMessage(null);
+      const cura = data.cura;
+      const pollStart = Date.now();
+      const POLL_INTERVAL = 2500;
+      const MAX_POLL = 120000;
 
-      const errMsg = data?.error || `Erro ${res.status}: não foi possível gerar questões.`;
-
-      if (data?.details?.length > 0) {
-        const firstErr = data.details[0];
-        if (firstErr.toLowerCase().includes('429') || firstErr.toLowerCase().includes('402') || firstErr.toLowerCase().includes('quota') || firstErr.toLowerCase().includes('saldo') || firstErr.toLowerCase().includes('timeout') || firstErr.toLowerCase().includes('abort')) {
-          setKeySwitchMessage(firstErr);
-          if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
-          keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 6000);
+      const poll = async (): Promise<void> => {
+        if (Date.now() - pollStart > MAX_POLL) {
+          setError('Tempo limite de geração excedido. Tente novamente.');
+          setIsLoading(false);
+          return;
         }
-        const detailLines = data.details.slice(0, 5).map((d: string) => `• ${d}`).join('\n');
-        setError(`${errMsg}\n\n${detailLines}`);
-      } else {
-        setError(errMsg);
-      }
+
+        await new Promise(r => setTimeout(r, POLL_INTERVAL));
+
+        try {
+          const sr = await fetch(`/api/questions/status/${cura}`);
+          const status = await sr.json();
+
+          if (status.status === 'done' && Array.isArray(status.result) && status.result.length > 0) {
+            const enriched = status.result.map((q: any, i: number) => ({
+              ...q,
+              id: q.id || `ai-q-${Date.now()}-${i}`,
+              area: q.area || selectedArea,
+            }));
+            setQuestions(enriched);
+            setIsLoading(false);
+            return;
+          }
+
+          if (status.status === 'error') {
+            setError(status.error || 'Falha na geração de questões. Tente novamente.');
+            setIsLoading(false);
+            return;
+          }
+
+          return poll();
+        } catch {
+          return poll();
+        }
+      };
+
+      await poll();
     } catch (err: any) {
       setKeySwitchMessage('🔄 Falha de conexão com o servidor.');
       if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
       keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 5000);
       setError(err?.message || 'Erro de conexão com o servidor.');
-    } finally {
       setIsLoading(false);
     }
   };

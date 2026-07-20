@@ -112,7 +112,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/lesson", "/lesson-v2", "/questoes-ai", "/stats", "/simulado-explanation"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
-  if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath)) return next();
+  if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/")) return next();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -542,8 +542,11 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
 }
 
 app.post("/api/questions", async (req, res) => {
-  const endpointStart = Date.now();
-  const MAX_TOTAL_TIME = 9900;
+  const renderUrl = process.env.RENDER_PROCESS_URL;
+  if (!renderUrl) {
+    return res.status(503).json({ error: "Serviço de geração indisponível." });
+  }
+
   const { area, hardSubjects } = req.body;
   const targetArea = area || "Geral";
   const numQuestions = 3;
@@ -555,250 +558,44 @@ app.post("/api/questions", async (req, res) => {
   ]);
   const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions, hardSubjects) as string;
 
-  function stripLatex(text: string): string {
-    if (!text) return text;
-    const supers: Record<string, string> = { '0': '⁰', '1': '¹', '2': '²', '3': '³', '4': '⁴', '5': '⁵', '6': '⁶', '7': '⁷', '8': '⁸', '9': '⁹', '+': '⁺', '-': '⁻', '(': '⁽', ')': '⁾', 'n': 'ⁿ' };
-    const subs: Record<string, string> = { '0': '₀', '1': '₁', '2': '₂', '3': '₃', '4': '₄', '5': '₅', '6': '₆', '7': '₇', '8': '₈', '9': '₉', '+': '₊', '-': '₋' };
-    let s = text;
-    s = s.replace(/\\(?:sqrt|√)\{([^}]*)\}/g, '√$1');
-    s = s.replace(/\\(?:frac)\{([^}]*)\}\{([^}]*)\}/g, '$1/$2');
-    s = s.replace(/\\(?:alpha|α)/g, 'α');
-    s = s.replace(/\\(?:beta|β)/g, 'β');
-    s = s.replace(/\\(?:pi|π)/g, 'π');
-    s = s.replace(/\\(?:Delta|Δ)/g, 'Δ');
-    s = s.replace(/\\(?:theta|θ)/g, 'θ');
-    s = s.replace(/\\(?:infty|∞)/g, '∞');
-    s = s.replace(/\\(?:approx|≈)/g, '≈');
-    s = s.replace(/\\(?:neq|≠)/g, '≠');
-    s = s.replace(/\\(?:leq|≤)/g, '≤');
-    s = s.replace(/\\(?:geq|≥)/g, '≥');
-    s = s.replace(/\\(?:times|×)/g, '×');
-    s = s.replace(/\\(?:div|÷)/g, '÷');
-    s = s.replace(/\\(?:cdot|·)/g, '·');
-    s = s.replace(/\\/g, '');
-    s = s.replace(/\^\{([^}]*)\}/g, (_, inner) => inner.split('').map((c: string) => supers[c] || c).join(''));
-    s = s.replace(/\_\{([^}]*)\}/g, (_, inner) => inner.split('').map((c: string) => subs[c] || c).join(''));
-    s = s.replace(/\^([0-9A-Za-z])/g, (_, c) => supers[c] || c);
-    s = s.replace(/\_([0-9A-Za-z])/g, (_, c) => subs[c] || c);
-    return s;
-  }
+  const cura = crypto.randomUUID();
 
-  function normalizeQuestion(q: any): any {
-    if (!q || typeof q !== 'object' || Array.isArray(q)) return q;
-    q.correctAnswer = q.correctAnswer || q.correct_answer || q.answer || q.gabarito || q.correct || q.correctAnswerLetter || q.rightAnswer;
-    if (typeof q.correctAnswer === 'string') q.correctAnswer = q.correctAnswer.trim().toUpperCase().replace(/[^A-E]/g, '');
-    q.statement = stripLatex(q.statement || q.question || q.questionText || q.enunciado || q.pergunta || q.text || '');
-    q.explanation = stripLatex(q.explanation || q.explicacao || q.feedback || q.justification || q.resolution || q.comment || q.comentario || q.solution || q.resposta || q.gabarito_comentado || q.resolucao || '');
-    q.options = q.options || q.alternatives || q.choices || q.opcoes || q.items || q.respostas || [];
-    if (Array.isArray(q.options)) {
-      q.options = q.options.map((o: any) => {
-        if (typeof o === 'string') return { letter: '', text: stripLatex(o) };
-        return { letter: o.letter || o.letra || o.key || o.id || o.index || '', text: stripLatex(o.text || o.texto || o.value || o.conteudo || o.descricao || o.description || o.label || '') };
-      });
-    }
-    return q;
-  }
-
-  function validateQuestions(questions: any[], targetArea?: string): any[] {
-    return questions.filter((q: any) => {
-      q = normalizeQuestion(q);
-      if (!q) { console.error("validate: q is null/undefined"); return false; }
-      const keys = Object.keys(q);
-      if (typeof q.statement !== 'string' || q.statement.length < 30) { console.error("validate: statement inválido", "keys:", keys, "statement:", typeof q.statement, q.statement?.length); return false; }
-      if (!Array.isArray(q.options) || q.options.length < 2) { console.error("validate: options inválido", "keys:", keys, Array.isArray(q.options), q.options?.length); return false; }
-      if (typeof q.correctAnswer !== 'string' || q.correctAnswer.length !== 1) { console.error("validate: correctAnswer inválido", "keys:", keys, "val:", q.correctAnswer, "type:", typeof q.correctAnswer); return false; }
-      if (typeof q.explanation !== 'string' || q.explanation.length < 20) { console.error("validate: explanation inválido", "keys:", keys, "len:", q.explanation?.length); return false; }
-
-      const texts = q.options.map((o: any) => o?.text || '');
-      if (texts.some((t: string) => t.length < 2)) { console.error("validate: texto de opção muito curto", texts); return false; }
-      if (new Set(texts).size !== texts.length) { console.error("validate: textos de opção duplicados", texts); return false; }
-
-      return true;
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 5000);
+    const r = await fetch(`${renderUrl}/api/process`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cura, prompt }),
+      signal: ctrl.signal,
     });
+    clearTimeout(tid);
+    if (!r.ok) {
+      return res.status(502).json({ error: "Render service unavailable." });
+    }
+    return res.json({ cura });
+  } catch (err: any) {
+    console.error("[questions] Failed to reach Render:", err?.message);
+    return res.status(502).json({ error: "Render service unavailable." });
+  }
+});
+
+app.get("/api/questions/status/:cura", async (req, res) => {
+  const renderUrl = process.env.RENDER_PROCESS_URL;
+  if (!renderUrl) {
+    return res.status(503).json({ error: "Serviço indisponível." });
   }
 
-  async function tryGemini(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
-    if (!googleApiKey) { errors.push('Gemini: GOOGLE_API_KEY não configurada'); return null; }
-    if (Date.now() - endpointStart > MAX_TOTAL_TIME) { return null; }
+  try {
     const ctrl = new AbortController();
-    const remaining = Math.max(2000, MAX_TOTAL_TIME - (Date.now() - endpointStart));
-    const tid = setTimeout(() => ctrl.abort(), Math.min(timeoutMs, remaining));
-    try {
-      const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${googleApiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ parts: [{ text: prompt }] }],
-          safetySettings: [
-            { category: "HARM_CATEGORY_HARASSMENT", threshold: "BLOCK_ONLY_HIGH" },
-            { category: "HARM_CATEGORY_HATE_SPEECH", threshold: "BLOCK_ONLY_HIGH" },
-            { category: "HARM_CATEGORY_SEXUALLY_EXPLICIT", threshold: "BLOCK_ONLY_HIGH" },
-            { category: "HARM_CATEGORY_DANGEROUS_CONTENT", threshold: "BLOCK_ONLY_HIGH" }
-          ],
-          generationConfig: { temperature: 0.9, maxOutputTokens: 8192 }
-        }),
-        signal: ctrl.signal
-      });
-      clearTimeout(tid);
-      if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        const msg = `Gemini ${model}: ${res.status} ${errBody.slice(0, 200)}`;
-        console.error(msg);
-        errors.push(msg);
-        return null;
-      }
-      const data = await res.json();
-      const candidate = data?.candidates?.[0];
-      const finishReason = candidate?.finishReason;
-      const text = candidate?.content?.parts?.[0]?.text;
-      console.error(`Gemini ${model} finishReason=${finishReason} rawLen=${text?.length || 0}`);
-      if (!text || finishReason === "SAFETY") {
-        const msg = `Gemini ${model}: bloqueado (${finishReason})`;
-        console.error(msg);
-        errors.push(msg);
-        return null;
-      }
-      const raw = extractJsonFromText(text);
-      const questions = Array.isArray(raw) ? validateQuestions(raw) : [];
-      if (questions.length > 0) return questions;
-      errors.push(`Gemini ${model}: JSON inválido ou validação rejeitou`);
-      return null;
-    } catch (err: any) {
-      const msg = `Gemini ${model}: ${err?.message || err}`;
-      console.error(msg);
-      errors.push(msg);
-      return null;
-    } finally {
-      clearTimeout(tid);
-    }
+    const tid = setTimeout(() => ctrl.abort(), 4000);
+    const r = await fetch(`${renderUrl}/api/status/${req.params.cura}`, { signal: ctrl.signal });
+    clearTimeout(tid);
+    const data = await r.json();
+    return res.json(data);
+  } catch {
+    return res.status(502).json({ error: "Render service unavailable." });
   }
-
-  async function tryOpenRouter(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
-    for (let attempt = 0; attempt < openRouterKeys.length; attempt++) {
-      if (Date.now() - endpointStart > MAX_TOTAL_TIME) {
-        errors.push(`${model}: tempo total excedido`);
-        return null;
-      }
-      const key = getNextOpenRouterKey();
-      if (!key) continue;
-      const ctrl = new AbortController();
-      const remaining = Math.max(2000, MAX_TOTAL_TIME - (Date.now() - endpointStart));
-      const tid = setTimeout(() => ctrl.abort(), Math.min(timeoutMs, remaining));
-      try {
-        const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${key}`,
-            "HTTP-Referer": "https://apexenem.vercel.app",
-            "X-Title": "ApexEnem"
-          },
-          body: JSON.stringify({
-            model,
-            messages: [
-              { role: "system", content: "Você é um professor especialista em elaboração de itens para o ENEM." },
-              { role: "user", content: prompt }
-            ],
-            max_tokens: 8192,
-            temperature: 0.85
-          }),
-          signal: ctrl.signal
-        });
-        clearTimeout(tid);
-        if (res.status === 429) {
-          errors.push(`429: ${model} — quota esgotada na chave ${key.slice(-4)}`);
-          continue;
-        }
-        if (res.status === 402) {
-          errors.push(`402: ${model} — saldo insuficiente na chave ${key.slice(-4)}`);
-          continue;
-        }
-        if (!res.ok) {
-          errors.push(`${res.status}: ${model} — erro na chave ${key.slice(-4)}`);
-          return null;
-        }
-        const data = await res.json();
-        const content = data?.choices?.[0]?.message?.content;
-        if (!content) { errors.push(`${model}: resposta vazia`); return null; }
-        const raw = extractJsonFromText(content);
-        const questions = Array.isArray(raw) ? validateQuestions(raw) : [];
-        if (questions.length > 0) return questions;
-        errors.push(`${model}: JSON inválido ou validação rejeitou`);
-        return null;
-      } catch (err: any) {
-        clearTimeout(tid);
-        const msg = err?.message || err || 'erro desconhecido';
-        errors.push(`${model}: ${msg}`);
-        continue;
-      }
-    }
-    errors.push(`${model}: todas as ${openRouterKeys.length} chave(s) esgotaram`);
-    return null;
-  }
-
-  const errors: string[] = [];
-  async function tryGroq(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
-    if (!groqApiKey) { errors.push('Groq: GROQ_API_KEY não configurada'); return null; }
-    if (Date.now() - endpointStart > MAX_TOTAL_TIME) return null;
-    const ctrl = new AbortController();
-    const remaining = Math.max(2000, MAX_TOTAL_TIME - (Date.now() - endpointStart));
-    const tid = setTimeout(() => ctrl.abort(), Math.min(timeoutMs, remaining));
-    try {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${groqApiKey}` },
-        body: JSON.stringify({
-          model,
-          messages: [
-            { role: 'system', content: 'Você é um professor especialista em elaboração de itens para o ENEM.' },
-            { role: 'user', content: prompt },
-          ],
-          max_tokens: 8192,
-          temperature: 0.85,
-        }),
-        signal: ctrl.signal,
-      });
-      clearTimeout(tid);
-      if (!res.ok) {
-        const errBody = await res.text().catch(() => '');
-        errors.push(`Groq ${model}: ${res.status} ${errBody.slice(0, 200)}`);
-        return null;
-      }
-      const data = await res.json();
-      const content = data?.choices?.[0]?.message?.content;
-      if (!content) { errors.push(`Groq ${model}: resposta vazia`); return null; }
-      const raw = extractJsonFromText(content);
-      const questions = Array.isArray(raw) ? validateQuestions(raw) : [];
-      if (questions.length > 0) return questions;
-      errors.push(`Groq ${model}: JSON inválido ou validação rejeitou`);
-      return null;
-    } catch (err: any) {
-      clearTimeout(tid);
-      errors.push(`Groq ${model}: ${err?.message || err}`);
-      return null;
-    }
-  }
-
-  const modelAttempts = PROMPTS.questions.models.map(m => {
-    if (m.provider === 'groq') return tryGroq(m.modelId, m.timeout || 9500, errors);
-    if (m.provider === 'gemini') return tryGemini(m.modelId, m.timeout || 9500, errors);
-    if (m.provider === 'openrouter') return tryOpenRouter(m.modelId, m.timeout || 9500, errors);
-    return Promise.resolve(null);
-  });
-
-  const result = await Promise.any(
-    modelAttempts.map(p => p.then(q => q ? Promise.resolve(q) : Promise.reject()))
-  ).catch(() => null);
-
-  if (result) {
-    const enriched = (result as any[]).map((q: any, i: number) => ({
-      ...q,
-      id: q.id || `ai-q-${Date.now()}-${i}`,
-      area: q.area || targetArea,
-    }));
-    return res.json(enriched);
-  }
-  return res.status(502).json({ error: "Todos os modelos falharam.", details: errors.slice(0, 10) });
 });
 
 app.post("/api/openrouter-chat", async (req, res) => {
