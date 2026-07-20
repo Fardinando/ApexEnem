@@ -505,13 +505,13 @@ const QUESTIONS_SUBJECT_MAP: Record<string, string> = {
 async function fetchReferenceQuestions(area: string, count: number = 8): Promise<any[]> {
   const discipline = QUESTIONS_SUBJECT_MAP[area];
   if (!discipline) return [];
-  const years = [2024, 2023, 2022, 2021, 2020];
-  const offsets = [0, 25, 50, 75];
+  const years = [2024, 2023, 2022];
+  const offsets = [0, 25, 50];
 
   const fetchBatch = async (year: number, offset: number): Promise<any[]> => {
     try {
       const ctrl = new AbortController();
-      const tid = setTimeout(() => ctrl.abort(), 4000);
+      const tid = setTimeout(() => ctrl.abort(), 2000);
       const res = await fetch(`https://api.enem.dev/v1/exams/${year}/questions?limit=25&offset=${offset}`, { signal: ctrl.signal });
       clearTimeout(tid);
       if (!res.ok) return [];
@@ -550,7 +550,10 @@ app.post("/api/questions", async (req, res) => {
   const numQuestions = count || 1;
 
   const promptDef = PROMPTS.questions;
-  const referenceQuestions = await fetchReferenceQuestions(targetArea, 8);
+  const refCtrl = new AbortController();
+  const refTid = setTimeout(() => refCtrl.abort(), 3000);
+  const referenceQuestions = await fetchReferenceQuestions(targetArea, 8).catch(() => []);
+  clearTimeout(refTid);
   const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions, hardSubjects) as string;
 
   function stripLatex(text: string): string {
@@ -672,7 +675,7 @@ app.post("/api/questions", async (req, res) => {
   }
 
   const endpointStart = Date.now();
-  const MAX_TOTAL_TIME = 9800;
+  const MAX_TOTAL_TIME = 6500;
 
   async function tryOpenRouter(model: string, timeoutMs: number, errors: string[]): Promise<any[] | null> {
     for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
