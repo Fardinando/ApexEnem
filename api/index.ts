@@ -543,6 +543,7 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
 
 app.post("/api/questions", async (req, res) => {
   const renderUrl = process.env.RENDER_PROCESS_URL;
+  console.log("[questions] RENDER_PROCESS_URL:", renderUrl ? renderUrl.slice(0, 30) + "..." : "MISSING");
   if (!renderUrl) {
     return res.status(503).json({ error: "Serviço de geração indisponível." });
   }
@@ -560,23 +561,29 @@ app.post("/api/questions", async (req, res) => {
 
   const cura = crypto.randomUUID();
 
+  const url = `${renderUrl.replace(/\/+$/, "")}/api/process`;
+  console.log("[questions] Sending to:", url, "prompt length:", prompt.length);
+
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 5000);
-    const r = await fetch(`${renderUrl}/api/process`, {
+    const tid = setTimeout(() => ctrl.abort(), 30000);
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cura, prompt }),
       signal: ctrl.signal,
     });
     clearTimeout(tid);
+    console.log("[questions] Render responded:", r.status);
     if (!r.ok) {
-      return res.status(502).json({ error: "Render service unavailable." });
+      const body = await r.text().catch(() => "");
+      console.log("[questions] Render error body:", body.slice(0, 500));
+      return res.status(502).json({ error: "Render service returned " + r.status, details: body.slice(0, 300) });
     }
     return res.json({ cura });
   } catch (err: any) {
-    console.error("[questions] Failed to reach Render:", err?.message);
-    return res.status(502).json({ error: "Render service unavailable." });
+    console.error("[questions] Failed to reach Render:", err?.name, err?.message);
+    return res.status(502).json({ error: "Render service unavailable: " + (err?.message || "timeout") });
   }
 });
 
@@ -586,15 +593,21 @@ app.get("/api/questions/status/:cura", async (req, res) => {
     return res.status(503).json({ error: "Serviço indisponível." });
   }
 
+  const url = `${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`;
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 4000);
-    const r = await fetch(`${renderUrl}/api/status/${req.params.cura}`, { signal: ctrl.signal });
+    const tid = setTimeout(() => ctrl.abort(), 10000);
+    const r = await fetch(url, { signal: ctrl.signal });
     clearTimeout(tid);
+    if (!r.ok) {
+      console.log("[questions/status] Render returned:", r.status);
+      return res.status(502).json({ error: "Render returned " + r.status });
+    }
     const data = await r.json();
     return res.json(data);
-  } catch {
-    return res.status(502).json({ error: "Render service unavailable." });
+  } catch (err: any) {
+    console.error("[questions/status] Failed:", err?.name, err?.message);
+    return res.status(502).json({ error: "Render unavailable: " + (err?.message || "timeout") });
   }
 });
 
