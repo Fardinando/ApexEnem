@@ -496,8 +496,8 @@ export default function DashboardView({
           </div>
         </div>
 
-        {/* Bento Card 5: Recent Activity & Feed - Medium/Long Column */}
-        <div id="bento-activity-feed" className="md:col-span-6 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
+        {/* Bento Card 5: Recent Activity & Feed - Full Width */}
+        <div id="bento-activity-feed" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
           <div className="flex justify-between items-center mb-6">
             <div>
               <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
@@ -512,7 +512,7 @@ export default function DashboardView({
           </div>
 
           {/* Activity Logs Stack */}
-          <div className="relative border-l border-slate-200 dark:border-slate-700 pl-4 py-1.5 space-y-5" id="feed-list">
+          <div className="relative border-l border-slate-200 dark:border-slate-700 pl-4 py-1.5 space-y-5 max-h-[400px] overflow-y-auto" id="feed-list">
             {activityLogs.length === 0 ? (
               <div className="py-8 text-center" id="empty-activities-text font-sans text-xs">
                 <p className="text-xs text-slate-400 italic">Nenhuma atividade registrada ainda.</p>

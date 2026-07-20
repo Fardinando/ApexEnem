@@ -300,13 +300,20 @@ app.post("/api/chat", async (req, res) => {
     } catch (e) { clearTimeout(tid); throw e; }
   }
 
-  const providers = [tryGroq, tryGemini, tryOpenRouter];
-  for (const fn of providers) {
+  const providers = [
+    { name: "tryGroq", fn: tryGroq },
+    { name: "tryGemini", fn: tryGemini },
+    { name: "tryOpenRouter", fn: tryOpenRouter },
+  ];
+  for (const p of providers) {
     try {
-      const text = await fn();
-      if (text) return res.json({ text, model: fn.name });
+      const text = await p.fn();
+      if (text) return res.json({ text, model: p.name });
     } catch (err) {
-      console.error(`[chat] ${fn.name} failed: ${err.message}`);
+      console.error(`[chat] ${p.name} failed: ${err.message}`);
+      if (err.message.includes("429")) {
+        await new Promise(r => setTimeout(r, 2000));
+      }
     }
   }
   return res.status(503).json({ error: "all models failed" });
