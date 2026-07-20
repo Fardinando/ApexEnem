@@ -550,8 +550,8 @@ app.post("/api/questions", async (req, res) => {
 
   const promptDef = PROMPTS.questions;
   const referenceQuestions = await Promise.race([
-    fetchReferenceQuestions(targetArea, 8).catch(() => []),
-    new Promise<any[]>(r => setTimeout(() => r([]), 2500))
+    fetchReferenceQuestions(targetArea, 4).catch(() => []),
+    new Promise<any[]>(r => setTimeout(() => r([]), 1500))
   ]);
   const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions, hardSubjects) as string;
 
