@@ -543,11 +543,6 @@ async function fetchReferenceQuestions(area: string, count: number = 8): Promise
   }
   return all;
 }
-      }
-    } catch {}
-  }
-  return all;
-}
 
 app.post("/api/questions", async (req, res) => {
   const { area, count, hardSubjects } = req.body;
@@ -702,10 +697,10 @@ app.post("/api/questions", async (req, res) => {
           body: JSON.stringify({
             model,
             messages: [
-              { role: "system", content: systemPrompt },
-              { role: "user", content: userPrompt }
+              { role: "system", content: "Você é um professor especialista em elaboração de itens para o ENEM." },
+              { role: "user", content: prompt }
             ],
-            max_tokens: mc.maxTokens || 8192,
+            max_tokens: 8192,
             temperature: 0.85
           }),
           signal: ctrl.signal
