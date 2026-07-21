@@ -81,9 +81,8 @@ function extractJson(raw) {
 async function callGroq(prompt, keyOverride) {
   const key = keyOverride || nextGroqKey();
   if (!key) throw new Error("no groq keys");
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 30000);
-  try {
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), 30000));
+  const fetchPromise = (async () => {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
@@ -96,22 +95,20 @@ async function callGroq(prompt, keyOverride) {
         max_tokens: 8192,
         temperature: 0.85,
       }),
-      signal: ctrl.signal,
     });
-    clearTimeout(tid);
     if (!r.ok) throw new Error(`groq ${r.status}`);
     const d = await r.json();
     const raw = d.choices?.[0]?.message?.content;
     if (!raw) throw new Error("empty response");
     return extractJson(raw);
-  } catch (e) { clearTimeout(tid); throw e; }
+  })();
+  return Promise.race([fetchPromise, timer]);
 }
 
 async function callGemini(prompt) {
   if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 30000);
-  try {
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), 30000));
+  const fetchPromise = (async () => {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -120,23 +117,21 @@ async function callGemini(prompt) {
         systemInstruction: { parts: [{ text: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha." }] },
         generationConfig: { temperature: 0.9, maxOutputTokens: 8192 },
       }),
-      signal: ctrl.signal,
     });
-    clearTimeout(tid);
     if (!r.ok) throw new Error(`gemini ${r.status}`);
     const d = await r.json();
     const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!raw) throw new Error("empty response");
     return extractJson(raw);
-  } catch (e) { clearTimeout(tid); throw e; }
+  })();
+  return Promise.race([fetchPromise, timer]);
 }
 
 async function callOpenRouter(prompt) {
   const key = nextOrKey();
   if (!key) throw new Error("no openrouter keys");
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 15000);
-  try {
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), 15000));
+  const fetchPromise = (async () => {
     const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -154,15 +149,14 @@ async function callOpenRouter(prompt) {
         max_tokens: 8192,
         temperature: 0.85,
       }),
-      signal: ctrl.signal,
     });
-    clearTimeout(tid);
     if (!r.ok) throw new Error(`openrouter ${r.status}`);
     const d = await r.json();
     const raw = d.choices?.[0]?.message?.content;
     if (!raw) throw new Error("empty response");
     return extractJson(raw);
-  } catch (e) { clearTimeout(tid); throw e; }
+  })();
+  return Promise.race([fetchPromise, timer]);
 }
 
 function cleanText(s) {
@@ -250,39 +244,35 @@ async function processJob(cura, prompt, attempt = 1) {
   if (!job) return;
   job.attempts = attempt;
 
-  const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
+  const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
   const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
 
   async function callOrWithKey(key, model, timeout) {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), timeout || 30000);
-    try {
+    const timeoutMs = timeout || 30000;
+    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error(`openrouter timeout after ${timeoutMs}ms`)), timeoutMs));
+    const fetchPromise = (async () => {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://apexenem.app", "X-Title": "ApexAI" },
         body: JSON.stringify({ model, messages: [{ role: "system", content: sysMsg }, { role: "user", content: prompt }], max_tokens: 8192, temperature: 0.85 }),
-        signal: ctrl.signal,
       });
-      clearTimeout(tid);
       if (!r.ok) throw new Error(`openrouter ${r.status}`);
       const d = await r.json();
       const raw = d.choices?.[0]?.message?.content;
       if (!raw) throw new Error("empty");
       return extractJson(raw);
-    } catch (e) { clearTimeout(tid); throw e; }
+    })();
+    return Promise.race([fetchPromise, timer]);
   }
 
-  async function tryOne(name, fn) {
-    try {
-      const result = await fn();
-      if (Array.isArray(result)) {
-        const normalized = normalizeQuestions(result);
-        if (validateQuestions(normalized)) return normalized;
-      }
-    } catch (e) {
-      console.log(`[${cura}] ${name} failed: ${e.message?.slice(0, 60)}`);
+  async function tryOneOrThrow(name, fn) {
+    const result = await fn();
+    if (Array.isArray(result)) {
+      const normalized = normalizeQuestions(result);
+      if (validateQuestions(normalized)) return { name, value: normalized };
+      throw new Error(`${name} failed validation`);
     }
-    return null;
+    throw new Error(`${name} returned non-array`);
   }
 
   console.log(`[${cura}] Attempt ${attempt}: trying parallel batch`);
@@ -291,33 +281,37 @@ async function processJob(cura, prompt, attempt = 1) {
   if (groqKeys.length > 0) batch1.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[0]) });
   if (groqKeys.length > 1) batch1.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[1]) });
   if (googleApiKey) batch1.push({ name: "gemini", fn: () => callGemini(prompt) });
-  if (openRouterKeys.length > 0) batch1.push({ name: `or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], orModels[0], 30000) });
-  if (openRouterKeys.length > 1) batch1.push({ name: `or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], orModels[1], 30000) });
+  if (openRouterKeys.length > 0) batch1.push({ name: `or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], orModels[0], 70000) });
+  if (openRouterKeys.length > 1) batch1.push({ name: `or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], orModels[1], 70000) });
 
-  const results = await Promise.allSettled(batch1.map(a => tryOne(a.name, a.fn)));
-  for (let i = 0; i < results.length; i++) {
-    if (results[i].status === "fulfilled" && results[i].value) {
-      job.status = "done";
-      job.result = results[i].value;
-      job.completedAt = Date.now();
-      console.log(`[${cura}] OK via ${batch1[i].name} (parallel)`);
-      return;
-    }
+  try {
+    const parallelResult = await Promise.any(batch1.map(a => tryOneOrThrow(a.name, a.fn)));
+    job.status = "done";
+    job.result = parallelResult.value;
+    job.completedAt = Date.now();
+    console.log(`[${cura}] OK via ${parallelResult.name} (parallel)`);
+    return;
+  } catch (e) {
+    console.log(`[${cura}] Parallel batch failed (${e.errors?.length || 0} providers), trying sequential fallback`);
   }
 
-  console.log(`[${cura}] Parallel batch failed, trying sequential fallback`);
-
   const seqAttempts = [];
+  if (openRouterKeys.length > 0) {
+    for (const m of orModels) {
+      seqAttempts.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], m, 60000) });
+    }
+  }
+  if (openRouterKeys.length > 1) {
+    for (const m of orModels) {
+      seqAttempts.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], m, 60000) });
+    }
+  }
   for (const k of groqKeys) {
     seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k) });
   }
-  for (const k of openRouterKeys) {
-    for (const m of orModels) {
-      seqAttempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => callOrWithKey(k, m, 20000) });
-    }
-  }
+  if (googleApiKey) seqAttempts.push({ name: "gemini", fn: () => callGemini(prompt) });
 
-  for (const a of seqAttempts.slice(0, 6)) {
+  for (const a of seqAttempts.slice(0, 8)) {
     try {
       const result = await a.fn();
       const normalized = Array.isArray(result) ? normalizeQuestions(result) : null;
@@ -362,58 +356,52 @@ app.post("/api/chat", async (req, res) => {
   const temp = temperature || 0.7;
 
   async function chatGroq(key, model) {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 15000);
-    try {
+    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), 15000));
+    const fetchPromise = (async () => {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
         body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }], max_tokens: mt, temperature: temp }),
-        signal: ctrl.signal,
       });
-      clearTimeout(tid);
       if (!r.ok) throw new Error(`groq ${r.status}`);
       const d = await r.json();
       return d.choices?.[0]?.message?.content || null;
-    } catch (e) { clearTimeout(tid); throw e; }
+    })();
+    return Promise.race([fetchPromise, timer]);
   }
 
   async function chatOr(key, model) {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 15000);
-    try {
+    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), 15000));
+    const fetchPromise = (async () => {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://apexenem.app", "X-Title": "ApexAI" },
         body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }], max_tokens: mt, temperature: temp }),
-        signal: ctrl.signal,
       });
-      clearTimeout(tid);
       if (!r.ok) throw new Error(`openrouter ${r.status}`);
       const d = await r.json();
       return d.choices?.[0]?.message?.content || null;
-    } catch (e) { clearTimeout(tid); throw e; }
+    })();
+    return Promise.race([fetchPromise, timer]);
   }
 
   async function chatGemini() {
     if (!googleApiKey) throw new Error("no gemini key");
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 15000);
-    try {
+    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), 15000));
+    const fetchPromise = (async () => {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: userPrompt }] }], systemInstruction: { parts: [{ text: sys }] }, generationConfig: { temperature: temp, maxOutputTokens: mt } }),
-        signal: ctrl.signal,
       });
-      clearTimeout(tid);
       if (!r.ok) throw new Error(`gemini ${r.status}`);
       const d = await r.json();
       return d?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-    } catch (e) { clearTimeout(tid); throw e; }
+    })();
+    return Promise.race([fetchPromise, timer]);
   }
 
-  const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
+  const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
 
   async function tryChat(name, fn) {
     try {
