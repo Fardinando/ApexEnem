@@ -252,11 +252,10 @@ async function processJob(cura, prompt, attempt = 1) {
 
   const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
   const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
-  const MODEL_TIMEOUT = 30000;
 
-  async function callOrWithKey(key, model) {
+  async function callOrWithKey(key, model, timeout) {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), MODEL_TIMEOUT);
+    const tid = setTimeout(() => ctrl.abort(), timeout || 30000);
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -292,8 +291,8 @@ async function processJob(cura, prompt, attempt = 1) {
   if (groqKeys.length > 0) batch1.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[0]) });
   if (groqKeys.length > 1) batch1.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[1]) });
   if (googleApiKey) batch1.push({ name: "gemini", fn: () => callGemini(prompt) });
-  if (openRouterKeys.length > 0) batch1.push({ name: `or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], orModels[0]) });
-  if (openRouterKeys.length > 1) batch1.push({ name: `or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], orModels[1]) });
+  if (openRouterKeys.length > 0) batch1.push({ name: `or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], orModels[0], 30000) });
+  if (openRouterKeys.length > 1) batch1.push({ name: `or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], orModels[1], 30000) });
 
   const results = await Promise.allSettled(batch1.map(a => tryOne(a.name, a.fn)));
   for (let i = 0; i < results.length; i++) {
@@ -309,16 +308,16 @@ async function processJob(cura, prompt, attempt = 1) {
   console.log(`[${cura}] Parallel batch failed, trying sequential fallback`);
 
   const seqAttempts = [];
-  for (const k of groqKeys.slice(2)) {
+  for (const k of groqKeys) {
     seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k) });
   }
   for (const k of openRouterKeys) {
     for (const m of orModels) {
-      seqAttempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => callOrWithKey(k, m) });
+      seqAttempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => callOrWithKey(k, m, 20000) });
     }
   }
 
-  for (const a of seqAttempts.slice(0, 8)) {
+  for (const a of seqAttempts.slice(0, 6)) {
     try {
       const result = await a.fn();
       const normalized = Array.isArray(result) ? normalizeQuestions(result) : null;
@@ -338,7 +337,7 @@ async function processJob(cura, prompt, attempt = 1) {
   }
 
   if (attempt < 2) {
-    const delay = 20000;
+    const delay = 15000;
     console.log(`[${cura}] All combos failed. Retry in ${delay/1000}s...`);
     await new Promise(r => setTimeout(r, delay));
     return processJob(cura, prompt, attempt + 1);

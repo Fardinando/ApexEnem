@@ -501,7 +501,7 @@ app.get("/api/questions/status/:cura", async (req, res) => {
   const url = `${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`;
   try {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 10000);
+    const tid = setTimeout(() => ctrl.abort(), 15000);
     const r = await fetch(url, { signal: ctrl.signal });
     clearTimeout(tid);
     if (!r.ok) {
