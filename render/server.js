@@ -90,7 +90,7 @@ async function callGroq(prompt, keyOverride) {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido." },
+          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras." },
           { role: "user", content: prompt },
         ],
         max_tokens: 8192,
@@ -117,7 +117,7 @@ async function callGemini(prompt) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        systemInstruction: { parts: [{ text: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido." }] },
+        systemInstruction: { parts: [{ text: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha." }] },
         generationConfig: { temperature: 0.9, maxOutputTokens: 8192 },
       }),
       signal: ctrl.signal,
@@ -148,7 +148,7 @@ async function callOpenRouter(prompt) {
       body: JSON.stringify({
         model: "google/gemma-4-31b-it:free",
         messages: [
-          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido." },
+          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras." },
           { role: "user", content: prompt },
         ],
         max_tokens: 8192,
@@ -177,7 +177,19 @@ function validateQuestions(qs) {
 
 function cleanText(s) {
   if (typeof s !== "string") return s;
-  return s.replace(/(?<!\n)\n(?!\n)/g, "").replace(/\r/g, "");
+  let t = s.replace(/\r\n?/g, "\n");
+  t = t.replace(/\\n/g, "\n");
+  t = t.replace(/\\t/g, " ");
+  t = t.replace(/∣/g, "|").replace(/∶/g, ":").replace(/∼/g, "~");
+  let prev;
+  do {
+    prev = t;
+    t = t.replace(/([^\s\n|])\n([^\s\n|])/g, "$1$2");
+  } while (t !== prev);
+  t = t.replace(/([^\n|])\n(?!\n)(?![|])/g, "$1 ");
+  t = t.replace(/ {2,}/g, " ");
+  t = t.replace(/\n{3,}/g, "\n\n");
+  return t.trim();
 }
 
 function normalizeQuestions(qs) {
@@ -195,7 +207,7 @@ async function processJob(cura, prompt, attempt = 1) {
   job.attempts = attempt;
 
   const orModels = ["openrouter/free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-super-120b-a12b:free", "google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3-nano-30b-a3b:free"];
-  const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido.";
+  const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
 
   async function callOrWithKey(key, model) {
     const ctrl = new AbortController();
@@ -270,7 +282,7 @@ app.post("/api/chat", async (req, res) => {
   const { systemPrompt, userPrompt, maxTokens, temperature } = req.body;
   if (!userPrompt) return res.status(400).json({ error: "userPrompt required" });
 
-  const sys = systemPrompt || "Voce e um professor especialista no ENEM.";
+  const sys = systemPrompt || "Voce e um professor especialista no ENEM. NUNCA coloque quebras de linha entre caracteres. Texto deve ser continuo e fluido.";
   const mt = maxTokens || 4096;
   const temp = temperature || 0.7;
 
@@ -343,8 +355,9 @@ app.post("/api/chat", async (req, res) => {
     try {
       const text = await a.fn();
       if (text) {
+        const cleaned = cleanText(text);
         console.log(`[chat] OK via ${a.name}`);
-        return res.json({ text, model: a.name });
+        return res.json({ text: cleaned, model: a.name });
       }
     } catch (err) {
       if (!err.message.includes("429")) {
