@@ -82,7 +82,7 @@ async function callGroq(prompt, keyOverride) {
   const key = keyOverride || nextGroqKey();
   if (!key) throw new Error("no groq keys");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 15000);
+  const tid = setTimeout(() => ctrl.abort(), 30000);
   try {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -110,7 +110,7 @@ async function callGroq(prompt, keyOverride) {
 async function callGemini(prompt) {
   if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 15000);
+  const tid = setTimeout(() => ctrl.abort(), 30000);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
       method: "POST",
@@ -252,10 +252,11 @@ async function processJob(cura, prompt, attempt = 1) {
 
   const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
   const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
+  const MODEL_TIMEOUT = 30000;
 
   async function callOrWithKey(key, model) {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 15000);
+    const tid = setTimeout(() => ctrl.abort(), MODEL_TIMEOUT);
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -279,7 +280,9 @@ async function processJob(cura, prompt, attempt = 1) {
         const normalized = normalizeQuestions(result);
         if (validateQuestions(normalized)) return normalized;
       }
-    } catch {}
+    } catch (e) {
+      console.log(`[${cura}] ${name} failed: ${e.message?.slice(0, 60)}`);
+    }
     return null;
   }
 
@@ -290,6 +293,7 @@ async function processJob(cura, prompt, attempt = 1) {
   if (groqKeys.length > 1) batch1.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[1]) });
   if (googleApiKey) batch1.push({ name: "gemini", fn: () => callGemini(prompt) });
   if (openRouterKeys.length > 0) batch1.push({ name: `or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], orModels[0]) });
+  if (openRouterKeys.length > 1) batch1.push({ name: `or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], orModels[1]) });
 
   const results = await Promise.allSettled(batch1.map(a => tryOne(a.name, a.fn)));
   for (let i = 0; i < results.length; i++) {
@@ -308,13 +312,13 @@ async function processJob(cura, prompt, attempt = 1) {
   for (const k of groqKeys.slice(2)) {
     seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k) });
   }
-  for (const k of openRouterKeys.slice(1)) {
+  for (const k of openRouterKeys) {
     for (const m of orModels) {
       seqAttempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => callOrWithKey(k, m) });
     }
   }
 
-  for (const a of seqAttempts.slice(0, 5)) {
+  for (const a of seqAttempts.slice(0, 8)) {
     try {
       const result = await a.fn();
       const normalized = Array.isArray(result) ? normalizeQuestions(result) : null;
@@ -326,21 +330,22 @@ async function processJob(cura, prompt, attempt = 1) {
         return;
       }
     } catch (err) {
+      console.log(`[${cura}] seq ${a.name} failed: ${err.message?.slice(0, 60)}`);
       if (err.message.includes("429")) {
-        await new Promise(r => setTimeout(r, 1500));
+        await new Promise(r => setTimeout(r, 2000));
       }
     }
   }
 
-  if (attempt < 3) {
-    const delay = attempt === 1 ? 30000 : 60000;
+  if (attempt < 2) {
+    const delay = 20000;
     console.log(`[${cura}] All combos failed. Retry in ${delay/1000}s...`);
     await new Promise(r => setTimeout(r, delay));
     return processJob(cura, prompt, attempt + 1);
   }
 
   job.status = "error";
-  job.error = "Todos os modelos falharam apos 3 tentativas";
+  job.error = "Todos os modelos falharam apos tentativas";
   job.completedAt = Date.now();
   console.log(`[${cura}] FAILED after ${attempt} attempts`);
 }
