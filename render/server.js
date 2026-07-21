@@ -90,7 +90,7 @@ async function callGroq(prompt, keyOverride) {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras." },
+          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text." },
           { role: "user", content: prompt },
         ],
         max_tokens: 8192,
@@ -148,7 +148,7 @@ async function callOpenRouter(prompt) {
       body: JSON.stringify({
         model: "google/gemma-4-31b-it:free",
         messages: [
-          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras." },
+          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text." },
           { role: "user", content: prompt },
         ],
         max_tokens: 8192,
@@ -208,7 +208,10 @@ function fixEncoding(s) {
 function normalizeOption(opt, idx) {
   if (!opt || typeof opt !== "object") return { letter: String.fromCharCode(65 + idx), text: String(opt) };
   if (typeof opt.letter === "string" && typeof opt.text === "string" && opt.text.length > 0) {
-    return { letter: opt.letter.toUpperCase(), text: fixEncoding(opt.text) };
+    let text = fixEncoding(opt.text);
+    text = text.replace(/^["'\u201C\u201D]*[A-Ea-e]\)?["'\u201C\u201D]*\s*/g, "").trim();
+    if (!text) text = fixEncoding(opt.text);
+    return { letter: opt.letter.toUpperCase(), text };
   }
   if (opt.text === undefined || opt.text === null) {
     const chars = [];
@@ -216,11 +219,17 @@ function normalizeOption(opt, idx) {
       if (opt[i] !== undefined && opt[i] !== null) chars.push(String(opt[i]));
     }
     if (chars.length > 0) {
-      return { letter: String.fromCharCode(65 + idx), text: fixEncoding(chars.join("")) };
+      let text = fixEncoding(chars.join(""));
+      text = text.replace(/^["'\u201C\u201D]*[A-Ea-e]\)?["'\u201C\u201D]*\s*/g, "").trim();
+      if (!text) text = fixEncoding(chars.join(""));
+      return { letter: String.fromCharCode(65 + idx), text };
     }
   }
   if (typeof opt === "string") {
-    return { letter: String.fromCharCode(65 + idx), text: fixEncoding(opt) };
+    let text = fixEncoding(opt);
+    text = text.replace(/^["'\u201C\u201D]*[A-Ea-e]\)?["'\u201C\u201D]*\s*/g, "").trim();
+    if (!text) text = fixEncoding(opt);
+    return { letter: String.fromCharCode(65 + idx), text };
   }
   return { letter: String.fromCharCode(65 + idx), text: fixEncoding(JSON.stringify(opt)) };
 }
@@ -242,7 +251,7 @@ async function processJob(cura, prompt, attempt = 1) {
   job.attempts = attempt;
 
   const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
-  const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
+  const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
 
   async function callOrWithKey(key, model) {
     const ctrl = new AbortController();

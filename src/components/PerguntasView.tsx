@@ -5,6 +5,22 @@ import AdPlaceholder from './AdPlaceholder';
 import MathRenderer from './MathRenderer';
 import LoadingOverlay from './LoadingOverlay';
 
+function cleanText(s: string): string {
+  if (!s || typeof s !== 'string') return s || '';
+  let t = s.replace(/\r\n?/g, '\n');
+  t = t.replace(/\\n/g, '\n');
+  t = t.replace(/\\t/g, ' ');
+  let prev: string;
+  do {
+    prev = t;
+    t = t.replace(/([^\s\n|])\n([^\s\n|])/g, '$1$2');
+  } while (t !== prev);
+  t = t.replace(/([^\n|])\n(?!\n)(?![|])/g, '$1 ');
+  t = t.replace(/ {2,}/g, ' ');
+  t = t.replace(/\n{3,}/g, '\n\n');
+  return t.trim();
+}
+
 interface PerguntasViewProps {
   onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula') => void;
   hardSubjects?: string[];
@@ -104,6 +120,8 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [] }: Perg
               ...q,
               id: q.id || `ai-q-${Date.now()}-${i}`,
               area: q.area || selectedArea,
+              statement: cleanText(q.statement || ''),
+              explanation: cleanText(q.explanation || ''),
             }));
             setQuestions(enriched);
             setIsLoading(false);

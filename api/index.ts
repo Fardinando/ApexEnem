@@ -225,6 +225,65 @@ function extractJsonFromText(rawText: string): any {
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
 
+function cleanText(s: string): string {
+  if (typeof s !== "string") return s;
+  let t = s.replace(/\r\n?/g, "\n");
+  t = t.replace(/\\n/g, "\n");
+  t = t.replace(/\\t/g, " ");
+  t = t.replace(/\u2223/g, "|").replace(/\u2236/g, ":").replace(/\u223C/g, "~");
+  let prev: string;
+  do {
+    prev = t;
+    t = t.replace(/([^\s\n|])\n([^\s\n|])/g, "$1$2");
+  } while (t !== prev);
+  t = t.replace(/([^\n|])\n(?!\n)(?![|])/g, "$1 ");
+  t = t.replace(/ {2,}/g, " ");
+  t = t.replace(/\n{3,}/g, "\n\n");
+  return t.trim();
+}
+
+function fixEncoding(s: string): string {
+  if (typeof s !== "string") return s;
+  try {
+    const latin1Bytes = new Uint8Array([...s].map(c => c.charCodeAt(0) & 0xFF));
+    const decoded = new TextDecoder("utf-8", { fatal: false }).decode(latin1Bytes);
+    if (!decoded.includes("\uFFFD") && decoded.length < s.length && decoded.length > 0) return decoded;
+  } catch {}
+  return s;
+}
+
+function sanitizeQuestionText(s: string): string {
+  return fixEncoding(cleanText(s));
+}
+
+function sanitizeQuestions(questions: any[]): any[] {
+  if (!Array.isArray(questions)) return questions;
+  return questions.map(q => ({
+    ...q,
+    statement: q.statement ? sanitizeQuestionText(q.statement) : q.statement,
+    explanation: q.explanation ? sanitizeQuestionText(q.explanation) : q.explanation,
+    correctAnswer: typeof q.correctAnswer === "string" ? q.correctAnswer.toUpperCase().charAt(0) : q.correctAnswer,
+    options: Array.isArray(q.options)
+      ? q.options.slice(0, 5).map((o: any, i: number) => {
+          if (!o || typeof o !== "object") return { letter: String.fromCharCode(65 + i), text: String(o || "") };
+          const letter = typeof o.letter === "string" ? o.letter.toUpperCase() : String.fromCharCode(65 + i);
+          let text = typeof o.text === "string" ? o.text : "";
+          text = fixEncoding(text);
+          text = text.replace(/^["\u0027\u201C\u201D]*[A-Ea-e]\)?["\u0027\u201C\u201D]*\s*/g, "").trim();
+          if (!text && typeof o === "object") {
+            const chars: string[] = [];
+            for (let j = 0; j <= 9; j++) {
+              if (o[j] !== undefined && o[j] !== null) chars.push(String(o[j]));
+            }
+            if (chars.length > 0) text = fixEncoding(chars.join(""));
+          }
+          if (!text) text = JSON.stringify(o);
+          return { letter, text };
+        })
+      : q.options,
+  }));
+}
+
 async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxTokens?: number; temperature?: number; timeout?: number }): Promise<string> {
   const renderUrl = process.env.RENDER_PROCESS_URL;
   if (!renderUrl) throw new Error("RENDER_PROCESS_URL not set");
@@ -450,6 +509,9 @@ app.get("/api/questions/status/:cura", async (req, res) => {
       return res.status(502).json({ error: "Render returned " + r.status });
     }
     const data = await r.json();
+    if (data.status === "done" && Array.isArray(data.result)) {
+      data.result = sanitizeQuestions(data.result);
+    }
     return res.json(data);
   } catch (err: any) {
     console.error("[questions/status] Failed:", err?.name, err?.message);

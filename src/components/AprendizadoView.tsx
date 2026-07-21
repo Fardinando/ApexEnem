@@ -47,6 +47,22 @@ import RewardAdOverlay, {
   incrementRewardCounter,
 } from './RewardAdOverlay';
 
+function cleanTextFrontend(s: string): string {
+  if (!s || typeof s !== 'string') return s || '';
+  let t = s.replace(/\r\n?/g, '\n');
+  t = t.replace(/\\n/g, '\n');
+  t = t.replace(/\\t/g, ' ');
+  let prev: string;
+  do {
+    prev = t;
+    t = t.replace(/([^\s\n|])\n([^\s\n|])/g, '$1$2');
+  } while (t !== prev);
+  t = t.replace(/([^\n|])\n(?!\n)(?![|])/g, '$1 ');
+  t = t.replace(/ {2,}/g, ' ');
+  t = t.replace(/\n{3,}/g, '\n\n');
+  return t.trim();
+}
+
 interface AprendizadoViewProps {
   essayCorrections?: EssayCorrection[];
   simuladosHistory?: {
@@ -400,9 +416,9 @@ export default function AprendizadoView({
       const data = await resp.json();
       if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
         setAiQuestoes(data.questions.map((q: any, i: number) => ({
-          id: q.id || `ai-q-${i}`, statement: q.statement || '',
+          id: q.id || `ai-q-${i}`, statement: cleanTextFrontend(q.statement || ''),
           options: q.options || [], correctAnswer: q.correctAnswer || 'A',
-          explanation: q.explanation || '', topic: q.topic || '',
+          explanation: cleanTextFrontend(q.explanation || ''), topic: q.topic || '',
         })));
       } else {
         if (retry < 2) {
