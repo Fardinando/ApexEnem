@@ -8,22 +8,34 @@ app.use(express.json({ limit: "2mb" }));
 
 const PORT = process.env.PORT || 3001;
 
-const groqApiKey = process.env.GROQ_API_KEY;
 const googleApiKey = process.env.GOOGLE_API_KEY;
-const openRouterKeys = [
-  process.env.OPENROUTER_API_KEY,
-  process.env.OPENROUTER_API_KEY_V1,
-  process.env.OPENROUTER_API_KEY_V2,
-  process.env.OPENROUTER_API_KEY_V3,
-  process.env.OPENROUTER_API_KEY_V4,
-  process.env.OPENROUTER_API_KEY_V5,
+
+const groqKeys = [
+  process.env.GROQ_API_KEY,
+  process.env.GROQ_API_KEY_V1, process.env.GROQ_API_KEY_V2, process.env.GROQ_API_KEY_V3,
+  process.env.GROQ_API_KEY_V4, process.env.GROQ_API_KEY_V5, process.env.GROQ_API_KEY_V6,
+  process.env.GROQ_API_KEY_V7, process.env.GROQ_API_KEY_V8, process.env.GROQ_API_KEY_V9,
 ].filter(Boolean);
 
-let orKeyIndex = 0;
+const openRouterKeys = [
+  process.env.OPENROUTER_API_KEY,
+  process.env.OPENROUTER_API_KEY_V1, process.env.OPENROUTER_API_KEY_V2, process.env.OPENROUTER_API_KEY_V3,
+  process.env.OPENROUTER_API_KEY_V4, process.env.OPENROUTER_API_KEY_V5, process.env.OPENROUTER_API_KEY_V6,
+  process.env.OPENROUTER_API_KEY_V7, process.env.OPENROUTER_API_KEY_V8, process.env.OPENROUTER_API_KEY_V9,
+].filter(Boolean);
+
+let groqIdx = 0;
+let orIdx = 0;
+function nextGroqKey() {
+  if (groqKeys.length === 0) return null;
+  const k = groqKeys[groqIdx % groqKeys.length];
+  groqIdx++;
+  return k;
+}
 function nextOrKey() {
-  if (openRouterKeys.length === 0) return "";
-  const k = openRouterKeys[orKeyIndex % openRouterKeys.length];
-  orKeyIndex++;
+  if (openRouterKeys.length === 0) return null;
+  const k = openRouterKeys[orIdx % openRouterKeys.length];
+  orIdx++;
   return k;
 }
 
@@ -66,14 +78,15 @@ function extractJson(raw) {
   return null;
 }
 
-async function callGroq(prompt) {
-  if (!groqApiKey) throw new Error("GROQ_API_KEY not set");
+async function callGroq(prompt, keyOverride) {
+  const key = keyOverride || nextGroqKey();
+  if (!key) throw new Error("no groq keys");
   const ctrl = new AbortController();
   const tid = setTimeout(() => ctrl.abort(), 60000);
   try {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [
@@ -181,53 +194,64 @@ async function processJob(cura, prompt, attempt = 1) {
   if (!job) return;
   job.attempts = attempt;
 
-  const orModels = ["openrouter/free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-super-120b-a12b:free", "google/gemma-4-26b-a4b-it:free"];
-  const providers = [
-    { name: "Groq-llama3.3", fn: () => callGroq(prompt) },
-  ];
-  for (const key of openRouterKeys) {
-    for (const model of orModels) {
-      providers.push({ name: `OR-${model.slice(0,15)}-${key.slice(-4)}`, fn: async () => {
-        const ctrl = new AbortController();
-        const tid = setTimeout(() => ctrl.abort(), 60000);
-        try {
-          const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-            method: "POST",
-            headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://apexenem.app", "X-Title": "ApexAI" },
-            body: JSON.stringify({ model, messages: [{ role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido." }, { role: "user", content: prompt }], max_tokens: 8192, temperature: 0.85 }),
-            signal: ctrl.signal,
-          });
-          clearTimeout(tid);
-          if (!r.ok) throw new Error(`openrouter ${r.status}`);
-          const d = await r.json();
-          const raw = d.choices?.[0]?.message?.content;
-          if (!raw) throw new Error("empty");
-          return extractJson(raw);
-        } catch (e) { clearTimeout(tid); throw e; }
-      }});
+  const orModels = ["openrouter/free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-super-120b-a12b:free", "google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3-nano-30b-a3b:free"];
+  const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido.";
+
+  async function callOrWithKey(key, model) {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 60000);
+    try {
+      const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://apexenem.app", "X-Title": "ApexAI" },
+        body: JSON.stringify({ model, messages: [{ role: "system", content: sysMsg }, { role: "user", content: prompt }], max_tokens: 8192, temperature: 0.85 }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`openrouter ${r.status}`);
+      const d = await r.json();
+      const raw = d.choices?.[0]?.message?.content;
+      if (!raw) throw new Error("empty");
+      return extractJson(raw);
+    } catch (e) { clearTimeout(tid); throw e; }
+  }
+
+  // Build flat list: try every key+model combo one at a time
+  const attempts = [];
+  for (const k of groqKeys) {
+    attempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k) });
+  }
+  for (const k of openRouterKeys) {
+    for (const m of orModels) {
+      attempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => callOrWithKey(k, m) });
     }
   }
-  providers.push({ name: "Gemini", fn: () => callGemini(prompt) });
+  if (googleApiKey) {
+    attempts.push({ name: "gemini", fn: () => callGemini(prompt) });
+  }
 
-  for (const provider of providers) {
+  console.log(`[${cura}] Starting ${attempts.length} key/model combos (attempt ${attempt})`);
+
+  for (const a of attempts) {
     try {
-      const result = await provider.fn();
+      const result = await a.fn();
       if (validateQuestions(result)) {
         job.status = "done";
         job.result = normalizeQuestions(result);
         job.completedAt = Date.now();
-        console.log(`[${cura}] OK via ${provider.name} (attempt ${attempt})`);
+        console.log(`[${cura}] OK via ${a.name}`);
         return;
       }
-      console.error(`[${cura}] ${provider.name} returned invalid JSON (attempt ${attempt})`);
     } catch (err) {
-      console.error(`[${cura}] ${provider.name} error (attempt ${attempt}): ${err.message}`);
+      if (err.message.includes("429")) {
+        await new Promise(r => setTimeout(r, 1500));
+      }
     }
   }
 
   if (attempt < 3) {
-    const delay = attempt === 1 ? 30000 : 60000;
-    console.log(`[${cura}] Retrying (attempt ${attempt + 1}) in ${delay/1000}s...`);
+    const delay = attempt === 1 ? 60000 : 120000;
+    console.log(`[${cura}] All ${attempts.length} combos failed. Retry in ${delay/1000}s...`);
     await new Promise(r => setTimeout(r, delay));
     return processJob(cura, prompt, attempt + 1);
   }
@@ -235,11 +259,11 @@ async function processJob(cura, prompt, attempt = 1) {
   job.status = "error";
   job.error = "Todos os modelos falharam apos 3 tentativas";
   job.completedAt = Date.now();
-  console.log(`[${cura}] FAILED after 3 attempts`);
+  console.log(`[${cura}] FAILED after ${attempts.length * 3} total attempts`);
 }
 
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, keys: { groq: !!groqApiKey, gemini: !!googleApiKey, openrouter: openRouterKeys.length } });
+  res.json({ ok: true, keys: { groq: groqKeys.length, gemini: !!googleApiKey, openrouter: openRouterKeys.length } });
 });
 
 app.post("/api/chat", async (req, res) => {
@@ -250,19 +274,14 @@ app.post("/api/chat", async (req, res) => {
   const mt = maxTokens || 4096;
   const temp = temperature || 0.7;
 
-  async function callGroq(model) {
-    if (!groqApiKey) throw new Error("no groq key");
+  async function chatGroq(key, model) {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 60000);
     try {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
-        body: JSON.stringify({
-          model: model || "llama-3.3-70b-versatile",
-          messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }],
-          max_tokens: mt, temperature: temp,
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+        body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }], max_tokens: mt, temperature: temp }),
         signal: ctrl.signal,
       });
       clearTimeout(tid);
@@ -272,24 +291,14 @@ app.post("/api/chat", async (req, res) => {
     } catch (e) { clearTimeout(tid); throw e; }
   }
 
-  async function callOpenRouter(key, model) {
-    if (!key) throw new Error("no openrouter key");
+  async function chatOr(key, model) {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 60000);
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-          "HTTP-Referer": "https://apexenem.app",
-          "X-Title": "ApexAI",
-        },
-        body: JSON.stringify({
-          model,
-          messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }],
-          max_tokens: mt, temperature: temp,
-        }),
+        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://apexenem.app", "X-Title": "ApexAI" },
+        body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }], max_tokens: mt, temperature: temp }),
         signal: ctrl.signal,
       });
       clearTimeout(tid);
@@ -299,7 +308,7 @@ app.post("/api/chat", async (req, res) => {
     } catch (e) { clearTimeout(tid); throw e; }
   }
 
-  async function callGemini() {
+  async function chatGemini() {
     if (!googleApiKey) throw new Error("no gemini key");
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 60000);
@@ -307,11 +316,7 @@ app.post("/api/chat", async (req, res) => {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contents: [{ role: "user", parts: [{ text: userPrompt }] }],
-          systemInstruction: { parts: [{ text: sys }] },
-          generationConfig: { temperature: temp, maxOutputTokens: mt },
-        }),
+        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: userPrompt }] }], systemInstruction: { parts: [{ text: sys }] }, generationConfig: { temperature: temp, maxOutputTokens: mt } }),
         signal: ctrl.signal,
       });
       clearTimeout(tid);
@@ -321,26 +326,18 @@ app.post("/api/chat", async (req, res) => {
     } catch (e) { clearTimeout(tid); throw e; }
   }
 
-  const orModels = [
-    "openrouter/free",
-    "google/gemma-4-31b-it:free",
-    "nvidia/nemotron-3-super-120b-a12b:free",
-    "google/gemma-4-26b-a4b-it:free",
-    "nvidia/nemotron-3-nano-30b-a3b:free",
-  ];
+  const orModels = ["openrouter/free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-super-120b-a12b:free", "google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3-nano-30b-a3b:free"];
 
-  const attempts = [
-    { name: "groq-llama3.3", fn: () => callGroq("llama-3.3-70b-versatile") },
-    { name: "groq-llama3.1", fn: () => callGroq("llama-3.1-8b-instant") },
-  ];
-
-  for (const key of openRouterKeys) {
-    for (const model of orModels) {
-      attempts.push({ name: `or-${model.slice(0,20)}-${key.slice(-4)}`, fn: () => callOpenRouter(key, model) });
+  const attempts = [];
+  for (const k of groqKeys) {
+    attempts.push({ name: `groq-${k.slice(-4)}`, fn: () => chatGroq(k, "llama-3.3-70b-versatile") });
+  }
+  for (const k of openRouterKeys) {
+    for (const m of orModels) {
+      attempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => chatOr(k, m) });
     }
   }
-
-  attempts.push({ name: "gemini-flash", fn: callGemini });
+  if (googleApiKey) attempts.push({ name: "gemini", fn: chatGemini });
 
   for (const a of attempts) {
     try {
@@ -352,6 +349,9 @@ app.post("/api/chat", async (req, res) => {
     } catch (err) {
       if (!err.message.includes("429")) {
         console.error(`[chat] ${a.name} failed: ${err.message}`);
+      }
+      if (err.message.includes("429")) {
+        await new Promise(r => setTimeout(r, 1500));
       }
     }
   }
@@ -533,5 +533,5 @@ const idx=[...document.querySelectorAll('tr')].indexOf(el.closest('tr'));
 
 app.listen(PORT, () => {
   console.log("ApexAI running on port " + PORT);
-  console.log("Keys: Groq=" + (groqApiKey?"yes":"no") + " Gemini=" + (googleApiKey?"yes":"no") + " OR=" + openRouterKeys.length);
+  console.log("Keys: Groq=" + groqKeys.length + " Gemini=" + (googleApiKey?"yes":"no") + " OR=" + openRouterKeys.length);
 });
