@@ -15,6 +15,7 @@ const groqKeys = [
   process.env.GROQ_API_KEY_V1, process.env.GROQ_API_KEY_V2, process.env.GROQ_API_KEY_V3,
   process.env.GROQ_API_KEY_V4, process.env.GROQ_API_KEY_V5, process.env.GROQ_API_KEY_V6,
   process.env.GROQ_API_KEY_V7, process.env.GROQ_API_KEY_V8, process.env.GROQ_API_KEY_V9,
+  process.env.GROQ_API_KEY_V10,
 ].filter(Boolean);
 
 const openRouterKeys = [
@@ -22,6 +23,7 @@ const openRouterKeys = [
   process.env.OPENROUTER_API_KEY_V1, process.env.OPENROUTER_API_KEY_V2, process.env.OPENROUTER_API_KEY_V3,
   process.env.OPENROUTER_API_KEY_V4, process.env.OPENROUTER_API_KEY_V5, process.env.OPENROUTER_API_KEY_V6,
   process.env.OPENROUTER_API_KEY_V7, process.env.OPENROUTER_API_KEY_V8, process.env.OPENROUTER_API_KEY_V9,
+  process.env.OPENROUTER_API_KEY_V10,
 ].filter(Boolean);
 
 let groqIdx = 0;
