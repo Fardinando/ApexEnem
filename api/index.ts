@@ -421,21 +421,11 @@ app.post("/api/questions", async (req, res) => {
   console.log("[questions] Sending to:", url, "prompt length:", prompt.length);
 
   try {
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 30000);
-    const r = await fetch(url, {
+    fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cura, prompt }),
-      signal: ctrl.signal,
-    });
-    clearTimeout(tid);
-    console.log("[questions] Render responded:", r.status);
-    if (!r.ok) {
-      const body = await r.text().catch(() => "");
-      console.log("[questions] Render error body:", body.slice(0, 500));
-      return res.status(502).json({ error: "Render service returned " + r.status, details: body.slice(0, 300) });
-    }
+    }).catch(err => console.error("[questions] Fire-and-forget to Render failed:", err?.message));
     return res.json({ cura });
   } catch (err: any) {
     console.error("[questions] Failed to reach Render:", err?.name, err?.message);

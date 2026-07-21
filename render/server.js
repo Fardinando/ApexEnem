@@ -82,7 +82,7 @@ async function callGroq(prompt, keyOverride) {
   const key = keyOverride || nextGroqKey();
   if (!key) throw new Error("no groq keys");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 20000);
+  const tid = setTimeout(() => ctrl.abort(), 15000);
   try {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -110,7 +110,7 @@ async function callGroq(prompt, keyOverride) {
 async function callGemini(prompt) {
   if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 20000);
+  const tid = setTimeout(() => ctrl.abort(), 15000);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
       method: "POST",
@@ -135,7 +135,7 @@ async function callOpenRouter(prompt) {
   const key = nextOrKey();
   if (!key) throw new Error("no openrouter keys");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 20000);
+  const tid = setTimeout(() => ctrl.abort(), 15000);
   try {
     const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -211,7 +211,7 @@ async function processJob(cura, prompt, attempt = 1) {
 
   async function callOrWithKey(key, model) {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 20000);
+    const tid = setTimeout(() => ctrl.abort(), 15000);
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -267,7 +267,7 @@ async function processJob(cura, prompt, attempt = 1) {
     }
   }
 
-  for (const a of seqAttempts) {
+  for (const a of seqAttempts.slice(0, 5)) {
     try {
       const result = await a.fn();
       if (validateQuestions(result)) {
@@ -311,7 +311,7 @@ app.post("/api/chat", async (req, res) => {
 
   async function chatGroq(key, model) {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 20000);
+    const tid = setTimeout(() => ctrl.abort(), 15000);
     try {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -328,7 +328,7 @@ app.post("/api/chat", async (req, res) => {
 
   async function chatOr(key, model) {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 20000);
+    const tid = setTimeout(() => ctrl.abort(), 15000);
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -346,7 +346,7 @@ app.post("/api/chat", async (req, res) => {
   async function chatGemini() {
     if (!googleApiKey) throw new Error("no gemini key");
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 20000);
+    const tid = setTimeout(() => ctrl.abort(), 15000);
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
         method: "POST",
@@ -394,7 +394,7 @@ app.post("/api/chat", async (req, res) => {
     }
   }
 
-  for (const a of seqAttempts) {
+  for (const a of seqAttempts.slice(0, 5)) {
     try {
       const text = await a.fn();
       if (text) {

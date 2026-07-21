@@ -84,7 +84,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [] }: Perg
       const cura = data.cura;
       const pollStart = Date.now();
       const POLL_INTERVAL = 2500;
-      const MAX_POLL = 120000;
+      const MAX_POLL = 90000;
 
       const poll = async (): Promise<void> => {
         if (Date.now() - pollStart > MAX_POLL) {
