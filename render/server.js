@@ -181,11 +181,33 @@ async function processJob(cura, prompt, attempt = 1) {
   if (!job) return;
   job.attempts = attempt;
 
+  const orModels = ["openrouter/free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-super-120b-a12b:free", "google/gemma-4-26b-a4b-it:free"];
   const providers = [
-    { name: "Groq", fn: () => callGroq(prompt) },
-    { name: "Gemini", fn: () => callGemini(prompt) },
-    { name: "OpenRouter", fn: () => callOpenRouter(prompt) },
+    { name: "Groq-llama3.3", fn: () => callGroq(prompt) },
   ];
+  for (const key of openRouterKeys) {
+    for (const model of orModels) {
+      providers.push({ name: `OR-${model.slice(0,15)}-${key.slice(-4)}`, fn: async () => {
+        const ctrl = new AbortController();
+        const tid = setTimeout(() => ctrl.abort(), 60000);
+        try {
+          const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://apexenem.app", "X-Title": "ApexAI" },
+            body: JSON.stringify({ model, messages: [{ role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido." }, { role: "user", content: prompt }], max_tokens: 8192, temperature: 0.85 }),
+            signal: ctrl.signal,
+          });
+          clearTimeout(tid);
+          if (!r.ok) throw new Error(`openrouter ${r.status}`);
+          const d = await r.json();
+          const raw = d.choices?.[0]?.message?.content;
+          if (!raw) throw new Error("empty");
+          return extractJson(raw);
+        } catch (e) { clearTimeout(tid); throw e; }
+      }});
+    }
+  }
+  providers.push({ name: "Gemini", fn: () => callGemini(prompt) });
 
   for (const provider of providers) {
     try {
@@ -228,7 +250,7 @@ app.post("/api/chat", async (req, res) => {
   const mt = maxTokens || 4096;
   const temp = temperature || 0.7;
 
-  async function tryGroq() {
+  async function callGroq(model) {
     if (!groqApiKey) throw new Error("no groq key");
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 60000);
@@ -237,7 +259,7 @@ app.post("/api/chat", async (req, res) => {
         method: "POST",
         headers: { "Content-Type": "application/json", Authorization: `Bearer ${groqApiKey}` },
         body: JSON.stringify({
-          model: "llama-3.3-70b-versatile",
+          model: model || "llama-3.3-70b-versatile",
           messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }],
           max_tokens: mt, temperature: temp,
         }),
@@ -250,7 +272,34 @@ app.post("/api/chat", async (req, res) => {
     } catch (e) { clearTimeout(tid); throw e; }
   }
 
-  async function tryGemini() {
+  async function callOpenRouter(key, model) {
+    if (!key) throw new Error("no openrouter key");
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 60000);
+    try {
+      const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${key}`,
+          "HTTP-Referer": "https://apexenem.app",
+          "X-Title": "ApexAI",
+        },
+        body: JSON.stringify({
+          model,
+          messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }],
+          max_tokens: mt, temperature: temp,
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`openrouter ${r.status}`);
+      const d = await r.json();
+      return d.choices?.[0]?.message?.content || null;
+    } catch (e) { clearTimeout(tid); throw e; }
+  }
+
+  async function callGemini() {
     if (!googleApiKey) throw new Error("no gemini key");
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 60000);
@@ -272,50 +321,42 @@ app.post("/api/chat", async (req, res) => {
     } catch (e) { clearTimeout(tid); throw e; }
   }
 
-  async function tryOpenRouter() {
-    const key = nextOrKey();
-    if (!key) throw new Error("no openrouter keys");
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 60000);
-    try {
-      const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${key}`,
-          "HTTP-Referer": "https://apexenem.app",
-          "X-Title": "ApexAI",
-        },
-        body: JSON.stringify({
-          model: "google/gemma-4-31b-it:free",
-          messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }],
-          max_tokens: mt, temperature: temp,
-        }),
-        signal: ctrl.signal,
-      });
-      clearTimeout(tid);
-      if (!r.ok) throw new Error(`openrouter ${r.status}`);
-      const d = await r.json();
-      return d.choices?.[0]?.message?.content || null;
-    } catch (e) { clearTimeout(tid); throw e; }
+  const orModels = [
+    "openrouter/free",
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3-nano-30b-a3b:free",
+  ];
+
+  const attempts = [
+    { name: "groq-llama3.3", fn: () => callGroq("llama-3.3-70b-versatile") },
+    { name: "groq-llama3.1", fn: () => callGroq("llama-3.1-8b-instant") },
+  ];
+
+  for (const key of openRouterKeys) {
+    for (const model of orModels) {
+      attempts.push({ name: `or-${model.slice(0,20)}-${key.slice(-4)}`, fn: () => callOpenRouter(key, model) });
+    }
   }
 
-  const providers = [
-    { name: "tryGroq", fn: tryGroq },
-    { name: "tryGemini", fn: tryGemini },
-    { name: "tryOpenRouter", fn: tryOpenRouter },
-  ];
-  for (const p of providers) {
+  attempts.push({ name: "gemini-flash", fn: callGemini });
+
+  for (const a of attempts) {
     try {
-      const text = await p.fn();
-      if (text) return res.json({ text, model: p.name });
+      const text = await a.fn();
+      if (text) {
+        console.log(`[chat] OK via ${a.name}`);
+        return res.json({ text, model: a.name });
+      }
     } catch (err) {
-      console.error(`[chat] ${p.name} failed: ${err.message}`);
-      if (err.message.includes("429")) {
-        await new Promise(r => setTimeout(r, 2000));
+      if (!err.message.includes("429")) {
+        console.error(`[chat] ${a.name} failed: ${err.message}`);
       }
     }
   }
+
+  console.error(`[chat] ALL ${attempts.length} attempts failed`);
   return res.status(503).json({ error: "all models failed" });
 });
 
