@@ -224,25 +224,6 @@ function extractJsonFromText(rawText: string): any {
 }
 
 const googleApiKey = process.env.GOOGLE_API_KEY;
-const groqApiKey = process.env.GROQ_API_KEY;
-
-const openRouterKeys = [
-  process.env.OPENROUTER_API_KEY,
-  process.env.OPENROUTER_API_KEY_V1,
-  process.env.OPENROUTER_API_KEY_V2,
-  process.env.OPENROUTER_API_KEY_V3,
-  process.env.OPENROUTER_API_KEY_V4,
-  process.env.OPENROUTER_API_KEY_V5,
-].filter(Boolean) as string[];
-
-let currentOpenRouterKeyIndex = 0;
-
-function getNextOpenRouterKey(): string {
-  if (openRouterKeys.length === 0) return "";
-  const key = openRouterKeys[currentOpenRouterKeyIndex % openRouterKeys.length];
-  currentOpenRouterKeyIndex++;
-  return key;
-}
 
 async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxTokens?: number; temperature?: number; timeout?: number }): Promise<string> {
   const renderUrl = process.env.RENDER_PROCESS_URL;
@@ -302,73 +283,6 @@ async function assertModelIsFree(modelName: string): Promise<void> {
 }
 
 
-
-async function fetchCorrectionFromModel(modelName: string, prompt: string) {
-  for (let attempt = 0; attempt < openRouterKeys.length * 2; attempt++) {
-    const key = getNextOpenRouterKey();
-    if (!key) continue;
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => {
-      console.warn(`Timeout (9s) for model ${modelName}, aborting...`);
-      controller.abort();
-    }, 9000);
-
-    try {
-      const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${key}`,
-          "HTTP-Referer": "https://apexenem.app",
-          "X-Title": "ApexEnem"
-        },
-      body: JSON.stringify({
-        model: modelName,
-        messages: [
-          {
-            role: "system",
-            content: "Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado."
-          },
-          {
-            role: "user",
-            content: prompt
-          }
-        ],
-        temperature: 0.3
-      }),
-      signal: controller.signal
-    });
-
-    if (response.status === 429) {
-      console.error(`fetchCorrection 429 com chave ${key.slice(-4)}, tentando próxima...`);
-      clearTimeout(timeoutId);
-      continue;
-    }
-    if (!response.ok) {
-      console.error(`fetchCorrection ${modelName}: ${response.status}`);
-      clearTimeout(timeoutId);
-      continue;
-    }
-
-    const resData = await response.json();
-    const rawContent = resData.choices?.[0]?.message?.content;
-    if (!rawContent) {
-      console.error(`fetchCorrection ${modelName}: empty content`);
-      clearTimeout(timeoutId);
-      continue;
-    }
-
-    clearTimeout(timeoutId);
-    return extractJsonFromText(rawContent);
-  } catch (err: any) {
-    clearTimeout(timeoutId);
-    console.error(`Error querying model ${modelName}:`, err.message);
-    continue;
-  }
-}
-console.error(`fetchCorrection ${modelName}: todas as chaves esgotadas`);
-return null;
-}
 
 app.post("/api/correct", async (req, res) => {
   const { title, text, imageBase64 } = req.body;
@@ -1309,7 +1223,7 @@ app.post("/api/delete-account", async (req, res) => {
 
 app.get("/api/credentials-status", (req, res) => {
   res.json({
-    openRouter: openRouterKeys.length > 0,
+    openRouter: !!process.env.RENDER_PROCESS_URL,
     supabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
     supabaseAdmin: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
     gemini: false

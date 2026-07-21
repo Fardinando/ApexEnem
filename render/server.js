@@ -11,7 +11,6 @@ const PORT = process.env.PORT || 3001;
 const googleApiKey = process.env.GOOGLE_API_KEY;
 
 const groqKeys = [
-  process.env.GROQ_API_KEY,
   process.env.GROQ_API_KEY_V1, process.env.GROQ_API_KEY_V2, process.env.GROQ_API_KEY_V3,
   process.env.GROQ_API_KEY_V4, process.env.GROQ_API_KEY_V5, process.env.GROQ_API_KEY_V6,
   process.env.GROQ_API_KEY_V7, process.env.GROQ_API_KEY_V8, process.env.GROQ_API_KEY_V9,
@@ -19,7 +18,6 @@ const groqKeys = [
 ].filter(Boolean);
 
 const openRouterKeys = [
-  process.env.OPENROUTER_API_KEY,
   process.env.OPENROUTER_API_KEY_V1, process.env.OPENROUTER_API_KEY_V2, process.env.OPENROUTER_API_KEY_V3,
   process.env.OPENROUTER_API_KEY_V4, process.env.OPENROUTER_API_KEY_V5, process.env.OPENROUTER_API_KEY_V6,
   process.env.OPENROUTER_API_KEY_V7, process.env.OPENROUTER_API_KEY_V8, process.env.OPENROUTER_API_KEY_V9,
