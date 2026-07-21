@@ -82,7 +82,7 @@ async function callGroq(prompt, keyOverride) {
   const key = keyOverride || nextGroqKey();
   if (!key) throw new Error("no groq keys");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 60000);
+  const tid = setTimeout(() => ctrl.abort(), 20000);
   try {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
@@ -110,7 +110,7 @@ async function callGroq(prompt, keyOverride) {
 async function callGemini(prompt) {
   if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 60000);
+  const tid = setTimeout(() => ctrl.abort(), 20000);
   try {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
       method: "POST",
@@ -135,7 +135,7 @@ async function callOpenRouter(prompt) {
   const key = nextOrKey();
   if (!key) throw new Error("no openrouter keys");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), 60000);
+  const tid = setTimeout(() => ctrl.abort(), 20000);
   try {
     const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
@@ -206,12 +206,12 @@ async function processJob(cura, prompt, attempt = 1) {
   if (!job) return;
   job.attempts = attempt;
 
-  const orModels = ["openrouter/free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-super-120b-a12b:free", "google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3-nano-30b-a3b:free"];
+  const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
   const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
 
   async function callOrWithKey(key, model) {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 60000);
+    const tid = setTimeout(() => ctrl.abort(), 20000);
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -228,30 +228,53 @@ async function processJob(cura, prompt, attempt = 1) {
     } catch (e) { clearTimeout(tid); throw e; }
   }
 
-  // Build flat list: try every key+model combo one at a time
-  const attempts = [];
-  for (const k of groqKeys) {
-    attempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k) });
+  async function tryOne(name, fn) {
+    try {
+      const result = await fn();
+      if (validateQuestions(result)) return result;
+    } catch {}
+    return null;
   }
-  for (const k of openRouterKeys) {
-    for (const m of orModels) {
-      attempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => callOrWithKey(k, m) });
+
+  console.log(`[${cura}] Attempt ${attempt}: trying parallel batch`);
+
+  const batch1 = [];
+  if (groqKeys.length > 0) batch1.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[0]) });
+  if (groqKeys.length > 1) batch1.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[1]) });
+  if (googleApiKey) batch1.push({ name: "gemini", fn: () => callGemini(prompt) });
+  if (openRouterKeys.length > 0) batch1.push({ name: `or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], orModels[0]) });
+
+  const results = await Promise.allSettled(batch1.map(a => tryOne(a.name, a.fn)));
+  for (let i = 0; i < results.length; i++) {
+    if (results[i].status === "fulfilled" && results[i].value) {
+      job.status = "done";
+      job.result = normalizeQuestions(results[i].value);
+      job.completedAt = Date.now();
+      console.log(`[${cura}] OK via ${batch1[i].name} (parallel)`);
+      return;
     }
   }
-  if (googleApiKey) {
-    attempts.push({ name: "gemini", fn: () => callGemini(prompt) });
+
+  console.log(`[${cura}] Parallel batch failed, trying sequential fallback`);
+
+  const seqAttempts = [];
+  for (const k of groqKeys.slice(2)) {
+    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k) });
+  }
+  for (const k of openRouterKeys.slice(1)) {
+    for (const m of orModels) {
+      seqAttempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => callOrWithKey(k, m) });
+    }
   }
 
-  console.log(`[${cura}] Starting ${attempts.length} key/model combos (attempt ${attempt})`);
-
-  for (const a of attempts) {
+  for (const a of seqAttempts) {
     try {
       const result = await a.fn();
       if (validateQuestions(result)) {
         job.status = "done";
         job.result = normalizeQuestions(result);
         job.completedAt = Date.now();
-        console.log(`[${cura}] OK via ${a.name}`);
+        console.log(`[${cura}] OK via ${a.name} (sequential)`);
         return;
       }
     } catch (err) {
@@ -262,8 +285,8 @@ async function processJob(cura, prompt, attempt = 1) {
   }
 
   if (attempt < 3) {
-    const delay = attempt === 1 ? 60000 : 120000;
-    console.log(`[${cura}] All ${attempts.length} combos failed. Retry in ${delay/1000}s...`);
+    const delay = attempt === 1 ? 30000 : 60000;
+    console.log(`[${cura}] All combos failed. Retry in ${delay/1000}s...`);
     await new Promise(r => setTimeout(r, delay));
     return processJob(cura, prompt, attempt + 1);
   }
@@ -271,7 +294,7 @@ async function processJob(cura, prompt, attempt = 1) {
   job.status = "error";
   job.error = "Todos os modelos falharam apos 3 tentativas";
   job.completedAt = Date.now();
-  console.log(`[${cura}] FAILED after ${attempts.length * 3} total attempts`);
+  console.log(`[${cura}] FAILED after ${attempt} attempts`);
 }
 
 app.get("/api/health", (req, res) => {
@@ -288,7 +311,7 @@ app.post("/api/chat", async (req, res) => {
 
   async function chatGroq(key, model) {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 60000);
+    const tid = setTimeout(() => ctrl.abort(), 20000);
     try {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -305,7 +328,7 @@ app.post("/api/chat", async (req, res) => {
 
   async function chatOr(key, model) {
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 60000);
+    const tid = setTimeout(() => ctrl.abort(), 20000);
     try {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -323,7 +346,7 @@ app.post("/api/chat", async (req, res) => {
   async function chatGemini() {
     if (!googleApiKey) throw new Error("no gemini key");
     const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), 60000);
+    const tid = setTimeout(() => ctrl.abort(), 20000);
     try {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
         method: "POST",
@@ -338,38 +361,54 @@ app.post("/api/chat", async (req, res) => {
     } catch (e) { clearTimeout(tid); throw e; }
   }
 
-  const orModels = ["openrouter/free", "google/gemma-4-31b-it:free", "nvidia/nemotron-3-super-120b-a12b:free", "google/gemma-4-26b-a4b-it:free", "nvidia/nemotron-3-nano-30b-a3b:free"];
+  const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "openai/gpt-oss-20b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
 
-  const attempts = [];
-  for (const k of groqKeys) {
-    attempts.push({ name: `groq-${k.slice(-4)}`, fn: () => chatGroq(k, "llama-3.3-70b-versatile") });
+  async function tryChat(name, fn) {
+    try {
+      const text = await fn();
+      if (text) return { name, text };
+    } catch {}
+    return null;
   }
-  for (const k of openRouterKeys) {
-    for (const m of orModels) {
-      attempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => chatOr(k, m) });
+
+  const batch = [];
+  if (groqKeys.length > 0) batch.push(tryChat(`groq-${groqKeys[0].slice(-4)}`, () => chatGroq(groqKeys[0], "llama-3.3-70b-versatile")));
+  if (googleApiKey) batch.push(tryChat("gemini", chatGemini));
+  if (openRouterKeys.length > 0) batch.push(tryChat(`or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, () => chatOr(openRouterKeys[0], orModels[0])));
+
+  const batchResults = await Promise.allSettled(batch);
+  for (const r of batchResults) {
+    if (r.status === "fulfilled" && r.value) {
+      console.log(`[chat] OK via ${r.value.name} (parallel)`);
+      return res.json({ text: cleanText(r.value.text), model: r.value.name });
     }
   }
-  if (googleApiKey) attempts.push({ name: "gemini", fn: chatGemini });
 
-  for (const a of attempts) {
+  const seqAttempts = [];
+  for (const k of groqKeys.slice(1)) {
+    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => chatGroq(k, "llama-3.3-70b-versatile") });
+  }
+  for (const k of openRouterKeys.slice(1)) {
+    for (const m of orModels) {
+      seqAttempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => chatOr(k, m) });
+    }
+  }
+
+  for (const a of seqAttempts) {
     try {
       const text = await a.fn();
       if (text) {
-        const cleaned = cleanText(text);
         console.log(`[chat] OK via ${a.name}`);
-        return res.json({ text: cleaned, model: a.name });
+        return res.json({ text: cleanText(text), model: a.name });
       }
     } catch (err) {
-      if (!err.message.includes("429")) {
-        console.error(`[chat] ${a.name} failed: ${err.message}`);
-      }
       if (err.message.includes("429")) {
         await new Promise(r => setTimeout(r, 1500));
       }
     }
   }
 
-  console.error(`[chat] ALL ${attempts.length} attempts failed`);
+  console.error(`[chat] ALL attempts failed`);
   return res.status(503).json({ error: "all models failed" });
 });
 

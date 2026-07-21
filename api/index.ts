@@ -229,7 +229,7 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
   const renderUrl = process.env.RENDER_PROCESS_URL;
   if (!renderUrl) throw new Error("RENDER_PROCESS_URL not set");
   const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), opts.timeout || 30000);
+  const tid = setTimeout(() => ctrl.abort(), opts.timeout || 20000);
   try {
     const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/chat`, {
       method: "POST",
