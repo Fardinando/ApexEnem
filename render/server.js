@@ -165,16 +165,6 @@ async function callOpenRouter(prompt) {
   } catch (e) { clearTimeout(tid); throw e; }
 }
 
-function validateQuestions(qs) {
-  if (!Array.isArray(qs)) return false;
-  return qs.length > 0 && qs.every(q =>
-    q && typeof q.statement === "string" && q.statement.length > 30 &&
-    Array.isArray(q.options) && q.options.length >= 2 &&
-    typeof q.correctAnswer === "string" && q.correctAnswer.length === 1 &&
-    typeof q.explanation === "string" && q.explanation.length > 20
-  );
-}
-
 function cleanText(s) {
   if (typeof s !== "string") return s;
   let t = s.replace(/\r\n?/g, "\n");
@@ -192,13 +182,58 @@ function cleanText(s) {
   return t.trim();
 }
 
+function validateQuestions(qs) {
+  if (!Array.isArray(qs)) return false;
+  return qs.length > 0 && qs.every(q =>
+    q && typeof q.statement === "string" && q.statement.length > 30 &&
+    Array.isArray(q.options) && q.options.length >= 2 &&
+    q.options.every(o => typeof o === "object" && o !== null && typeof o.text === "string" && o.text.length > 0 && typeof o.letter === "string") &&
+    typeof q.correctAnswer === "string" && /^[A-E]$/.test(q.correctAnswer) &&
+    typeof q.explanation === "string" && q.explanation.length > 20
+  );
+}
+
+function fixEncoding(s) {
+  if (typeof s !== "string") return s;
+  try {
+    const latin1Bytes = new Uint8Array([...s].map(c => c.charCodeAt(0) & 0xFF));
+    const decoded = new TextDecoder("utf-8", { fatal: false }).decode(latin1Bytes);
+    if (!decoded.includes("\uFFFD") && decoded.length < s.length && decoded.length > 0) {
+      return decoded;
+    }
+  } catch {}
+  return s;
+}
+
+function normalizeOption(opt, idx) {
+  if (!opt || typeof opt !== "object") return { letter: String.fromCharCode(65 + idx), text: String(opt) };
+  if (typeof opt.letter === "string" && typeof opt.text === "string" && opt.text.length > 0) {
+    return { letter: opt.letter.toUpperCase(), text: fixEncoding(opt.text) };
+  }
+  if (opt.text === undefined || opt.text === null) {
+    const chars = [];
+    for (let i = 0; i <= 9; i++) {
+      if (opt[i] !== undefined && opt[i] !== null) chars.push(String(opt[i]));
+    }
+    if (chars.length > 0) {
+      return { letter: String.fromCharCode(65 + idx), text: fixEncoding(chars.join("")) };
+    }
+  }
+  if (typeof opt === "string") {
+    return { letter: String.fromCharCode(65 + idx), text: fixEncoding(opt) };
+  }
+  return { letter: String.fromCharCode(65 + idx), text: fixEncoding(JSON.stringify(opt)) };
+}
+
 function normalizeQuestions(qs) {
-  return qs.map(q => ({
+  const letters = "ABCDE";
+  return qs.map((q, qi) => ({
     ...q,
-    statement: cleanText(q.statement),
-    explanation: cleanText(q.explanation),
-    options: q.options.map(o => ({ ...o, text: cleanText(o.text) })),
-  }));
+    statement: fixEncoding(cleanText(q.statement)),
+    explanation: fixEncoding(cleanText(q.explanation)),
+    correctAnswer: (q.correctAnswer || "A").toUpperCase().charAt(0),
+    options: (q.options || []).slice(0, 5).map((o, oi) => normalizeOption(o, oi)),
+  })).filter(q => q.options.length >= 2);
 }
 
 async function processJob(cura, prompt, attempt = 1) {
@@ -231,7 +266,10 @@ async function processJob(cura, prompt, attempt = 1) {
   async function tryOne(name, fn) {
     try {
       const result = await fn();
-      if (validateQuestions(result)) return result;
+      if (Array.isArray(result)) {
+        const normalized = normalizeQuestions(result);
+        if (validateQuestions(normalized)) return normalized;
+      }
     } catch {}
     return null;
   }
@@ -248,7 +286,7 @@ async function processJob(cura, prompt, attempt = 1) {
   for (let i = 0; i < results.length; i++) {
     if (results[i].status === "fulfilled" && results[i].value) {
       job.status = "done";
-      job.result = normalizeQuestions(results[i].value);
+      job.result = results[i].value;
       job.completedAt = Date.now();
       console.log(`[${cura}] OK via ${batch1[i].name} (parallel)`);
       return;
@@ -270,9 +308,10 @@ async function processJob(cura, prompt, attempt = 1) {
   for (const a of seqAttempts.slice(0, 5)) {
     try {
       const result = await a.fn();
-      if (validateQuestions(result)) {
+      const normalized = Array.isArray(result) ? normalizeQuestions(result) : null;
+      if (normalized && validateQuestions(normalized)) {
         job.status = "done";
-        job.result = normalizeQuestions(result);
+        job.result = normalized;
         job.completedAt = Date.now();
         console.log(`[${cura}] OK via ${a.name} (sequential)`);
         return;
