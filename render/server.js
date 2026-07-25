@@ -81,6 +81,9 @@ function extractJson(raw) {
 async function callGroq(prompt, keyOverride, type) {
   const key = keyOverride || nextGroqKey();
   if (!key) throw new Error("no groq keys");
+  const sysMsg = type === "general"
+    ? "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON."
+    : "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text.";
   const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), 30000));
   const fetchPromise = (async () => {
     const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
@@ -89,7 +92,7 @@ async function callGroq(prompt, keyOverride, type) {
       body: JSON.stringify({
         model: "llama-3.3-70b-versatile",
         messages: [
-          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text." },
+          { role: "system", content: sysMsg },
           { role: "user", content: prompt },
         ],
         max_tokens: 8192,
@@ -107,6 +110,9 @@ async function callGroq(prompt, keyOverride, type) {
 
 async function callGemini(prompt, type) {
   if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
+  const sysMsg = type === "general"
+    ? "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON."
+    : "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha.";
   const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), 30000));
   const fetchPromise = (async () => {
     const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
@@ -114,7 +120,7 @@ async function callGemini(prompt, type) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         contents: [{ role: "user", parts: [{ text: prompt }] }],
-        systemInstruction: { parts: [{ text: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha." }] },
+        systemInstruction: { parts: [{ text: sysMsg }] },
         generationConfig: { temperature: 0.9, maxOutputTokens: 8192 },
       }),
     });
@@ -127,9 +133,12 @@ async function callGemini(prompt, type) {
   return Promise.race([fetchPromise, timer]);
 }
 
-async function callOpenRouter(prompt) {
+async function callOpenRouter(prompt, type) {
   const key = nextOrKey();
   if (!key) throw new Error("no openrouter keys");
+  const sysMsg = type === "general"
+    ? "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON."
+    : "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text.";
   const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), 15000));
   const fetchPromise = (async () => {
     const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
@@ -143,7 +152,7 @@ async function callOpenRouter(prompt) {
       body: JSON.stringify({
         model: "google/gemma-4-31b-it:free",
         messages: [
-          { role: "system", content: "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text." },
+          { role: "system", content: sysMsg },
           { role: "user", content: prompt },
         ],
         max_tokens: 8192,
@@ -154,7 +163,7 @@ async function callOpenRouter(prompt) {
     const d = await r.json();
     const raw = d.choices?.[0]?.message?.content;
     if (!raw) throw new Error("empty response");
-    return extractJson(raw);
+    return type === "general" ? raw.trim() : extractJson(raw);
   })();
   return Promise.race([fetchPromise, timer]);
 }
@@ -245,7 +254,9 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
   job.attempts = attempt;
 
   const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
-  const sysMsg = "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
+  const sysMsg = type === "general"
+    ? "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON."
+    : "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
 
   async function callOrWithKey(key, model, timeout) {
     const timeoutMs = timeout || 30000;
