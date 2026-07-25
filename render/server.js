@@ -78,7 +78,7 @@ function extractJson(raw) {
   return null;
 }
 
-async function callGroq(prompt, keyOverride) {
+async function callGroq(prompt, keyOverride, type) {
   const key = keyOverride || nextGroqKey();
   if (!key) throw new Error("no groq keys");
   const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), 30000));
@@ -100,12 +100,12 @@ async function callGroq(prompt, keyOverride) {
     const d = await r.json();
     const raw = d.choices?.[0]?.message?.content;
     if (!raw) throw new Error("empty response");
-    return extractJson(raw);
+    return type === "general" ? raw.trim() : extractJson(raw);
   })();
   return Promise.race([fetchPromise, timer]);
 }
 
-async function callGemini(prompt) {
+async function callGemini(prompt, type) {
   if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
   const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), 30000));
   const fetchPromise = (async () => {
@@ -122,7 +122,7 @@ async function callGemini(prompt) {
     const d = await r.json();
     const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text;
     if (!raw) throw new Error("empty response");
-    return extractJson(raw);
+    return type === "general" ? raw.trim() : extractJson(raw);
   })();
   return Promise.race([fetchPromise, timer]);
 }
@@ -239,7 +239,7 @@ function normalizeQuestions(qs) {
   })).filter(q => q.options.length >= 2);
 }
 
-async function processJob(cura, prompt, attempt = 1) {
+async function processJob(cura, prompt, attempt = 1, type = "questions") {
   const job = jobs.get(cura);
   if (!job) return;
   job.attempts = attempt;
@@ -260,13 +260,17 @@ async function processJob(cura, prompt, attempt = 1) {
       const d = await r.json();
       const raw = d.choices?.[0]?.message?.content;
       if (!raw) throw new Error("empty");
-      return extractJson(raw);
+      return type === "general" ? raw.trim() : extractJson(raw);
     })();
     return Promise.race([fetchPromise, timer]);
   }
 
   async function tryOneOrThrow(name, fn) {
     const result = await fn();
+    if (type === "general") {
+      if (result && typeof result === "string" && result.length > 0) return { name, value: result };
+      throw new Error(`${name} returned empty text`);
+    }
     if (Array.isArray(result)) {
       const normalized = normalizeQuestions(result);
       if (validateQuestions(normalized)) return { name, value: normalized };
@@ -278,9 +282,9 @@ async function processJob(cura, prompt, attempt = 1) {
   console.log(`[${cura}] Attempt ${attempt}: trying parallel batch`);
 
   const batch1 = [];
-  if (groqKeys.length > 0) batch1.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[0]) });
-  if (groqKeys.length > 1) batch1.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[1]) });
-  if (googleApiKey) batch1.push({ name: "gemini", fn: () => callGemini(prompt) });
+  if (groqKeys.length > 0) batch1.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[0], type) });
+  if (groqKeys.length > 1) batch1.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[1], type) });
+  if (googleApiKey) batch1.push({ name: "gemini", fn: () => callGemini(prompt, type) });
   if (openRouterKeys.length > 0) batch1.push({ name: `or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], orModels[0], 70000) });
   if (openRouterKeys.length > 1) batch1.push({ name: `or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], orModels[1], 70000) });
 
@@ -307,13 +311,23 @@ async function processJob(cura, prompt, attempt = 1) {
     }
   }
   for (const k of groqKeys) {
-    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k) });
+    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k, type) });
   }
-  if (googleApiKey) seqAttempts.push({ name: "gemini", fn: () => callGemini(prompt) });
+  if (googleApiKey) seqAttempts.push({ name: "gemini", fn: () => callGemini(prompt, type) });
 
   for (const a of seqAttempts.slice(0, 8)) {
     try {
       const result = await a.fn();
+      if (type === "general") {
+        if (result && typeof result === "string" && result.length > 0) {
+          job.status = "done";
+          job.result = result;
+          job.completedAt = Date.now();
+          console.log(`[${cura}] OK via ${a.name} (sequential general)`);
+          return;
+        }
+        throw new Error(`${a.name} returned empty text`);
+      }
       const normalized = Array.isArray(result) ? normalizeQuestions(result) : null;
       if (normalized && validateQuestions(normalized)) {
         job.status = "done";
@@ -334,7 +348,7 @@ async function processJob(cura, prompt, attempt = 1) {
     const delay = 15000;
     console.log(`[${cura}] All combos failed. Retry in ${delay/1000}s...`);
     await new Promise(r => setTimeout(r, delay));
-    return processJob(cura, prompt, attempt + 1);
+    return processJob(cura, prompt, attempt + 1, type);
   }
 
   job.status = "error";
@@ -458,7 +472,7 @@ app.post("/api/chat", async (req, res) => {
 });
 
 app.post("/api/process", (req, res) => {
-  const { cura, prompt } = req.body;
+  const { cura, prompt, type } = req.body;
   if (!cura || !prompt) {
     return res.status(400).json({ error: "cura and prompt required" });
   }
@@ -467,6 +481,7 @@ app.post("/api/process", (req, res) => {
     cura,
     status: "processing",
     prompt,
+    type: type || "questions",
     result: null,
     error: null,
     attempts: 0,
@@ -474,7 +489,7 @@ app.post("/api/process", (req, res) => {
     completedAt: null,
   });
 
-  processJob(cura, prompt);
+  processJob(cura, prompt, 1, type || "questions");
 
   res.json({ ok: true, cura });
 });

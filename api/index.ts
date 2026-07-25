@@ -285,11 +285,12 @@ function sanitizeQuestions(questions: any[]): any[] {
   }));
 }
 
-async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxTokens?: number; temperature?: number; timeout?: number }): Promise<string> {
+async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxTokens?: number; temperature?: number; timeout?: number; type?: string }): Promise<string> {
   const renderUrl = process.env.RENDER_PROCESS_URL;
   if (!renderUrl) throw new Error("RENDER_PROCESS_URL not set");
   const base = renderUrl.replace(/\/+$/, "");
   const prompt = opts.systemPrompt ? `${opts.systemPrompt}\n\n${opts.userPrompt}` : opts.userPrompt;
+  const jobType = opts.type || "general";
 
   // Fire-and-forget to Render /api/process
   const cura = crypto.randomUUID();
@@ -297,7 +298,7 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
     await fetch(`${base}/api/process`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cura, prompt }),
+      body: JSON.stringify({ cura, prompt, type: jobType }),
       signal: AbortSignal.timeout(5000),
     });
   } catch {
