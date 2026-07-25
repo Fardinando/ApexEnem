@@ -293,14 +293,21 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
   const jobType = opts.type || "general";
   const cura = crypto.randomUUID();
 
-  // Fire-and-forget to Render /api/process — NEVER await full response
-  fetch(`${base}/api/process`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cura, prompt, type: jobType }),
-  }).catch(err => console.error("[callAI] fire-and-forget failed:", err?.message));
+  // Await POST to Render (fast ~2s) so the job is actually created before Vercel kills the function
+  try {
+    const r = await fetch(`${base}/api/process`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cura, prompt, type: jobType }),
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!r.ok) console.error("[callAI] Render /api/process returned", r.status);
+  } catch (err: any) {
+    console.error("[callAI] failed to reach Render:", err?.message);
+    throw new Error("Serviço de IA indisponível. Tente novamente.");
+  }
 
-  // Throw immediately so endpoint returns {pending, cura} to frontend
+  // Throw PENDING so endpoint returns {pending, cura} to frontend for polling
   throw new Error(`PENDING:${cura}`);
 }
 
@@ -476,11 +483,13 @@ app.post("/api/questions", async (req, res) => {
   console.log("[questions] Sending to:", url, "prompt length:", prompt.length);
 
   try {
-    fetch(url, {
+    const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ cura, prompt }),
-    }).catch(err => console.error("[questions] Fire-and-forget to Render failed:", err?.message));
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!r.ok) console.error("[questions] Render returned", r.status);
     return res.json({ cura });
   } catch (err: any) {
     console.error("[questions] Failed to reach Render:", err?.name, err?.message);
@@ -741,11 +750,14 @@ Retorne APENAS um JSON no formato: {"explanations": {"id_da_questao": "explicaç
 
     const cura = crypto.randomUUID();
     const base = renderUrl.replace(/\/+$/, "");
-    fetch(`${base}/api/process`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cura, prompt: `${systemPrompt}\n\n${batchPrompt}`, type: "general" }),
-    }).catch(() => {});
+    try {
+      await fetch(`${base}/api/process`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cura, prompt: `${systemPrompt}\n\n${batchPrompt}`, type: "general" }),
+        signal: AbortSignal.timeout(5000),
+      });
+    } catch {}
 
     return res.json({ pending: true, cura, message: "Explicações em processamento via IA..." });
   } catch (err) {
