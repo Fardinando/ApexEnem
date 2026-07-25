@@ -186,55 +186,31 @@ function renderContent(text: string): (React.ReactNode | string)[] {
 }
 
 async function fetchENEMQuestions(subject: SimuladoConfig['subject'], count: number): Promise<SimuladoQuestion[]> {
-  const discipline = DISCIPLINE_TO_API[subject];
-  let allRaw: any[] = [];
-
-  for (const year of ENEM_YEARS) {
-    let offset = 0;
-    let hasMore = true;
-    while (hasMore) {
-      try {
-        const res = await fetch(`${ENEM_API_BASE}/exams/${year}/questions?limit=50&offset=${offset}`);
-        if (!res.ok) break;
-        const data = await res.json();
-        const questions = data.questions || [];
-        if (questions.length === 0) break;
-        allRaw.push(...questions);
-        offset += 50;
-        hasMore = !!data.metadata?.hasMore;
-      } catch {
-        break;
-      }
-    }
-  }
-
-  if (allRaw.length === 0) {
+  const apiSubject = subject === 'Recomendado' ? 'Geral' : subject;
+  const res = await fetch(`/api/enem-questions?subject=${encodeURIComponent(apiSubject)}&count=${count}`);
+  if (!res.ok) {
     throw new Error('Não foi possível carregar questões do ENEM. Verifique sua conexão e tente novamente.');
   }
-
-  if (discipline) {
-    allRaw = allRaw.filter(q => q.discipline === discipline);
+  const data = await res.json();
+  if (data.error) {
+    throw new Error(data.error);
   }
-
-  if (allRaw.length === 0) {
+  const questions = data.questions || [];
+  if (questions.length === 0) {
     throw new Error(`Nenhuma questão disponível para ${SUBJECT_LABELS[subject] || subject}.`);
   }
-
-  const shuffled = shuffleArray(allRaw);
-  const selected = shuffled.slice(0, Math.min(count, shuffled.length));
-
-  return selected.map((q) => ({
-    id: `enem-${q.year}-${q.index}`,
-    statement: [q.context, q.alternativesIntroduction].filter(Boolean).join('\n\n') || 'Enunciado não disponível.',
-    options: (q.alternatives || []).map((alt: any) => ({
+  return questions.map((q: any) => ({
+    id: q.id,
+    statement: q.statement || 'Enunciado não disponível.',
+    options: (q.options || []).map((alt: any) => ({
       letter: alt.letter as 'A' | 'B' | 'C' | 'D' | 'E',
       text: alt.text || '',
-      image: alt.file || undefined,
+      image: alt.image || undefined,
     })),
-    correctAnswer: q.correctAlternative as 'A' | 'B' | 'C' | 'D' | 'E',
-    explanation: 'Esta é uma questão oficial do ENEM. Para resolução detalhada, consulte os gabaritos oficiais do INEP disponíveis em.gov.br ou converse com seu professor.',
-    image: q.files?.[0] || undefined,
-    imageAlt: q.title || undefined,
+    correctAnswer: q.correctAnswer as 'A' | 'B' | 'C' | 'D' | 'E',
+    explanation: q.explanation || 'Questão oficial do ENEM.',
+    image: q.image || undefined,
+    imageAlt: q.imageAlt || undefined,
   }));
 }
 
