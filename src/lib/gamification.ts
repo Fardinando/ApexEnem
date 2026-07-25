@@ -156,6 +156,13 @@ export function getUnlockedAchievements(stats: GamificationStats): Achievement[]
   })).filter(a => a.unlockedAt);
 }
 
+export function getAllAchievements(stats: GamificationStats): Achievement[] {
+  return ACHIEVEMENTS.map(a => ({
+    ...a,
+    unlockedAt: a.condition(stats) ? (a.unlockedAt || new Date().toISOString()) : undefined,
+  }));
+}
+
 export function computeTopicDifficulty(wrongAnswers: WrongAnswer[]): TopicDifficulty[] {
   const topicMap = new Map<string, { subject: string; count: number }>();
 

@@ -105,9 +105,9 @@ export default function PerfilView({
     : [0, 0, 0, 0, 0];
 
   const maxVal = 200;
-  const rLimit = 85;
-  const cX = 120;
-  const cY = 110;
+  const rLimit = 75;
+  const cX = 130;
+  const cY = 118;
 
   const radarPoints = compValues.map((score, index) => {
     const angle = (index * 2 * Math.PI) / 5 - Math.PI / 2;
@@ -229,7 +229,7 @@ export default function PerfilView({
         </div>
 
         {/* Radar Chart - Competências */}
-        <div id="bento-profile-radar" className="md:col-span-4 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card flex flex-col justify-between relative overflow-hidden">
+        <div id="bento-profile-radar" className="md:col-span-4 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card flex flex-col justify-between relative">
           <div>
             <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">
               Análise de Competências
@@ -245,7 +245,7 @@ export default function PerfilView({
                 <p className="text-[9px] text-slate-400 max-w-xs mt-0.5 leading-relaxed">Envie uma redação para mapear seu gráfico de competências.</p>
               </div>
             )}
-            <svg width="240" height="225" className="text-blue-500 dark:text-blue-400">
+            <svg width="260" height="245" className="text-blue-500 dark:text-blue-400">
               <polygon points={getRingPointsPath(rLimit)} className="fill-none stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />
               <polygon points={getRingPointsPath(rLimit * 0.75)} className="fill-none stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />
               <polygon points={getRingPointsPath(rLimit * 0.5)} className="fill-none stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />
@@ -551,31 +551,36 @@ export default function PerfilView({
           )}
         </div>
 
-        {/* Achievements Mini */}
-        {achievements.length > 0 && (
-          <div id="bento-profile-achievements" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-1.5">
-                <Trophy className="h-4.5 w-4.5 text-amber-500" />
-                <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">Conquistas Recentes</h3>
-              </div>
-              <span className="text-[10px] px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded font-mono font-bold">
-                {achievements.length} / 18
-              </span>
+        {/* Achievements */}
+        <div id="bento-profile-achievements" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex items-center gap-1.5">
+              <Trophy className="h-4.5 w-4.5 text-amber-500" />
+              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">Conquistas</h3>
             </div>
-            <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-9 gap-2">
-              {achievements.slice(0, 9).map((ach) => (
+            <span className="text-[10px] px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded font-mono font-bold">
+              {achievements.filter(a => a.unlockedAt).length} / {achievements.length}
+            </span>
+          </div>
+          <div className="grid grid-cols-3 sm:grid-cols-6 lg:grid-cols-9 gap-2">
+            {achievements.map((ach) => {
+              const unlocked = !!ach.unlockedAt;
+              return (
                 <div
                   key={ach.id}
-                  className="p-3 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-center space-y-1 transition hover:scale-[1.03]"
+                  className={`p-3 rounded-xl text-center space-y-1 transition hover:scale-[1.03] ${
+                    unlocked
+                      ? 'bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60'
+                      : 'bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200/30 dark:border-slate-800/30 opacity-40'
+                  }`}
                 >
-                  <span className="text-xl">{ach.icon}</span>
+                  <span className="text-xl">{unlocked ? ach.icon : '🔒'}</span>
                   <p className="text-[9px] font-bold text-slate-700 dark:text-slate-200 leading-tight">{ach.title}</p>
                 </div>
-              ))}
-            </div>
+              );
+            })}
           </div>
-        )}
+        </div>
 
       </div>
 

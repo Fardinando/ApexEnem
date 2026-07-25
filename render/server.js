@@ -356,7 +356,7 @@ app.post("/api/chat", async (req, res) => {
   const temp = temperature || 0.7;
 
   async function chatGroq(key, model) {
-    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), 15000));
+    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), 10000));
     const fetchPromise = (async () => {
       const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
         method: "POST",
@@ -371,7 +371,7 @@ app.post("/api/chat", async (req, res) => {
   }
 
   async function chatOr(key, model) {
-    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), 15000));
+    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), 20000));
     const fetchPromise = (async () => {
       const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
         method: "POST",
@@ -387,7 +387,7 @@ app.post("/api/chat", async (req, res) => {
 
   async function chatGemini() {
     if (!googleApiKey) throw new Error("no gemini key");
-    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), 15000));
+    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), 10000));
     const fetchPromise = (async () => {
       const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
         method: "POST",
@@ -403,38 +403,43 @@ app.post("/api/chat", async (req, res) => {
 
   const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
 
-  async function tryChat(name, fn) {
-    try {
-      const text = await fn();
-      if (text) return { name, text };
-    } catch {}
-    return null;
+  async function tryChatOrThrow(name, fn) {
+    const text = await fn();
+    if (!text) throw new Error(`${name} returned empty`);
+    return { name, text };
   }
 
   const batch = [];
-  if (groqKeys.length > 0) batch.push(tryChat(`groq-${groqKeys[0].slice(-4)}`, () => chatGroq(groqKeys[0], "llama-3.3-70b-versatile")));
-  if (googleApiKey) batch.push(tryChat("gemini", chatGemini));
-  if (openRouterKeys.length > 0) batch.push(tryChat(`or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, () => chatOr(openRouterKeys[0], orModels[0])));
+  if (groqKeys.length > 0) batch.push(tryChatOrThrow(`groq-${groqKeys[0].slice(-4)}`, () => chatGroq(groqKeys[0], "llama-3.3-70b-versatile")));
+  if (googleApiKey) batch.push(tryChatOrThrow("gemini", chatGemini));
+  if (openRouterKeys.length > 0) batch.push(tryChatOrThrow(`or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, () => chatOr(openRouterKeys[0], orModels[0])));
+  if (openRouterKeys.length > 1) batch.push(tryChatOrThrow(`or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, () => chatOr(openRouterKeys[1], orModels[1])));
 
-  const batchResults = await Promise.allSettled(batch);
-  for (const r of batchResults) {
-    if (r.status === "fulfilled" && r.value) {
-      console.log(`[chat] OK via ${r.value.name} (parallel)`);
-      return res.json({ text: cleanText(r.value.text), model: r.value.name });
-    }
+  try {
+    const winner = await Promise.any(batch);
+    console.log(`[chat] OK via ${winner.name} (parallel)`);
+    return res.json({ text: cleanText(winner.text), model: winner.name });
+  } catch {
+    console.log(`[chat] Parallel batch failed, trying sequential fallback`);
   }
 
   const seqAttempts = [];
-  for (const k of groqKeys.slice(1)) {
-    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => chatGroq(k, "llama-3.3-70b-versatile") });
-  }
-  for (const k of openRouterKeys.slice(1)) {
+  if (openRouterKeys.length > 0) {
     for (const m of orModels) {
-      seqAttempts.push({ name: `or-${m.slice(0,10)}-${k.slice(-4)}`, fn: () => chatOr(k, m) });
+      seqAttempts.push({ name: `or-${m.slice(0,10)}-${openRouterKeys[0].slice(-4)}`, fn: () => chatOr(openRouterKeys[0], m) });
     }
   }
+  if (openRouterKeys.length > 1) {
+    for (const m of orModels) {
+      seqAttempts.push({ name: `or-${m.slice(0,10)}-${openRouterKeys[1].slice(-4)}`, fn: () => chatOr(openRouterKeys[1], m) });
+    }
+  }
+  for (const k of groqKeys) {
+    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => chatGroq(k, "llama-3.3-70b-versatile") });
+  }
+  if (googleApiKey) seqAttempts.push({ name: "gemini", fn: chatGemini });
 
-  for (const a of seqAttempts.slice(0, 5)) {
+  for (const a of seqAttempts.slice(0, 6)) {
     try {
       const text = await a.fn();
       if (text) {

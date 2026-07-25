@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress, deleteEssaysByUser, deleteSimuladosByUser, deleteLogsByUser } from './lib/supabase';
 import type { EssayCorrection, ActivityLog, WrongAnswer } from './types';
-import { calculateStreak, XP_REWARDS, getUnlockedAchievements, computeGamificationStats, type GamificationStats } from './lib/gamification';
+import { calculateStreak, XP_REWARDS, getUnlockedAchievements, getAllAchievements, computeGamificationStats, type GamificationStats } from './lib/gamification';
 import { loadSpecialAds } from './lib/ads';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
@@ -372,6 +372,7 @@ export default function App() {
   }), [essayCorrections, simuladosHistory, profile, longestStreak, totalXp]);
 
   const unlockedAchievements = useMemo(() => getUnlockedAchievements(gamificationStats), [gamificationStats]);
+  const allAchievements = useMemo(() => getAllAchievements(gamificationStats), [gamificationStats]);
 
   if (loading) {
     return (
@@ -425,7 +426,7 @@ export default function App() {
               simuladosHistory={simuladosHistory}
               activityLogs={activityLogs}
               gamificationStats={gamificationStats}
-              achievements={unlockedAchievements}
+              achievements={allAchievements}
             />
           )}
           {activeTab === 'redacao' && (
@@ -473,7 +474,7 @@ export default function App() {
               activityLogs={activityLogs}
               wrongAnswers={wrongAnswers}
               gamificationStats={gamificationStats}
-              achievements={unlockedAchievements}
+              achievements={allAchievements}
               setActiveTab={setActiveTab}
             />
           )}

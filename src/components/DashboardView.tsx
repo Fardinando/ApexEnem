@@ -90,9 +90,9 @@ export default function DashboardView({
 
   // Radar computations
   const maxVal = 200;
-  const rLimit = 85; 
-  const cX = 120;
-  const cY = 110;
+  const rLimit = 75; 
+  const cX = 130;
+  const cY = 118;
 
   const radarPoints = compValues.map((score, index) => {
     const angle = (index * 2 * Math.PI) / 5 - Math.PI / 2;
@@ -409,7 +409,7 @@ export default function DashboardView({
         </div>
 
         {/* Bento Card 4: Radar Chart (Competências) - Small Column */}
-        <div id="bento-chart-radar" className="md:col-span-4 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card flex flex-col justify-between relative overflow-hidden">
+        <div id="bento-chart-radar" className="md:col-span-4 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card flex flex-col justify-between relative">
           <div>
             <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">
               Análise de Competências
@@ -426,7 +426,7 @@ export default function DashboardView({
                 <p className="text-[9px] text-slate-400 max-w-xs mt-0.5 leading-relaxed">Sua primeira correção de redação mapeará o gráfico poligonal aqui em tempo real.</p>
               </div>
             )}
-            <svg width="240" height="225" className="text-blue-500 dark:text-blue-400">
+            <svg width="260" height="245" className="text-blue-500 dark:text-blue-400">
               {/* Pentagonal Guides */}
               <polygon points={getRingPointsPath(rLimit)} className="fill-none stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />
               <polygon points={getRingPointsPath(rLimit * 0.75)} className="fill-none stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />
@@ -625,44 +625,45 @@ export default function DashboardView({
             <div>
               <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
                 <Trophy className="h-4.5 w-4.5 text-amber-500" />
-                Conquistas Desbloqueadas
+                Conquistas
               </h3>
-              <p className="text-slate-450 text-[10px] mt-0.5">{achievements.length} de 18 conquistas</p>
+              <p className="text-slate-450 text-[10px] mt-0.5">{achievements.filter(a => a.unlockedAt).length} de {achievements.length}</p>
             </div>
             <span className="text-[10px] px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded font-mono font-bold">
-              {Math.round((achievements.length / 18) * 100)}%
+              {Math.round((achievements.filter(a => a.unlockedAt).length / achievements.length) * 100)}%
             </span>
           </div>
 
-          {achievements.length === 0 ? (
-            <div className="py-6 text-center">
-              <Trophy className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
-              <p className="text-xs text-slate-400">Complete atividades para desbloquear conquistas!</p>
-            </div>
-          ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-              {achievements.slice(0, 6).map((ach) => (
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            {achievements.map((ach) => {
+              const unlocked = !!ach.unlockedAt;
+              return (
                 <div
                   key={ach.id}
-                  className="p-3 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-center space-y-1 transition hover:scale-[1.03]"
+                  className={`p-3 rounded-xl text-center space-y-1 transition hover:scale-[1.03] ${
+                    unlocked
+                      ? 'bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60'
+                      : 'bg-slate-100/50 dark:bg-slate-800/30 border border-slate-200/30 dark:border-slate-800/30 opacity-40'
+                  }`}
                 >
-                  <span className="text-xl">{ach.icon}</span>
+                  <span className="text-xl">{unlocked ? ach.icon : '🔒'}</span>
                   <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-tight">{ach.title}</p>
+                  <p className="text-[8px] text-slate-400 dark:text-slate-500 leading-tight">{ach.description}</p>
                 </div>
-              ))}
-            </div>
-          )}
+              );
+            })}
+          </div>
 
           {/* Progress bar towards next achievement */}
           <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
             <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
               <span>Progresso Geral</span>
-              <span>{achievements.length}/18</span>
+              <span>{achievements.filter(a => a.unlockedAt).length}/{achievements.length}</span>
             </div>
             <div className="h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div
                 className="h-full bg-gradient-to-r from-amber-400 to-amber-600 rounded-full transition-all duration-700"
-                style={{ width: `${(achievements.length / 18) * 100}%` }}
+                style={{ width: `${(achievements.filter(a => a.unlockedAt).length / achievements.length) * 100}%` }}
               />
             </div>
           </div>
