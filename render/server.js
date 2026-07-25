@@ -168,6 +168,14 @@ async function callOpenRouter(prompt, type) {
   return Promise.race([fetchPromise, timer]);
 }
 
+function stripCodeFences(s) {
+  if (typeof s !== "string") return s;
+  let t = s.trim();
+  t = t.replace(/^```(?:json|JSON)?\s*\n?/m, "");
+  t = t.replace(/\n?```\s*$/m, "");
+  return t.trim();
+}
+
 function cleanText(s) {
   if (typeof s !== "string") return s;
   let t = s.replace(/\r\n?/g, "\n");
@@ -279,7 +287,7 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
   async function tryOneOrThrow(name, fn) {
     const result = await fn();
     if (type === "general") {
-      if (result && typeof result === "string" && result.length > 0) return { name, value: result };
+      if (result && typeof result === "string" && result.length > 0) return { name, value: stripCodeFences(result) };
       throw new Error(`${name} returned empty text`);
     }
     if (Array.isArray(result)) {
@@ -332,7 +340,7 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
       if (type === "general") {
         if (result && typeof result === "string" && result.length > 0) {
           job.status = "done";
-          job.result = result;
+          job.result = stripCodeFences(result);
           job.completedAt = Date.now();
           console.log(`[${cura}] OK via ${a.name} (sequential general)`);
           return;
