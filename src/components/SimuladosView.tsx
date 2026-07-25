@@ -386,8 +386,30 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
       }),
     })
       .then(r => r.json())
-      .then(data => {
-        if (data.explanations) {
+      .then(async data => {
+        if (data.pending && data.cura) {
+          let attempts = 0;
+          const maxAttempts = 60;
+          while (attempts < maxAttempts) {
+            await new Promise(r => setTimeout(r, 2500));
+            attempts++;
+            try {
+              const pollRes = await fetch(`/api/ai-task/${data.cura}`);
+              if (!pollRes.ok) continue;
+              const pollData = await pollRes.json();
+              if (pollData.status === 'done' && pollData.result) {
+                const result = typeof pollData.result === 'string'
+                  ? (() => { try { return JSON.parse(pollData.result); } catch { return null; } })()
+                  : pollData.result;
+                if (result?.explanations) {
+                  setAiExplanations(prev => ({ ...prev, ...result.explanations }));
+                }
+                break;
+              }
+              if (pollData.status === 'error') break;
+            } catch {}
+          }
+        } else if (data.explanations) {
           setAiExplanations(prev => ({ ...prev, ...data.explanations }));
         }
       })

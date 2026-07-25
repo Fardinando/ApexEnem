@@ -291,60 +291,16 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
   const base = renderUrl.replace(/\/+$/, "");
   const prompt = opts.systemPrompt ? `${opts.systemPrompt}\n\n${opts.userPrompt}` : opts.userPrompt;
   const jobType = opts.type || "general";
-
-  // Fire-and-forget to Render /api/process
   const cura = crypto.randomUUID();
-  try {
-    await fetch(`${base}/api/process`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cura, prompt, type: jobType }),
-      signal: AbortSignal.timeout(5000),
-    });
-  } catch {
-    // If fire-and-forget fails, try direct /api/chat as fallback
-    const ctrl = new AbortController();
-    const tid = setTimeout(() => ctrl.abort(), opts.timeout || 20000);
-    try {
-      const r = await fetch(`${base}/api/chat`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          systemPrompt: opts.systemPrompt,
-          userPrompt: opts.userPrompt,
-          maxTokens: opts.maxTokens || 4096,
-          temperature: opts.temperature ?? 0.7,
-        }),
-        signal: ctrl.signal,
-      });
-      clearTimeout(tid);
-      if (!r.ok) throw new Error(`Render /api/chat returned ${r.status}`);
-      const data = await r.json();
-      if (data.error) throw new Error(data.error);
-      return data.text || "";
-    } catch (e: any) {
-      clearTimeout(tid);
-      throw e;
-    }
-  }
 
-  // Poll for up to 8s (under Vercel's 10s limit)
-  const deadline = Date.now() + 8000;
-  while (Date.now() < deadline) {
-    await new Promise(r => setTimeout(r, 1500));
-    try {
-      const statusRes = await fetch(`${base}/api/status/${cura}`, { signal: AbortSignal.timeout(3000) });
-      const statusData = await statusRes.json();
-      if (statusData.status === "done" && statusData.result) {
-        const result = statusData.result;
-        if (typeof result === "string") return result;
-        return JSON.stringify(result);
-      }
-      if (statusData.status === "error") throw new Error(statusData.error || "AI task failed");
-    } catch {}
-  }
+  // Fire-and-forget to Render /api/process — NEVER await full response
+  fetch(`${base}/api/process`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cura, prompt, type: jobType }),
+  }).catch(err => console.error("[callAI] fire-and-forget failed:", err?.message));
 
-  // If still processing after 8s, throw with cura so caller can return pending status
+  // Throw immediately so endpoint returns {pending, cura} to frontend
   throw new Error(`PENDING:${cura}`);
 }
 
@@ -585,7 +541,10 @@ app.post("/api/openrouter-chat", async (req, res) => {
       timeout: 15000,
     });
     return res.json({ text });
-  } catch {
+  } catch (err: any) {
+    if (err?.message?.startsWith("PENDING:")) {
+      return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Explicação em processamento via IA..." });
+    }
     return res.json({ text: "🐐 Olá! Encontrei um pequeno atraso de sinal para buscar a explicação, mas já volto com a resposta! 📚" });
   }
 });
@@ -639,7 +598,11 @@ Para a área "${area}", sugira tópicos variados como:
     if (lesson && lesson.title && Array.isArray(lesson.content) && lesson.content.length >= 3) {
       return res.json(lesson);
     }
-  } catch {}
+  } catch (err: any) {
+    if (err?.message?.startsWith("PENDING:")) {
+      return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Aula em processamento via IA..." });
+    }
+  }
 
   return res.json({
     title: `Aula de ${area}`,
@@ -763,29 +726,28 @@ app.post("/api/simulado-explanation", async (req, res) => {
 
     const limited = questions.slice(0, 15);
 
-    async function explainOne(q: any): Promise<{ id: string; explanation: string } | null> {
+    const batchPrompt = limited.map((q: any, i: number) => {
       const optsText = (q.options || []).map((o: any) => `${o.letter}) ${o.text}`).join('\n');
-      const prompt = `Explique de forma didática e detalhada por que a alternativa ${q.correctAnswer} está correta para esta questão do ENEM. Analise brevemente por que as outras alternativas estão incorretas. Seja claro e objetivo, como um professor explicando para um aluno.
+      return `QUESTAO ${i + 1} (id: ${q.id}):\n${q.statement}\n${optsText}\nResposta correta: ${q.correctAnswer}`;
+    }).join('\n\n---\n\n');
 
-Enunciado: ${q.statement}
-Alternativas:
-${optsText}
-Resposta correta: ${q.correctAnswer}`;
+    const systemPrompt = `Para cada questão abaixo, explique de forma didática por que a alternativa correta está correta e brevemente por que as outras estão incorretas. Seja claro e objetivo.
+Retorne APENAS um JSON no formato: {"explanations": {"id_da_questao": "explicação", ...}}`;
 
-      try {
-        const text = await callAI({ userPrompt: prompt, maxTokens: 512, temperature: 0.3, timeout: 15000 });
-        if (text) return { id: q.id, explanation: text.trim() };
-      } catch {}
-      return null;
+    const renderUrl = process.env.RENDER_PROCESS_URL;
+    if (!renderUrl) {
+      return res.status(503).json({ error: "Serviço indisponível." });
     }
 
-    const results = await Promise.all(limited.map(q => explainOne(q)));
-    const explanations: Record<string, string> = {};
-    for (const r of results) {
-      if (r) explanations[r.id] = r.explanation;
-    }
+    const cura = crypto.randomUUID();
+    const base = renderUrl.replace(/\/+$/, "");
+    fetch(`${base}/api/process`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cura, prompt: `${systemPrompt}\n\n${batchPrompt}`, type: "general" }),
+    }).catch(() => {});
 
-    return res.json({ explanations });
+    return res.json({ pending: true, cura, message: "Explicações em processamento via IA..." });
   } catch (err) {
     console.error('[simulado-explanation] fatal:', err);
     return res.status(503).json({ error: 'Erro ao gerar explicações.' });
@@ -822,7 +784,10 @@ Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque ne
     const raw = await callAI({ systemPrompt: systemMsg, userPrompt: userMsg, maxTokens: 1536, timeout: 15000 });
     const exercises = parseExercises(raw);
     return res.json({ exercises: exercises && exercises.length > 0 ? exercises : null });
-  } catch {
+  } catch (err: any) {
+    if (err?.message?.startsWith("PENDING:")) {
+      return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), exercises: null });
+    }
     return res.json({ exercises: null });
   }
 });
