@@ -61,6 +61,17 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'streak_30', title: 'Lenda do Estudo', description: 'Manteve sequência de 30 dias', icon: '🏅', condition: (s) => s.longestStreak >= 30 },
   { id: 'xp_1000', title: 'Milhar de XP', description: 'Acumulou 1000 pontos de experiência', icon: '⭐', condition: (s) => s.totalXp >= 1000 },
   { id: 'xp_5000', title: 'Experiência Máxima', description: 'Acumulou 5000 pontos de experiência', icon: '💎', condition: (s) => s.totalXp >= 5000 },
+  { id: 'xp_10000', title: 'Lenda do XP', description: 'Acumulou 10.000 pontos de experiência', icon: '🌌', condition: (s) => s.totalXp >= 10000 },
+  { id: 'questions_10', title: 'Primeiro Passo', description: 'Respondeu 10 questões', icon: '✅', condition: (s) => s.totalQuestionsAnswered >= 10 },
+  { id: 'questions_50', title: 'Estudante Dedicado', description: 'Respondeu 50 questões', icon: '📖', condition: (s) => s.totalQuestionsAnswered >= 50 },
+  { id: 'questions_100', title: 'Centenário', description: 'Respondeu 100 questões', icon: '🔥', condition: (s) => s.totalQuestionsAnswered >= 100 },
+  { id: 'questions_250', title: 'Máquina de Questões', description: 'Respondeu 250 questões', icon: '⚙️', condition: (s) => s.totalQuestionsAnswered >= 250 },
+  { id: 'questions_500', title: 'Titã do Conhecimento', description: 'Respondeu 500 questões', icon: '🗿', condition: (s) => s.totalQuestionsAnswered >= 500 },
+  { id: 'simulado_80', title: 'Acima da Média', description: 'Alcançou 80%+ de acerto em um simulado', icon: '📊', condition: (s) => s.bestSimuladoScore >= 80 },
+  { id: 'simulado_90', title: 'Vestibulando Nato', description: 'Alcançou 90%+ de acerto em um simulado', icon: '🎓', condition: (s) => s.bestSimuladoScore >= 90 },
+  { id: 'simulado_50', title: 'Maratonista', description: 'Completou 50 simulados', icon: '🏃', condition: (s) => s.totalSimulados >= 50 },
+  { id: 'essay_50', title: 'Autor Prolífico', description: 'Enviou 50 redações', icon: '✍️', condition: (s) => s.totalEssays >= 50 },
+  { id: 'avg_essay_700', title: 'Redator Consistente', description: 'Manteve média de 700+ pontos nas redações', icon: '🎯', condition: (s) => s.totalEssays >= 3 && s.avgEssayScore >= 700 },
 ];
 
 export function calculateStreak(lastLoginDate?: string): { newStreak: number; isNewDay: boolean; streakBroken: boolean } {

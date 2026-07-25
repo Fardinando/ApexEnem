@@ -109,7 +109,8 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/supabase/keep-alive",
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
-    "/lesson", "/lesson-v2", "/questoes-ai", "/stats", "/simulado-explanation"
+    "/lesson", "/lesson-v2", "/questoes-ai", "/stats", "/simulado-explanation",
+    "/ai-task"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
   if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/")) return next();
@@ -287,29 +288,63 @@ function sanitizeQuestions(questions: any[]): any[] {
 async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxTokens?: number; temperature?: number; timeout?: number }): Promise<string> {
   const renderUrl = process.env.RENDER_PROCESS_URL;
   if (!renderUrl) throw new Error("RENDER_PROCESS_URL not set");
-  const ctrl = new AbortController();
-  const tid = setTimeout(() => ctrl.abort(), opts.timeout || 20000);
+  const base = renderUrl.replace(/\/+$/, "");
+  const prompt = opts.systemPrompt ? `${opts.systemPrompt}\n\n${opts.userPrompt}` : opts.userPrompt;
+
+  // Fire-and-forget to Render /api/process
+  const cura = crypto.randomUUID();
   try {
-    const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/chat`, {
+    await fetch(`${base}/api/process`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemPrompt: opts.systemPrompt,
-        userPrompt: opts.userPrompt,
-        maxTokens: opts.maxTokens || 4096,
-        temperature: opts.temperature ?? 0.7,
-      }),
-      signal: ctrl.signal,
+      body: JSON.stringify({ cura, prompt }),
+      signal: AbortSignal.timeout(5000),
     });
-    clearTimeout(tid);
-    if (!r.ok) throw new Error(`Render /api/chat returned ${r.status}`);
-    const data = await r.json();
-    if (data.error) throw new Error(data.error);
-    return data.text || "";
-  } catch (e: any) {
-    clearTimeout(tid);
-    throw e;
+  } catch {
+    // If fire-and-forget fails, try direct /api/chat as fallback
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), opts.timeout || 20000);
+    try {
+      const r = await fetch(`${base}/api/chat`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          systemPrompt: opts.systemPrompt,
+          userPrompt: opts.userPrompt,
+          maxTokens: opts.maxTokens || 4096,
+          temperature: opts.temperature ?? 0.7,
+        }),
+        signal: ctrl.signal,
+      });
+      clearTimeout(tid);
+      if (!r.ok) throw new Error(`Render /api/chat returned ${r.status}`);
+      const data = await r.json();
+      if (data.error) throw new Error(data.error);
+      return data.text || "";
+    } catch (e: any) {
+      clearTimeout(tid);
+      throw e;
+    }
   }
+
+  // Poll for up to 8s (under Vercel's 10s limit)
+  const deadline = Date.now() + 8000;
+  while (Date.now() < deadline) {
+    await new Promise(r => setTimeout(r, 1500));
+    try {
+      const statusRes = await fetch(`${base}/api/status/${cura}`, { signal: AbortSignal.timeout(3000) });
+      const statusData = await statusRes.json();
+      if (statusData.status === "done" && statusData.result) {
+        const result = statusData.result;
+        if (typeof result === "string") return result;
+        return JSON.stringify(result);
+      }
+      if (statusData.status === "error") throw new Error(statusData.error || "AI task failed");
+    } catch {}
+  }
+
+  // If still processing after 8s, throw with cura so caller can return pending status
+  throw new Error(`PENDING:${cura}`);
 }
 
 const FREE_MODELS = [
@@ -406,6 +441,10 @@ Apenas JSON puro.`;
     });
   } catch (err: any) {
     console.error('[correct] AI failed:', err?.message || err);
+    if (err?.message?.startsWith("PENDING:")) {
+      const cura = err.message.replace("PENDING:", "");
+      return res.json({ pending: true, cura, message: "Correção em processamento via IA..." });
+    }
     return res.status(503).json({ error: "Serviço de correção por IA indisponível no momento. Tente novamente." });
   }
 });
@@ -515,6 +554,19 @@ app.get("/api/questions/status/:cura", async (req, res) => {
     return res.json(data);
   } catch (err: any) {
     console.error("[questions/status] Failed:", err?.name, err?.message);
+    return res.status(502).json({ error: "Render unavailable: " + (err?.message || "timeout") });
+  }
+});
+
+app.get("/api/ai-task/:cura", async (req, res) => {
+  const renderUrl = process.env.RENDER_PROCESS_URL;
+  if (!renderUrl) return res.status(503).json({ error: "Serviço indisponível." });
+  try {
+    const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`, { signal: AbortSignal.timeout(8000) });
+    if (!r.ok) return res.status(502).json({ error: "Render returned " + r.status });
+    const data = await r.json();
+    return res.json(data);
+  } catch (err: any) {
     return res.status(502).json({ error: "Render unavailable: " + (err?.message || "timeout") });
   }
 });
@@ -639,7 +691,11 @@ app.post("/api/lesson-v2", async (req, res) => {
     const raw = await callAI({ systemPrompt, userPrompt: userPrompt || systemPrompt, maxTokens: 8192, temperature: 0.85, timeout: 25000 });
     const lesson = parseLessonJson(raw);
     if (lesson) return res.json(lesson);
-  } catch {}
+  } catch (err: any) {
+    if (err?.message?.startsWith("PENDING:")) {
+      return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Aula em processamento via IA..." });
+    }
+  }
 
   return res.status(503).json({ error: "IA não conseguiu gerar a aula. Tente novamente." });
   } catch (err) {
@@ -682,7 +738,11 @@ app.post("/api/questoes-ai", async (req, res) => {
     const raw = await callAI({ systemPrompt, userPrompt: userPrompt || systemPrompt, maxTokens: 8192, temperature: 0.85, timeout: 25000 });
     const questions = parseQuestoesJson(raw);
     if (questions) return res.json({ questions });
-  } catch {}
+  } catch (err: any) {
+    if (err?.message?.startsWith("PENDING:")) {
+      return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Questões em processamento via IA..." });
+    }
+  }
 
   return res.status(503).json({ error: "IA não conseguiu gerar questões. Tente novamente." });
   } catch (err) {

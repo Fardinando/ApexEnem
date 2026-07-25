@@ -166,7 +166,38 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       }
 
       const correctionResult = await res.json();
-      
+
+      // Handle async AI processing
+      if (correctionResult.pending && correctionResult.cura) {
+        const curaId = correctionResult.cura;
+        let attempts = 0;
+        const maxAttempts = 60; // 2.5s * 60 = 150s max
+        while (attempts < maxAttempts) {
+          await new Promise(r => setTimeout(r, 2500));
+          attempts++;
+          try {
+            const pollRes = await fetch(`/api/ai-task/${curaId}`);
+            if (!pollRes.ok) continue;
+            const pollData = await pollRes.json();
+            if (pollData.status === 'done' && pollData.result) {
+              const finalResult = typeof pollData.result === 'string'
+                ? (() => { try { return JSON.parse(pollData.result); } catch { return { generalFeedback: pollData.result }; } })()
+                : pollData.result;
+              Object.assign(correctionResult, finalResult);
+              break;
+            }
+            if (pollData.status === 'error') {
+              throw new Error(pollData.error || 'Falha na geração por IA');
+            }
+          } catch (pollErr: any) {
+            if (pollErr?.message?.includes('Falha na geração')) throw pollErr;
+          }
+        }
+        if (attempts >= maxAttempts) {
+          throw new Error('Tempo limite excedido aguardando correção. Tente novamente.');
+        }
+      }
+
       const newId = `cor-${Date.now()}`;
       const finalCorrection: EssayCorrection = {
         ...correctionResult,

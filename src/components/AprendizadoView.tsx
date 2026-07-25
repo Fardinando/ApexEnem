@@ -371,8 +371,34 @@ export default function AprendizadoView({
         return;
       }
       const data = await resp.json();
-      if (data && data.title && Array.isArray(data.cycles) && data.cycles.length >= 4) {
-        setAiLessonCycle(data);
+
+      // Handle async AI processing
+      let finalData = data;
+      if (data.pending && data.cura) {
+        let attempts = 0;
+        const maxAttempts = 60;
+        while (attempts < maxAttempts) {
+          await new Promise(r => setTimeout(r, 2500));
+          attempts++;
+          try {
+            const pollRes = await fetch(`/api/ai-task/${data.cura}`);
+            if (!pollRes.ok) continue;
+            const pollData = await pollRes.json();
+            if (pollData.status === 'done' && pollData.result) {
+              finalData = typeof pollData.result === 'string'
+                ? (() => { try { return JSON.parse(pollData.result); } catch { return null; } })()
+                : pollData.result;
+              break;
+            }
+            if (pollData.status === 'error') throw new Error(pollData.error || 'Falha na IA');
+          } catch (e: any) {
+            if (e?.message?.includes('Falha na IA')) throw e;
+          }
+        }
+      }
+
+      if (finalData && finalData.title && Array.isArray(finalData.cycles) && finalData.cycles.length >= 4) {
+        setAiLessonCycle(finalData);
       } else {
         if (retry < 2) {
           await new Promise(r => setTimeout(r, 2000));
@@ -414,8 +440,34 @@ export default function AprendizadoView({
         return;
       }
       const data = await resp.json();
-      if (data.questions && Array.isArray(data.questions) && data.questions.length > 0) {
-        setAiQuestoes(data.questions.map((q: any, i: number) => ({
+
+      // Handle async AI processing
+      let finalData = data;
+      if (data.pending && data.cura) {
+        let attempts = 0;
+        const maxAttempts = 60;
+        while (attempts < maxAttempts) {
+          await new Promise(r => setTimeout(r, 2500));
+          attempts++;
+          try {
+            const pollRes = await fetch(`/api/ai-task/${data.cura}`);
+            if (!pollRes.ok) continue;
+            const pollData = await pollRes.json();
+            if (pollData.status === 'done' && pollData.result) {
+              finalData = typeof pollData.result === 'string'
+                ? (() => { try { return JSON.parse(pollData.result); } catch { return null; } })()
+                : pollData.result;
+              break;
+            }
+            if (pollData.status === 'error') throw new Error(pollData.error || 'Falha na IA');
+          } catch (e: any) {
+            if (e?.message?.includes('Falha na IA')) throw e;
+          }
+        }
+      }
+
+      if (finalData && finalData.questions && Array.isArray(finalData.questions) && finalData.questions.length > 0) {
+        setAiQuestoes(finalData.questions.map((q: any, i: number) => ({
           id: q.id || `ai-q-${i}`, statement: cleanTextFrontend(q.statement || ''),
           options: q.options || [], correctAnswer: q.correctAnswer || 'A',
           explanation: cleanTextFrontend(q.explanation || ''), topic: q.topic || '',

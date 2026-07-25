@@ -426,7 +426,7 @@ export default function DashboardView({
                 <p className="text-[9px] text-slate-400 max-w-xs mt-0.5 leading-relaxed">Sua primeira correção de redação mapeará o gráfico poligonal aqui em tempo real.</p>
               </div>
             )}
-            <svg width="260" height="245" className="text-blue-500 dark:text-blue-400">
+            <svg width="260" height="245" overflow="visible" className="text-blue-500 dark:text-blue-400">
               {/* Pentagonal Guides */}
               <polygon points={getRingPointsPath(rLimit)} className="fill-none stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />
               <polygon points={getRingPointsPath(rLimit * 0.75)} className="fill-none stroke-slate-200 dark:stroke-slate-800" strokeWidth="1" />
