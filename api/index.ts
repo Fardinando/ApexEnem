@@ -113,7 +113,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/ai-task"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
-  if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/")) return next();
+  if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/ai-task/")) return next();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
