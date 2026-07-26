@@ -72,6 +72,15 @@ export default function ConfiguracoesView({
   const [deleteVerifying, setDeleteVerifying] = useState(false);
   const [deleteEmailSent, setDeleteEmailSent] = useState(false);
 
+  // Detect auth provider (OAuth users don't have passwords)
+  const [isOAuthUser, setIsOAuthUser] = useState(false);
+  React.useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const provider = data.user?.app_metadata?.provider;
+      if (provider && provider !== 'email') setIsOAuthUser(true);
+    });
+  }, []);
+
   const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -524,6 +533,12 @@ export default function ConfiguracoesView({
                   <p className="text-xs font-bold text-green-700 dark:text-green-400">E-mail enviado!</p>
                   <p className="text-[11px] text-green-600 dark:text-green-300">Verifique sua caixa de entrada e redefina sua senha. Depois volte e confirme a reinicialização.</p>
                 </div>
+              ) : isOAuthUser ? (
+                <div className="space-y-3">
+                  <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
+                    <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">Você entrou com Google. Esta ação irá apagar seus dados automaticamente sem necessidade de senha.</p>
+                  </div>
+                </div>
               ) : (
                 <div className="space-y-3">
                   <div className="space-y-1">
@@ -563,6 +578,11 @@ export default function ConfiguracoesView({
                   disabled={resetVerifying || resetEmailSent}
                   onClick={async () => {
                     if (resetEmailSent) { setShowResetModal(false); setResetEmailSent(false); return; }
+                    if (isOAuthUser) {
+                      setShowResetModal(false);
+                      onClearLocalData();
+                      return;
+                    }
                     if (!resetPassword) { setResetError('Digite sua senha.'); return; }
                     if (resetPassword !== resetPasswordConfirm) { setResetError('As senhas não coincidem.'); return; }
                     setResetVerifying(true);
@@ -601,14 +621,14 @@ export default function ConfiguracoesView({
                 </div>
                 <div>
                   <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Excluir Conta Permanentemente</h3>
-                  <p className="text-[10px] text-slate-400">Passo {deleteStep} de 3</p>
+                  <p className="text-[10px] text-slate-400">Passo {isOAuthUser && deleteStep === 3 ? 2 : deleteStep} de {isOAuthUser ? 2 : 3}</p>
                 </div>
               </div>
 
               {/* Progress steps */}
               <div className="flex gap-2">
-                {[1, 2, 3].map((step) => (
-                  <div key={step} className={`flex-1 h-1.5 rounded-full ${deleteStep >= step ? 'bg-red-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
+                {(isOAuthUser ? [1, 2] : [1, 2, 3]).map((step) => (
+                  <div key={step} className={`flex-1 h-1.5 rounded-full ${(isOAuthUser ? (deleteStep === 3 ? 2 : deleteStep) : deleteStep) >= step ? 'bg-red-500' : 'bg-slate-200 dark:bg-slate-700'}`} />
                 ))}
               </div>
 
@@ -631,7 +651,7 @@ export default function ConfiguracoesView({
 
               {deleteStep === 2 && (
                 <div className="space-y-3">
-                  <p className="text-xs text-slate-500">Digite sua senha (1/3).</p>
+                  <p className="text-xs text-slate-500">Digite sua senha para confirmar que é você.</p>
                   {deleteEmailSent ? (
                     <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
                       <p className="text-xs font-bold text-green-700 dark:text-green-400">E-mail enviado!</p>
@@ -664,16 +684,23 @@ export default function ConfiguracoesView({
 
               {deleteStep === 3 && (
                 <div className="space-y-3">
-                  <p className="text-xs text-slate-500">Última chance. Digite sua senha duas vezes para confirmar.</p>
-                  {deleteEmailSent ? (
+                  {isOAuthUser ? (
+                    <>
+                      <p className="text-xs text-slate-500">Confirme a exclusão permanente da sua conta. Esta ação é irreversível.</p>
+                      <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-4">
+                        <p className="text-xs text-red-700 dark:text-red-300 font-bold">Todos os seus dados serao apagados permanentemente: redacoes, simulados, progresso, perfil e conta.</p>
+                      </div>
+                    </>
+                  ) : deleteEmailSent ? (
                     <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
                       <p className="text-xs font-bold text-green-700 dark:text-green-400">E-mail enviado!</p>
-                      <p className="text-[11px] text-green-600 dark:text-green-300">Verifique sua caixa de entrada e redefina sua senha. Depois volte e confirme a exclusão.</p>
+                      <p className="text-[11px] text-green-600 dark:text-green-300">Verifique sua caixa de entrada e redefina sua senha. Depois volte e confirme a exclusao.</p>
                     </div>
                   ) : (
                     <>
+                      <p className="text-xs text-slate-500">Ultima chance. Digite sua senha duas vezes para confirmar.</p>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (2ª vez)</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (2a vez)</label>
                         <input
                           type="password"
                           value={deletePassword2}
@@ -683,7 +710,7 @@ export default function ConfiguracoesView({
                         />
                       </div>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (3ª vez)</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (3a vez)</label>
                         <input
                           type="password"
                           value={deletePassword3}
@@ -715,7 +742,11 @@ export default function ConfiguracoesView({
                       if (!deleteEmail.trim()) { setDeleteError('Digite seu e-mail.'); return; }
                       if (deleteEmail.trim().toLowerCase() !== currentUser.email?.toLowerCase()) { setDeleteError('E-mail incorreto.'); return; }
                       setDeleteError('');
-                      setDeleteStep(2);
+                      if (isOAuthUser) {
+                        setDeleteStep(3);
+                      } else {
+                        setDeleteStep(2);
+                      }
                     } else if (deleteStep === 2) {
                       if (!deletePassword1) { setDeleteError('Digite sua senha.'); return; }
                       setDeleteVerifying(true);
@@ -734,6 +765,13 @@ export default function ConfiguracoesView({
                         setDeleteVerifying(false);
                       }
                     } else {
+                      if (isOAuthUser) {
+                        setShowDeleteModal(false);
+                        setDeleteStep(1);
+                        setDeleteEmailSent(false);
+                        onDeleteAccount();
+                        return;
+                      }
                       if (!deletePassword2 || !deletePassword3) { setDeleteError('Preencha ambos os campos de senha.'); return; }
                       if (deletePassword2 !== deletePassword3) { setDeleteError('As senhas não coincidem.'); return; }
                       setDeleteVerifying(true);

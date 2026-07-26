@@ -577,7 +577,7 @@ export default function AprendizadoView({
 
   useEffect(() => {
     if (aiLessonCycle?.cycles) {
-      const count = aiLessonCycle.cycles.filter((b: any) => b.type === 'interactive' || b.type === 'challenge').length;
+      const count = aiLessonCycle.cycles.filter((b: any) => Array.isArray(b.options) && b.options.length >= 2 && typeof b.correctIndex === 'number').length;
       setLessonTotalInteractive(count);
     }
   }, [aiLessonCycle]);
@@ -713,7 +713,7 @@ export default function AprendizadoView({
 
       if (aiLessonCycle && lessonStep < aiLessonCycle.cycles.length && !lessonCompleted) {
         const block = aiLessonCycle.cycles[lessonStep];
-        const isInteractive = block.type === 'interactive' || block.type === 'challenge';
+        const isInteractive = Array.isArray(block.options) && block.options.length >= 2 && typeof block.correctIndex === 'number';
 
         return (
           <div className="space-y-6 animate-fade-in">
@@ -801,7 +801,7 @@ export default function AprendizadoView({
 
       if (lessonCompleted && aiLessonCycle) {
         const totalBlocks = aiLessonCycle.cycles.length;
-        const accuracy = lessonTotalInteractive > 0 ? Math.round((lessonCorrectCount / lessonTotalInteractive) * 100) : 100;
+        const accuracy = lessonTotalInteractive > 0 ? Math.round((lessonCorrectCount / lessonTotalInteractive) * 100) : 0;
         const passed = accuracy >= 50;
         return (
           <div className="max-w-lg mx-auto space-y-6 animate-fade-in">
