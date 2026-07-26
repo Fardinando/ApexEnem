@@ -19,7 +19,8 @@
     { "source": "/api/gamification/(.*)", "destination": "/api" },
     { "source": "/api/streak/(.*)", "destination": "/api" },
     { "source": "/api/weekly-ranking", "destination": "/api" },
-    { "source": "/api/(.*)", "destination": "/api" }
+    { "source": "/api/(.*)", "destination": "/api" },
+    { "source": "/((?!api/).*)", "destination": "/index.html" }
   ],
   "crons": [
     {
