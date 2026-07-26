@@ -319,6 +319,10 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
   }
 
   const seqAttempts = [];
+  for (const k of groqKeys) {
+    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k, type) });
+  }
+  if (googleApiKey) seqAttempts.push({ name: "gemini", fn: () => callGemini(prompt, type) });
   if (openRouterKeys.length > 0) {
     for (const m of orModels) {
       seqAttempts.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], m, 60000) });
@@ -329,12 +333,8 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
       seqAttempts.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], m, 60000) });
     }
   }
-  for (const k of groqKeys) {
-    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k, type) });
-  }
-  if (googleApiKey) seqAttempts.push({ name: "gemini", fn: () => callGemini(prompt, type) });
 
-  for (const a of seqAttempts.slice(0, 8)) {
+  for (const a of seqAttempts.slice(0, 12)) {
     try {
       const result = await a.fn();
       if (type === "general") {
@@ -357,9 +357,7 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
       }
     } catch (err) {
       console.log(`[${cura}] seq ${a.name} failed: ${err.message?.slice(0, 60)}`);
-      if (err.message.includes("429")) {
-        await new Promise(r => setTimeout(r, 2000));
-      }
+      await new Promise(r => setTimeout(r, err.message.includes("429") ? 2000 : 500));
     }
   }
 
