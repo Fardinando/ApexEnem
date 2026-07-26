@@ -55,8 +55,7 @@ export default function ConfiguracoesView({
 
   // Reset account modal state
   const [showResetModal, setShowResetModal] = useState(false);
-  const [resetPassword, setResetPassword] = useState('');
-  const [resetPasswordConfirm, setResetPasswordConfirm] = useState('');
+  const [resetConfirmEmail, setResetConfirmEmail] = useState('');
   const [resetError, setResetError] = useState('');
   const [resetVerifying, setResetVerifying] = useState(false);
   const [resetEmailSent, setResetEmailSent] = useState(false);
@@ -474,7 +473,7 @@ export default function ConfiguracoesView({
             <button
               id="btn-settings-clear-data"
               type="button"
-              onClick={() => { setShowResetModal(true); setResetPassword(''); setResetPasswordConfirm(''); setResetError(''); }}
+              onClick={() => { setShowResetModal(true); setResetConfirmEmail(''); setResetError(''); }}
               className="py-3 px-4 rounded-xl border border-red-200 text-xs font-bold text-red-700 hover:bg-red-50 flex items-center justify-center gap-2 transition cursor-pointer dark:border-red-950/40 dark:hover:bg-red-950/15 dark:text-red-400"
             >
               <Trash2 className="h-4.5 w-4.5" />
@@ -530,44 +529,28 @@ export default function ConfiguracoesView({
 
               {resetEmailSent ? (
                 <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
-                  <p className="text-xs font-bold text-green-700 dark:text-green-400">E-mail enviado!</p>
-                  <p className="text-[11px] text-green-600 dark:text-green-300">Verifique sua caixa de entrada e redefina sua senha. Depois volte e confirme a reinicialização.</p>
+                  <p className="text-xs font-bold text-green-700 dark:text-green-400">Conta reiniciada!</p>
+                  <p className="text-[11px] text-green-600 dark:text-green-300">Todos os seus dados foram apagados.</p>
                 </div>
               ) : isOAuthUser ? (
                 <div className="space-y-3">
                   <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-xl p-4">
-                    <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">Você entrou com Google. Esta ação irá apagar seus dados automaticamente sem necessidade de senha.</p>
+                    <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">Voce entrou com Google. Esta acao ira apagar seus dados automaticamente sem necessidade de senha.</p>
                   </div>
                 </div>
               ) : (
                 <div className="space-y-3">
+                  <p className="text-xs text-slate-500 leading-relaxed">Digite seu e-mail para confirmar que e voce.</p>
                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Digite sua senha</label>
+                    <label className="text-[10px] font-bold text-slate-500 uppercase">Seu e-mail cadastrado</label>
                     <input
-                      type="password"
-                      value={resetPassword}
-                      onChange={(e) => setResetPassword(e.target.value)}
+                      type="email"
+                      value={resetConfirmEmail}
+                      onChange={(e) => setResetConfirmEmail(e.target.value)}
                       className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                      placeholder="Sua senha"
+                      placeholder={currentUser.email}
                     />
                   </div>
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-500 uppercase">Confirme sua senha</label>
-                    <input
-                      type="password"
-                      value={resetPasswordConfirm}
-                      onChange={(e) => setResetPasswordConfirm(e.target.value)}
-                      className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-amber-500/20"
-                      placeholder="Confirme a senha"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleForgotPassword()}
-                    className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
-                  >
-                    Esqueci minha senha
-                  </button>
                 </div>
               )}
               {resetError && <p className="text-[10px] text-red-500 font-bold">{resetError}</p>}
@@ -580,24 +563,22 @@ export default function ConfiguracoesView({
                     if (resetEmailSent) { setShowResetModal(false); setResetEmailSent(false); return; }
                     if (isOAuthUser) {
                       setShowResetModal(false);
+                      setResetEmailSent(true);
                       onClearLocalData();
                       return;
                     }
-                    if (!resetPassword) { setResetError('Digite sua senha.'); return; }
-                    if (resetPassword !== resetPasswordConfirm) { setResetError('As senhas não coincidem.'); return; }
+                    if (!resetConfirmEmail.trim()) { setResetError('Digite seu e-mail.'); return; }
+                    if (resetConfirmEmail.trim().toLowerCase() !== (currentUser.email || '').toLowerCase()) { setResetError('E-mail incorreto.'); return; }
                     setResetVerifying(true);
                     setResetError('');
                     try {
-                      const { error } = await supabase.auth.signInWithPassword({
-                        email: currentUser.email || '',
-                        password: resetPassword,
-                      });
-                      if (error) { setResetError('Senha incorreta. Use "Esqueci minha senha" se necessário.'); return; }
+                      const { data } = await supabase.auth.getUser();
+                      if (!data.user) { setResetError('Sessao expirada. Faca login novamente.'); return; }
                       setShowResetModal(false);
-                      setResetEmailSent(false);
+                      setResetEmailSent(true);
                       onClearLocalData();
                     } catch {
-                      setResetError('Erro ao verificar senha.');
+                      setResetError('Erro ao verificar sessao.');
                     } finally {
                       setResetVerifying(false);
                     }
@@ -651,7 +632,7 @@ export default function ConfiguracoesView({
 
               {deleteStep === 2 && (
                 <div className="space-y-3">
-                  <p className="text-xs text-slate-500">Digite sua senha para confirmar que é você.</p>
+                  <p className="text-xs text-slate-500">Confirme seu e-mail para continuar.</p>
                   {deleteEmailSent ? (
                     <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-xl p-4 space-y-2">
                       <p className="text-xs font-bold text-green-700 dark:text-green-400">E-mail enviado!</p>
@@ -660,22 +641,15 @@ export default function ConfiguracoesView({
                   ) : (
                     <>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (1ª vez)</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Seu e-mail cadastrado</label>
                         <input
-                          type="password"
+                          type="email"
                           value={deletePassword1}
                           onChange={(e) => setDeletePassword1(e.target.value)}
                           className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                          placeholder="Sua senha"
+                          placeholder={currentUser.email}
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleForgotPassword()}
-                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
-                      >
-                        Esqueci minha senha
-                      </button>
                     </>
                   )}
                   {deleteError && <p className="text-[10px] text-red-500 font-bold">{deleteError}</p>}
@@ -686,7 +660,7 @@ export default function ConfiguracoesView({
                 <div className="space-y-3">
                   {isOAuthUser ? (
                     <>
-                      <p className="text-xs text-slate-500">Confirme a exclusão permanente da sua conta. Esta ação é irreversível.</p>
+                      <p className="text-xs text-slate-500">Confirme a exclusao permanente da sua conta. Esta acao e irreversivel.</p>
                       <div className="bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 rounded-xl p-4">
                         <p className="text-xs text-red-700 dark:text-red-300 font-bold">Todos os seus dados serao apagados permanentemente: redacoes, simulados, progresso, perfil e conta.</p>
                       </div>
@@ -698,34 +672,17 @@ export default function ConfiguracoesView({
                     </div>
                   ) : (
                     <>
-                      <p className="text-xs text-slate-500">Ultima chance. Digite sua senha duas vezes para confirmar.</p>
+                      <p className="text-xs text-slate-500">Ultima chance. Digite <strong>EXCLUIR</strong> para confirmar.</p>
                       <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (2a vez)</label>
+                        <label className="text-[10px] font-bold text-slate-500 uppercase">Digite EXCLUIR</label>
                         <input
-                          type="password"
-                          value={deletePassword2}
-                          onChange={(e) => setDeletePassword2(e.target.value)}
-                          className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                          placeholder="Sua senha"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-500 uppercase">Senha (3a vez)</label>
-                        <input
-                          type="password"
+                          type="text"
                           value={deletePassword3}
                           onChange={(e) => setDeletePassword3(e.target.value)}
                           className="w-full px-3 py-2 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white focus:outline-none focus:ring-2 focus:ring-red-500/20"
-                          placeholder="Sua senha"
+                          placeholder="EXCLUIR"
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => handleForgotPassword()}
-                        className="text-[11px] text-blue-600 dark:text-blue-400 hover:underline font-semibold cursor-pointer"
-                      >
-                        Esqueci minha senha
-                      </button>
                     </>
                   )}
                   {deleteError && <p className="text-[10px] text-red-500 font-bold">{deleteError}</p>}
@@ -748,19 +705,17 @@ export default function ConfiguracoesView({
                         setDeleteStep(2);
                       }
                     } else if (deleteStep === 2) {
-                      if (!deletePassword1) { setDeleteError('Digite sua senha.'); return; }
+                      if (!deletePassword1.trim()) { setDeleteError('Digite seu e-mail.'); return; }
+                      if (deletePassword1.trim().toLowerCase() !== (currentUser.email || '').toLowerCase()) { setDeleteError('E-mail incorreto.'); return; }
                       setDeleteVerifying(true);
                       setDeleteError('');
                       try {
-                        const { error } = await supabase.auth.signInWithPassword({
-                          email: currentUser.email || '',
-                          password: deletePassword1,
-                        });
-                        if (error) { setDeleteError('Senha incorreta. Use "Esqueci minha senha" se necessário.'); return; }
+                        const { data } = await supabase.auth.getUser();
+                        if (!data.user) { setDeleteError('Sessao expirada. Faca login novamente.'); return; }
                         setDeleteError('');
                         setDeleteStep(3);
                       } catch {
-                        setDeleteError('Erro ao verificar senha.');
+                        setDeleteError('Erro ao verificar sessao.');
                       } finally {
                         setDeleteVerifying(false);
                       }
@@ -772,22 +727,18 @@ export default function ConfiguracoesView({
                         onDeleteAccount();
                         return;
                       }
-                      if (!deletePassword2 || !deletePassword3) { setDeleteError('Preencha ambos os campos de senha.'); return; }
-                      if (deletePassword2 !== deletePassword3) { setDeleteError('As senhas não coincidem.'); return; }
+                      if (!deletePassword3 || deletePassword3.trim().toUpperCase() !== 'EXCLUIR') { setDeleteError('Digite EXCLUIR para confirmar.'); return; }
                       setDeleteVerifying(true);
                       setDeleteError('');
                       try {
-                        const { error } = await supabase.auth.signInWithPassword({
-                          email: currentUser.email || '',
-                          password: deletePassword2,
-                        });
-                        if (error) { setDeleteError('Senha incorreta. Use "Esqueci minha senha" se necessário.'); return; }
+                        const { data } = await supabase.auth.getUser();
+                        if (!data.user) { setDeleteError('Sessao expirada. Faca login novamente.'); return; }
                         setShowDeleteModal(false);
                         setDeleteStep(1);
                         setDeleteEmailSent(false);
                         onDeleteAccount();
                       } catch {
-                        setDeleteError('Erro ao verificar senha.');
+                        setDeleteError('Erro ao verificar sessao.');
                       } finally {
                         setDeleteVerifying(false);
                       }
