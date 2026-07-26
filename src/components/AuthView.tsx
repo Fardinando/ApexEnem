@@ -87,6 +87,15 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
       }
       return;
     }
+    const params = new URLSearchParams(window.location.search);
+    const redirectTo = params.get('redirect_to');
+    if (redirectTo) {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        window.location.href = `${redirectTo}?access_token=${session.access_token}&refresh_token=${session.refresh_token}`;
+        return;
+      }
+    }
     onSuccess();
   };
 
