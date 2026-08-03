@@ -7,6 +7,7 @@ import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
 import Sidebar from './components/Sidebar';
 import LandingPage from './components/LandingPage';
+import AboutPage from './components/AboutPage';
 
 const DashboardView = lazy(() => import('./components/DashboardView'));
 const RedacaoView = lazy(() => import('./components/RedacaoView'));
@@ -383,6 +384,10 @@ export default function App() {
         </div>
       </div>
     );
+  }
+
+  if (currentPath === '/sobre') {
+    return <AboutPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} onBack={() => navigate('/')} />;
   }
 
   if (!session?.user) {

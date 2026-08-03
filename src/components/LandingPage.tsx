@@ -440,6 +440,11 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  const goToAbout = () => {
+    window.history.pushState({}, '', '/sobre');
+    window.dispatchEvent(new Event('popstate'));
+  };
+
   const features = [
     { icon: Zap, title: 'Correção de Redação', desc: 'Envie sua redação e receba correção detalhada seguindo as 5 competências do ENEM, com nota de 0 a 1000.', color: 'from-blue-500 to-blue-600' },
     { icon: Brain, title: 'Questões Mágicas', desc: 'A IA gera questões inéditas e personalizadas no estilo ENEM, focadas nas áreas onde você precisa treinar mais.', color: 'from-purple-500 to-purple-600' },
@@ -462,6 +467,7 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
             <button type="button" onClick={() => scrollTo('features')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Recursos</button>
             <button type="button" onClick={() => scrollTo('map-section')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Mapa</button>
+            <button type="button" onClick={goToAbout} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Sobre</button>
           </nav>
           <div className="flex items-center gap-3">
             <button type="button" onClick={onStart} className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 transition cursor-pointer">Entrar</button>
