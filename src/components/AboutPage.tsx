@@ -321,15 +321,15 @@ export default function AboutPage({
               construir uma plataforma que realmente faça diferença na preparação para o ENEM.
             </p>
           </motion.div>
-          <div className="grid sm:grid-cols-2 lg:grid-cols-4 gap-6">
+          <div className="grid sm:grid-cols-2 gap-8 max-w-3xl mx-auto">
             {team.map((member, i) => (
-              <motion.div key={member.name + i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.08 }} whileHover={{ y: -4 }} className="p-6 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition text-center">
-                <div className={`mx-auto mb-4 w-20 h-20 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center text-white text-3xl font-extrabold`}>
+              <motion.div key={member.name + i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.08 }} whileHover={{ y: -4 }} className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition text-center">
+                <div className={`mx-auto mb-5 w-28 h-28 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center text-white text-5xl font-extrabold`}>
                   {member.initial}
                 </div>
-                <h3 className="text-base font-bold mb-1">{member.name}</h3>
-                <p className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 mb-3">{member.role}</p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{member.desc}</p>
+                <h3 className="text-lg font-bold mb-1.5">{member.name}</h3>
+                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-4">{member.role}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{member.desc}</p>
               </motion.div>
             ))}
           </div>
