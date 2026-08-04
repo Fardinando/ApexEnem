@@ -39,28 +39,28 @@ export default function AboutPage({
   const team = [
     {
       name: 'Fernando Anderson',
-      role: 'Fundador & Desenvolvedor Full Stack',
+      role: 'Co-Fundador & Desenvolvedor Full Stack',
       desc: 'Responsável pela arquitetura do ApexEnem, desenvolvimento da plataforma e integração das inteligências artificiais.',
       initial: 'F',
       gradient: 'from-blue-500 to-purple-600',
     },
     {
       name: 'Otto Colonnelli',
-      role: 'Desenvolvedor',
+      role: 'Co-Fundador & Desenvolvedor',
       desc: 'Atua no desenvolvimento da plataforma, contribuindo com código e soluções técnicas para o projeto.',
       initial: 'O',
       gradient: 'from-emerald-500 to-teal-600',
     },
     {
       name: 'Membro da Equipe',
-      role: 'Cargo a definir',
+      role: 'Co-Fundador',
       desc: 'Descrição breve da função e contribuição para o projeto.',
       initial: '?',
       gradient: 'from-amber-500 to-orange-600',
     },
     {
       name: 'Membro da Equipe',
-      role: 'Cargo a definir',
+      role: 'Co-Fundador',
       desc: 'Descrição breve da função e contribuição para o projeto.',
       initial: '?',
       gradient: 'from-rose-500 to-pink-600',
