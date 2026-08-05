@@ -58,6 +58,7 @@ export default function AboutPage({
       desc: 'Designer e ilustradora da plataforma, responsável pela identidade visual e pela experiência dos usuários.',
       initial: 'G',
       gradient: 'from-amber-500 to-orange-600',
+      image: '/media/giovanna-malgarin.jpg',
     },
     {
       name: 'Miguel Alves',
