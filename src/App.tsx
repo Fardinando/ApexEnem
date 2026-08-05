@@ -10,6 +10,8 @@ import LandingPage from './components/LandingPage';
 import AboutPage from './components/AboutPage';
 import TermsPage from './components/TermsPage';
 import PrivacyPage from './components/PrivacyPage';
+import CookiePolicyPage from './components/CookiePolicyPage';
+import CookieConsentBanner from './components/CookieConsentBanner';
 
 const DashboardView = lazy(() => import('./components/DashboardView'));
 const RedacaoView = lazy(() => import('./components/RedacaoView'));
@@ -389,22 +391,56 @@ export default function App() {
   }
 
   if (currentPath === '/sobre') {
-    return <AboutPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} onBack={() => navigate('/')} />;
+    return (
+      <>
+        <AboutPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} onBack={() => navigate('/')} />
+        <CookieConsentBanner />
+      </>
+    );
   }
 
   if (currentPath === '/termos') {
-    return <TermsPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />;
+    return (
+      <>
+        <TermsPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
+        <CookieConsentBanner />
+      </>
+    );
   }
 
   if (currentPath === '/privacidade') {
-    return <PrivacyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />;
+    return (
+      <>
+        <PrivacyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
+        <CookieConsentBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/cookies') {
+    return (
+      <>
+        <CookiePolicyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
+        <CookieConsentBanner />
+      </>
+    );
   }
 
   if (!session?.user) {
     if (currentPath === '/login' || currentPath === '/signup') {
-      return <AuthView defaultTab={currentPath === '/login' ? 'login' : 'signup'} onSuccess={handleAuthSuccess} onBack={() => navigate('/')} />;
+      return (
+        <>
+          <AuthView defaultTab={currentPath === '/login' ? 'login' : 'signup'} onSuccess={handleAuthSuccess} onBack={() => navigate('/')} />
+          <CookieConsentBanner />
+        </>
+      );
     }
-    return <LandingPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} />;
+    return (
+      <>
+        <LandingPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} />
+        <CookieConsentBanner />
+      </>
+    );
   }
 
   if (requireOnboarding) {

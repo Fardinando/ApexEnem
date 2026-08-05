@@ -601,12 +601,19 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
       </section>
 
       <footer className="py-12 border-t border-slate-200 dark:border-slate-800">
-        <div className="max-w-6xl mx-auto px-4 flex flex-col md:flex-row items-center justify-between gap-4">
-          <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-            <GraduationCap className="h-4 w-4" />
-            ApexEnem © 2026 — Plataforma Educacional Adaptativa
+        <div className="max-w-6xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
+            <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+              <GraduationCap className="h-4 w-4" />
+              ApexEnem © 2026 — Plataforma Educacional Adaptativa
+            </div>
+            <nav className="flex items-center gap-6 text-xs text-slate-400">
+              <a href="/termos" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/termos'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Termos de Uso</a>
+              <a href="/privacidade" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/privacidade'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Privacidade</a>
+              <a href="/cookies" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/cookies'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Cookies</a>
+            </nav>
           </div>
-          <div className="flex items-center gap-6 text-xs text-slate-400">
+          <div className="text-center text-xs text-slate-400">
             <span>Feito com 💙 para estudantes brasileiros</span>
           </div>
         </div>
