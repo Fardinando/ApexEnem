@@ -337,7 +337,7 @@ export default function AboutPage({
                     <span className="text-8xl md:text-9xl font-extrabold text-white/90 drop-shadow-lg">{member.initial}</span>
                   </div>
                   {member.image && (
-                    <img src={member.image} alt={member.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 scale-110 group-hover:scale-100 transition-all duration-1000 ease-out" />
+                    <img src={member.image} alt={member.name} loading="lazy" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 ease-out" />
                   )}
                   <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors duration-700"></div>
                   <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
