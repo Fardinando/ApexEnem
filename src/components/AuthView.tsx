@@ -25,6 +25,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
   const [succMessage, setSuccMessage] = useState('');
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
+  const [acceptedTerms, setAcceptedTerms] = useState(false);
 
   const [region, setRegion] = useState<RegionBR>('Sudeste');
   const [state, setState] = useState('');
@@ -116,6 +117,10 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
     }
     if (HCAPTCHA_SITE_KEY && !captchaToken) {
       setErrorMessage('Resolva o desafio de verificação (hCaptcha) antes de cadastrar.');
+      return;
+    }
+    if (!acceptedTerms) {
+      setErrorMessage('Você precisa aceitar os Termos de Uso para criar uma conta.');
       return;
     }
     setLoading(true);
@@ -274,6 +279,26 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                             {cities.map((c) => <option key={c} value={c}>{c}</option>)}
                           </select>
                         </div>
+                      </div>
+                      <div className="flex items-start gap-2.5 p-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl">
+                        <input
+                          id="accept-terms"
+                          type="checkbox"
+                          checked={acceptedTerms}
+                          onChange={(e) => setAcceptedTerms(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 accent-blue-600 cursor-pointer shrink-0"
+                        />
+                        <label htmlFor="accept-terms" className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed cursor-pointer">
+                          Li e aceito os{' '}
+                          <a
+                            href="/termos"
+                            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                            onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/termos'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+                          >
+                            Termos de Uso
+                          </a>{' '}
+                          do ApexEnem.
+                        </label>
                       </div>
                     </>
                   )}
