@@ -52,17 +52,17 @@ export default function AboutPage({
       gradient: 'from-emerald-500 to-teal-600',
     },
     {
-      name: 'Membro da Equipe',
-      role: 'Co-Fundador',
-      desc: 'Descrição breve da função e contribuição para o projeto.',
-      initial: '?',
+      name: 'Giovanna Malgarin',
+      role: 'Co-Fundadora & Designer',
+      desc: 'Designer e ilustradora da plataforma, responsável pela identidade visual e pela experiência dos usuários.',
+      initial: 'G',
       gradient: 'from-amber-500 to-orange-600',
     },
     {
-      name: 'Membro da Equipe',
-      role: 'Co-Fundador',
-      desc: 'Descrição breve da função e contribuição para o projeto.',
-      initial: '?',
+      name: 'Miguel Alves',
+      role: 'Co-Fundador & Pesquisador',
+      desc: 'Pesquisador do projeto, dedicado à análise e ao levantamento de informações para a plataforma.',
+      initial: 'M',
       gradient: 'from-rose-500 to-pink-600',
     },
   ];
@@ -321,15 +321,38 @@ export default function AboutPage({
               construir uma plataforma que realmente faça diferença na preparação para o ENEM.
             </p>
           </motion.div>
-          <div className="grid sm:grid-cols-2 gap-8 max-w-3xl mx-auto">
+          <div className="flex flex-col gap-20 md:gap-28 max-w-4xl mx-auto">
             {team.map((member, i) => (
-              <motion.div key={member.name + i} initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.4, delay: i * 0.08 }} whileHover={{ y: -4 }} className="p-8 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition text-center">
-                <div className={`mx-auto mb-5 w-28 h-28 rounded-2xl bg-gradient-to-br ${member.gradient} flex items-center justify-center text-white text-5xl font-extrabold`}>
-                  {member.initial}
+              <motion.div
+                key={member.name}
+                initial={{ opacity: 0, y: 100 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: '-100px' }}
+                transition={{ duration: 0.8, ease: [0.22, 1, 0.36, 1] }}
+                className={`flex flex-col ${i % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} items-center gap-10 md:gap-16 group`}
+              >
+                <div className="relative w-full md:w-2/5 aspect-square rounded-[2.5rem] overflow-hidden shadow-2xl group-hover:scale-[1.02] transition-transform duration-700">
+                  <div className={`absolute inset-0 bg-gradient-to-br ${member.gradient} opacity-90 transition-all duration-700 flex items-center justify-center`}>
+                    <span className="text-8xl md:text-9xl font-extrabold text-white/90 drop-shadow-lg">{member.initial}</span>
+                  </div>
+                  <div className="absolute inset-0 bg-slate-900/0 group-hover:bg-slate-900/20 transition-colors duration-700"></div>
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/30 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-700"></div>
                 </div>
-                <h3 className="text-lg font-bold mb-1.5">{member.name}</h3>
-                <p className="text-xs font-semibold text-blue-600 dark:text-blue-400 mb-4">{member.role}</p>
-                <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed">{member.desc}</p>
+
+                <div className={`w-full md:w-3/5 text-center ${i % 2 === 0 ? 'md:text-left' : 'md:text-right'}`}>
+                  <div className={`flex items-center gap-3 mb-5 ${i % 2 === 0 ? 'justify-center md:justify-start' : 'justify-center md:justify-end'}`}>
+                    <div className="w-10 h-px bg-blue-500/30"></div>
+                    <span className="text-blue-600 dark:text-blue-400 font-bold text-xs uppercase tracking-widest">{member.role}</span>
+                    <div className="w-10 h-px bg-blue-500/30"></div>
+                  </div>
+                  <h3 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-500">
+                    {member.name}
+                  </h3>
+                  <div className="relative p-6 md:p-8 rounded-3xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 shadow-sm group-hover:border-blue-400/40 transition-all duration-500">
+                    <p className="text-base md:text-lg text-slate-600 dark:text-slate-300 leading-relaxed italic">{member.desc}</p>
+                    <span className="absolute -top-3 -left-2 text-5xl text-blue-500/20 font-serif">“</span>
+                  </div>
+                </div>
               </motion.div>
             ))}
           </div>
