@@ -12,6 +12,8 @@ import TermsPage from './components/TermsPage';
 import PrivacyPage from './components/PrivacyPage';
 import CookiePolicyPage from './components/CookiePolicyPage';
 import CookieConsentBanner from './components/CookieConsentBanner';
+import SubscriptionTermsPage from './components/SubscriptionTermsPage';
+import RefundPolicyPage from './components/RefundPolicyPage';
 
 const DashboardView = lazy(() => import('./components/DashboardView'));
 const RedacaoView = lazy(() => import('./components/RedacaoView'));
@@ -421,6 +423,24 @@ export default function App() {
     return (
       <>
         <CookiePolicyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
+        <CookieConsentBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/assinatura') {
+    return (
+      <>
+        <SubscriptionTermsPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
+        <CookieConsentBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/reembolso') {
+    return (
+      <>
+        <RefundPolicyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
         <CookieConsentBanner />
       </>
     );

@@ -607,10 +607,12 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
               <GraduationCap className="h-4 w-4" />
               ApexEnem © 2026 — Plataforma Educacional Adaptativa
             </div>
-            <nav className="flex items-center gap-6 text-xs text-slate-400">
+            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
               <a href="/termos" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/termos'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Termos de Uso</a>
               <a href="/privacidade" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/privacidade'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Privacidade</a>
               <a href="/cookies" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/cookies'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Cookies</a>
+              <a href="/assinatura" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/assinatura'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Termos de Assinatura</a>
+              <a href="/reembolso" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/reembolso'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Reembolso</a>
             </nav>
           </div>
           <div className="text-center text-xs text-slate-400">
