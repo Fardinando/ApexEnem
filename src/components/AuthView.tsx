@@ -297,6 +297,14 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                           >
                             Termos de Uso
                           </a>{' '}
+                          e a{' '}
+                          <a
+                            href="/privacidade"
+                            className="text-blue-600 dark:text-blue-400 font-semibold hover:underline"
+                            onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/privacidade'); window.dispatchEvent(new PopStateEvent('popstate')); }}
+                          >
+                            Política de Privacidade
+                          </a>{' '}
                           do ApexEnem.
                         </label>
                       </div>

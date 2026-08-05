@@ -9,6 +9,7 @@ import Sidebar from './components/Sidebar';
 import LandingPage from './components/LandingPage';
 import AboutPage from './components/AboutPage';
 import TermsPage from './components/TermsPage';
+import PrivacyPage from './components/PrivacyPage';
 
 const DashboardView = lazy(() => import('./components/DashboardView'));
 const RedacaoView = lazy(() => import('./components/RedacaoView'));
@@ -393,6 +394,10 @@ export default function App() {
 
   if (currentPath === '/termos') {
     return <TermsPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />;
+  }
+
+  if (currentPath === '/privacidade') {
+    return <PrivacyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />;
   }
 
   if (!session?.user) {
