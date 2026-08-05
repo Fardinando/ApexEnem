@@ -39,7 +39,14 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
   useEffect(() => {
     if (!HCAPTCHA_SITE_KEY) return;
     const url = `https://js.hcaptcha.com/1/api.js?onload=hcaptchaOnLoad&render=explicit`;
-    if (document.querySelector(`script[src="${url}"]`)) return;
+    if (document.querySelector(`script[src="${url}"]`)) {
+      if (typeof (window as any).hcaptcha !== 'undefined') {
+        setHcaptchaReady(true);
+      } else {
+        (window as any).hcaptchaOnLoad = () => setHcaptchaReady(true);
+      }
+      return;
+    }
     (window as any).hcaptchaOnLoad = () => setHcaptchaReady(true);
     const script = document.createElement('script');
     script.src = url;
