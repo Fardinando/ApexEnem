@@ -86,21 +86,34 @@ const COOKIE_SECTIONS: Section[] = [
     ],
   },
   {
-    title: '3. Cookies de terceiros',
+    title: '3. Cookies e tecnologias de terceiros',
     paragraphs: [
-      'O ApexEnem poderá utilizar serviços fornecidos por terceiros que também podem armazenar cookies em seu dispositivo.',
-      'Esses serviços poderão incluir, entre outros:',
+      'Para fornecer seus serviços, o ApexEnem utiliza tecnologias disponibilizadas por parceiros especializados.',
+      'Atualmente, utilizamos:',
     ],
-    items: [
-      'serviços de autenticação;',
-      'provedores de hospedagem;',
-      'ferramentas de análise de acesso;',
-      'plataformas de processamento de pagamentos;',
-      'provedores de Inteligência Artificial;',
-      'serviços de monitoramento de desempenho;',
-      'ferramentas de suporte ao usuário.',
+    subsections: [
+      {
+        title: 'Supabase',
+        paragraphs: [
+          'O Supabase é utilizado para autenticação dos usuários, gerenciamento do banco de dados e armazenamento de informações essenciais ao funcionamento da plataforma.',
+          'Poderão ser utilizados cookies ou identificadores relacionados à manutenção da sessão do usuário e à segurança da autenticação.',
+        ],
+      },
+      {
+        title: 'Vercel',
+        paragraphs: [
+          'A Vercel hospeda a infraestrutura do ApexEnem e poderá utilizar tecnologias relacionadas ao desempenho, distribuição de conteúdo, proteção contra ataques e monitoramento técnico da plataforma.',
+        ],
+      },
+      {
+        title: 'OpenRouter',
+        paragraphs: [
+          'O OpenRouter é utilizado como intermediário entre o ApexEnem e os modelos de Inteligência Artificial.',
+          'Embora normalmente não utilize cookies para interação direta com os usuários finais, dados enviados às funcionalidades de IA poderão ser processados por sua infraestrutura para gerar as respostas solicitadas.',
+        ],
+      },
     ],
-    note: 'Cada fornecedor possui suas próprias políticas de privacidade e de cookies, pelas quais é responsável.',
+    note: 'Esta lista poderá ser atualizada sempre que novos serviços forem incorporados à plataforma.',
   },
   {
     title: '4. Como utilizamos os cookies?',
@@ -145,7 +158,14 @@ const COOKIE_SECTIONS: Section[] = [
     ],
   },
   {
-    title: '8. Contato',
+    title: '8. Alterações nos serviços utilizados',
+    paragraphs: [
+      'O ApexEnem poderá adicionar, substituir ou remover fornecedores de tecnologia conforme a evolução da plataforma.',
+      'Sempre que essas alterações impactarem o tratamento de dados pessoais ou o uso de cookies de forma relevante, esta Política será atualizada para refletir as mudanças.',
+    ],
+  },
+  {
+    title: '9. Contato',
     paragraphs: [
       'Caso tenha dúvidas sobre esta Política de Cookies ou sobre o tratamento de dados relacionados ao uso de cookies, entre em contato pelos canais oficiais disponibilizados pelo ApexEnem.',
     ],

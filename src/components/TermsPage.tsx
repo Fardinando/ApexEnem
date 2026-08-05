@@ -87,7 +87,19 @@ const TERM_SECTIONS = [
     note: 'Não garantimos disponibilidade ininterrupta dos serviços.',
   },
   {
-    title: '7. Propriedade Intelectual',
+    title: '7. Serviços de Terceiros',
+    paragraphs: [
+      'Para o funcionamento da plataforma, o ApexEnem utiliza serviços fornecidos por terceiros, incluindo:',
+    ],
+    items: [
+      'Supabase, para autenticação, banco de dados e armazenamento de informações necessárias ao funcionamento da plataforma;',
+      'Vercel, para hospedagem, distribuição e infraestrutura do serviço;',
+      'OpenRouter, para encaminhamento de solicitações aos modelos de Inteligência Artificial utilizados pelo ApexEnem.',
+    ],
+    note: 'Esses serviços possuem políticas próprias de privacidade e tratamento de dados, pelas quais são responsáveis.',
+  },
+  {
+    title: '8. Propriedade Intelectual',
     paragraphs: [
       'Todo o conteúdo da plataforma, incluindo:',
     ],
@@ -104,27 +116,31 @@ const TERM_SECTIONS = [
     note: 'É proibida a reprodução, distribuição ou utilização desses materiais sem autorização expressa do ApexEnem.',
   },
   {
-    title: '8. Conteúdo Enviado pelo Usuário',
+    title: '9. Conteúdo Enviado pelo Usuário',
     paragraphs: [
       'O usuário permanece proprietário dos conteúdos enviados à plataforma, como redações, respostas e arquivos.',
       'Ao utilizar o ApexEnem, o usuário concede autorização para que tais conteúdos sejam processados pela plataforma exclusivamente para:',
     ],
     items: [
       'fornecer os serviços contratados;',
-      'melhorar funcionalidades;',
-      'aperfeiçoar modelos de Inteligência Artificial, quando aplicável e permitido pela legislação vigente.',
+      'melhorar funcionalidades da plataforma;',
+      'processar solicitações por meio dos modelos de Inteligência Artificial disponibilizados através da infraestrutura do OpenRouter;',
+      'aperfeiçoar recursos internos do ApexEnem, quando permitido pela legislação aplicável e respeitados os direitos dos titulares dos dados.',
     ],
-    note: 'Sempre que possível, os dados utilizados para melhoria dos serviços serão tratados de forma segura e conforme nossa Política de Privacidade.',
+    note: [
+      'O ApexEnem não utilizará conteúdos enviados pelos usuários para treinamento de modelos próprios de Inteligência Artificial sem informar claramente essa finalidade ou quando isso depender do consentimento do usuário.',
+      'Sempre que possível, os dados utilizados para melhoria dos serviços serão tratados de forma segura e conforme nossa Política de Privacidade.',
+    ],
   },
   {
-    title: '9. Privacidade',
+    title: '10. Privacidade',
     paragraphs: [
       'O tratamento de dados pessoais é realizado conforme nossa Política de Privacidade e em conformidade com a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).',
       'Ao utilizar o ApexEnem, o usuário declara estar ciente dessa política.',
     ],
   },
   {
-    title: '10. Limitação de Responsabilidade',
+    title: '11. Limitação de Responsabilidade',
     paragraphs: [
       'Na máxima extensão permitida pela legislação brasileira, o ApexEnem não será responsável por:',
     ],
@@ -137,7 +153,7 @@ const TERM_SECTIONS = [
     ],
   },
   {
-    title: '11. Atualizações dos Termos',
+    title: '12. Atualizações dos Termos',
     paragraphs: [
       'Estes Termos de Uso poderão ser modificados a qualquer momento.',
       'Quando houver alterações relevantes, os usuários poderão ser informados pelos meios disponibilizados na plataforma.',
@@ -145,21 +161,21 @@ const TERM_SECTIONS = [
     ],
   },
   {
-    title: '12. Encerramento de Conta',
+    title: '13. Encerramento de Conta',
     paragraphs: [
       'O usuário poderá solicitar o encerramento de sua conta a qualquer momento.',
       'O ApexEnem poderá suspender ou encerrar contas que violem estes Termos ou utilizem a plataforma de maneira fraudulenta ou abusiva.',
     ],
   },
   {
-    title: '13. Legislação Aplicável',
+    title: '14. Legislação Aplicável',
     paragraphs: [
       'Estes Termos são regidos pelas leis da República Federativa do Brasil.',
       'Eventuais controvérsias serão solucionadas conforme a legislação brasileira aplicável.',
     ],
   },
   {
-    title: '14. Contato',
+    title: '15. Contato',
     paragraphs: [
       'Caso tenha dúvidas sobre estes Termos de Uso, entre em contato pelos canais oficiais disponibilizados pelo ApexEnem.',
     ],
@@ -245,8 +261,11 @@ export default function TermsPage({
                       ))}
                     </ul>
                   )}
-                  {section.note && (
-                    <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{section.note}</p>
+                  {section.note && (Array.isArray(section.note)
+                    ? section.note.map((n, i) => (
+                        <p key={i} className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{n}</p>
+                      ))
+                    : <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{section.note}</p>
                   )}
                 </div>
               </section>

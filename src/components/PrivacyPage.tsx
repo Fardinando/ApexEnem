@@ -14,6 +14,10 @@ interface Section {
   items?: string[];
   subsections?: SubSection[];
   note?: string;
+  tail?: {
+    paragraphs?: string[];
+    items?: string[];
+  };
 }
 
 const PRIVACY_SECTIONS: Section[] = [
@@ -94,24 +98,41 @@ const PRIVACY_SECTIONS: Section[] = [
       'Alguns recursos do ApexEnem utilizam Inteligência Artificial para fornecer respostas, corrigir redações, gerar questões, produzir imagens e personalizar estudos.',
       'Os dados enviados pelo usuário poderão ser processados por modelos de IA exclusivamente para fornecer os serviços solicitados.',
       'Quando permitido pela legislação e pelas configurações da plataforma, dados poderão ser utilizados para aprimorar a qualidade dos serviços e dos modelos utilizados, sempre adotando medidas de segurança e proteção compatíveis com a LGPD.',
+      'O ApexEnem procura compartilhar apenas as informações estritamente necessárias para o processamento de cada solicitação enviada aos modelos de IA.',
     ],
   },
   {
     title: '5. Compartilhamento de dados',
     paragraphs: [
-      'O ApexEnem não vende dados pessoais.',
-      'Poderemos compartilhar informações apenas quando necessário com:',
+      'O ApexEnem não vende, aluga ou comercializa dados pessoais.',
+      'Os dados poderão ser compartilhados apenas quando necessário para a prestação dos serviços ou para o cumprimento de obrigações legais.',
+      'Atualmente, utilizamos os seguintes fornecedores:',
     ],
-    items: [
-      'provedores de hospedagem;',
-      'serviços de autenticação;',
-      'plataformas de processamento de pagamentos;',
-      'serviços de envio de e-mails;',
-      'provedores de armazenamento em nuvem;',
-      'fornecedores de Inteligência Artificial utilizados pela plataforma;',
-      'autoridades públicas, quando exigido por lei ou decisão judicial.',
+    subsections: [
+      {
+        title: 'Supabase',
+        paragraphs: ['Responsável pelos serviços de autenticação, banco de dados e armazenamento das informações da plataforma.'],
+      },
+      {
+        title: 'Vercel',
+        paragraphs: ['Responsável pela hospedagem, infraestrutura e distribuição do ApexEnem.'],
+      },
+      {
+        title: 'OpenRouter',
+        paragraphs: [
+          'Utilizado para encaminhar solicitações aos modelos de Inteligência Artificial utilizados pela plataforma.',
+          'Dependendo do recurso utilizado, informações enviadas pelo usuário poderão ser transmitidas ao OpenRouter exclusivamente para processamento da solicitação realizada.',
+        ],
+      },
     ],
-    note: 'Todos os parceiros devem adotar medidas adequadas de segurança e proteção dos dados pessoais.',
+    tail: {
+      paragraphs: ['Além desses fornecedores, dados poderão ser compartilhados:'],
+      items: [
+        'quando exigido por lei;',
+        'mediante ordem judicial;',
+        'para exercício regular de direitos em processos judiciais, administrativos ou arbitrais.',
+      ],
+    },
   },
   {
     title: '6. Cookies',
@@ -179,8 +200,9 @@ const PRIVACY_SECTIONS: Section[] = [
   {
     title: '11. Transferência internacional de dados',
     paragraphs: [
-      'Alguns fornecedores utilizados pelo ApexEnem poderão armazenar ou processar dados em servidores localizados fora do Brasil.',
-      'Sempre que isso ocorrer, buscaremos utilizar parceiros que adotem níveis adequados de proteção de dados, em conformidade com a LGPD.',
+      'Alguns dos serviços utilizados pelo ApexEnem poderão processar ou armazenar dados em servidores localizados fora do Brasil.',
+      'Isso pode ocorrer, por exemplo, quando uma solicitação é encaminhada ao OpenRouter ou quando a infraestrutura utilizada opera centros de dados internacionais.',
+      'Nesses casos, o ApexEnem busca utilizar fornecedores que adotem padrões adequados de proteção de dados e mecanismos compatíveis com a Lei Geral de Proteção de Dados (LGPD).',
     ],
   },
   {
@@ -304,6 +326,23 @@ export default function PrivacyPage({
                       </div>
                     </div>
                   ))}
+                  {section.tail && (
+                    <div className="pt-3 space-y-3">
+                      {section.tail.paragraphs?.map((p, k) => (
+                        <p key={k} className="text-sm md:text-base text-slate-600 dark:text-slate-300 leading-relaxed">{p}</p>
+                      ))}
+                      {section.tail.items && (
+                        <ul className="space-y-2 pl-1">
+                          {section.tail.items.map((item, k) => (
+                            <li key={k} className="flex items-start gap-2.5 text-sm md:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+                              <span className="mt-2 w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                              {item}
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
                   {section.note && (
                     <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 leading-relaxed">{section.note}</p>
                   )}
