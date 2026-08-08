@@ -4,6 +4,7 @@ import { GraduationCap, Sparkles, BookOpen, PenLine, BarChart3, Users, ArrowRigh
 import { REGIONS, REGION_COLORS, STATES, getStatesByRegion, getCitiesByState, type RegionBR } from '../data/brazil-locations';
 import { REGION_MAP_DATA, BRAZIL_VIEWBOX, getStateBBox } from '../data/brazil-map-paths';
 import { CITY_COORDINATES } from '../data/brazil-city-coordinates';
+import DevNoticeBanner from './DevNoticeBanner';
 
 function projectCityToSVG(lat: number, lon: number, stateCode: string): { x: number; y: number } | null {
   if (!isFinite(lat) || !isFinite(lon)) return null;
@@ -456,6 +457,7 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0a0814] text-slate-800 dark:text-slate-100">
+      <DevNoticeBanner />
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#0a0814]/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
