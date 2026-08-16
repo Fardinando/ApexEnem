@@ -9,7 +9,6 @@ import {
   ShieldAlert,
   RefreshCw,
   Trophy,
-  GraduationCap,
   BookOpen,
   PenLine,
   FlaskConical,
@@ -54,6 +53,7 @@ import { CURRICULUM, getSubjectCurriculum } from '../data/curriculum';
 import { saveLearningProgress, fetchLearningProgress } from '../lib/supabase';
 import { computeTopicDifficulty } from '../lib/gamification';
 import { getParamsForQuestion, generateQuestionId } from '../lib/tri-params';
+import Logo from './Logo';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, {
   shouldShowRewardAd,
@@ -2215,7 +2215,7 @@ export default function AprendizadoView({
         <div className="border-b border-slate-200 dark:border-slate-800 pb-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100 flex items-center gap-2">
-              <GraduationCap className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+              <Logo variant="favicon-a" className="h-8 w-auto" />
               Arena de Aprendizado Cabrito
             </h1>
             <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">

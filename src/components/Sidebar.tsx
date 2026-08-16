@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
 import {
-  GraduationCap, LayoutDashboard, FileText, HelpCircle, BookOpen,
+  LayoutDashboard, FileText, HelpCircle, BookOpen,
   Settings, Flame, LogOut, Target, Sun, Moon, Trophy, X, Plus, User, Zap
 } from 'lucide-react';
 import { UserProfile } from '../types';
 import { getLevelFromXp, getLevelTitle, type GamificationStats } from '../lib/gamification';
+import Logo from './Logo';
 import AdPlaceholder from './AdPlaceholder';
 
 interface SidebarProps {
@@ -127,8 +128,7 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
       {/* === DESKTOP: Full Sidebar (hidden on mobile) === */}
       <aside className="hidden lg:flex lg:flex-col w-64 bg-white dark:bg-[#1e293b] border-r border-slate-200 dark:border-slate-800 p-5 h-screen sticky top-0">
         <div className="flex items-center gap-2.5 mb-6">
-          <div className="p-2 bg-blue-600 text-white rounded-xl shadow-md"><GraduationCap className="h-6 w-6" /></div>
-          <span className="font-display font-extrabold text-xl tracking-tight text-blue-600 dark:text-blue-400">ApexEnem</span>
+          <Logo variant="favicon-a" className="h-8 w-auto" />
         </div>
 
         {/* User profile */}

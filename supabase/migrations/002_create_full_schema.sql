@@ -54,17 +54,35 @@ CREATE TABLE IF NOT EXISTS public.activity_logs (
   created_at TIMESTAMPTZ DEFAULT NOW()
 );
 
+-- 5. Tabela de respostas TRI (Item Response Theory)
+CREATE TABLE IF NOT EXISTS public.question_responses (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  question_id TEXT NOT NULL,
+  selected_answer TEXT NOT NULL,
+  correct_answer TEXT NOT NULL,
+  is_correct BOOLEAN NOT NULL,
+  subject TEXT NOT NULL,
+  source TEXT NOT NULL,
+  item_params JSONB NOT NULL,
+  response_time_ms INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
 -- Índices
 CREATE INDEX IF NOT EXISTS idx_essay_user ON public.essay_corrections(user_id);
 CREATE INDEX IF NOT EXISTS idx_simulado_user ON public.simulado_history(user_id);
 CREATE INDEX IF NOT EXISTS idx_logs_user ON public.activity_logs(user_id);
 CREATE INDEX IF NOT EXISTS idx_profiles_email ON public.profiles(id);
+CREATE INDEX IF NOT EXISTS idx_qr_user ON public.question_responses(user_id);
+CREATE INDEX IF NOT EXISTS idx_qr_user_subject ON public.question_responses(user_id, subject);
 
 -- Segurança: Row Level Security
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.essay_corrections ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.simulado_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.activity_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.question_responses ENABLE ROW LEVEL SECURITY;
 
 -- Políticas: cada usuário só vê/altera os próprios dados
 -- Nota: PostgreSQL NÃO suporta CREATE POLICY IF NOT EXISTS.

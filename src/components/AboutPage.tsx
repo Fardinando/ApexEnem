@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'motion/react';
+import Logo from './Logo';
 import {
-  GraduationCap, Sparkles, ArrowRight, BookOpen, Brain, BarChart3,
+  Sparkles, ArrowRight, BookOpen, Brain, BarChart3,
   PenLine, Shield, Rocket, Target, Eye, Heart, LineChart, Users,
   Lightbulb, Scale, Zap, Smartphone, Mic, Cpu, Layers,
 } from 'lucide-react';
@@ -118,10 +119,7 @@ export default function AboutPage({
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#0a0814]/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <button type="button" onClick={onBack} className="flex items-center gap-2.5 cursor-pointer">
-            <div className="p-1.5 bg-blue-600 text-white rounded-lg">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <span className="font-display font-extrabold text-lg tracking-tight">Apex<span className="text-blue-600">Enem</span></span>
+            <Logo variant="favicon-a" className="h-7 w-auto" />
           </button>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
             <button type="button" onClick={() => scrollTo('sobre-historia')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Sobre</button>
@@ -457,7 +455,7 @@ export default function AboutPage({
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-              <GraduationCap className="h-4 w-4" />
+              <Logo variant="favicon-a" className="h-4 w-auto opacity-60" />
               <span className="font-display font-extrabold tracking-tight">Apex<span className="text-blue-600">Enem</span></span>
             </div>
             <div className="flex items-center gap-6 text-xs text-slate-500 dark:text-slate-400">

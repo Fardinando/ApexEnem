@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Mail, Lock, Eye, EyeOff, GraduationCap, ArrowRight, User, MapPin, Globe, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User, MapPin, Globe, CheckCircle } from 'lucide-react';
+import Logo from './Logo';
 import type { RegionBR } from '../types';
 import { REGIONS as BRAZIL_REGIONS, STATES, getCitiesByState, getStatesByRegion } from '../data/brazil-locations';
 
@@ -188,8 +189,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
             <div className="absolute bottom-1/4 -right-1/4 w-96 h-96 bg-[#006e4b] rounded-full blur-[120px] opacity-25"></div>
             <div className="relative z-10 flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="p-2.5 bg-white/10 rounded-xl backdrop-blur-md border border-white/20"><GraduationCap className="h-6 w-6" /></div>
-                <span className="font-display font-extrabold text-xl tracking-tight">ApexEnem</span>
+                <Logo variant="favicon-a" className="h-8 w-auto brightness-0 invert" />
               </div>
               {onBack && (
                 <button type="button" onClick={onBack} className="text-white/60 hover:text-white text-xs transition cursor-pointer flex items-center gap-1 bg-white/5 px-3 py-1.5 rounded-lg backdrop-blur-sm border border-white/10">
@@ -221,9 +221,8 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
           <div className="col-span-1 lg:col-span-7 flex flex-col justify-center items-center px-4 sm:px-6 py-8 md:px-16 lg:px-24">
             <div className="w-full max-w-md space-y-6">
               <div className="text-center space-y-2">
-                <div className="flex justify-center items-center gap-2 mb-2">
-                  <div className="p-2 bg-blue-600 text-white rounded-xl shadow-lg"><GraduationCap className="h-8 w-8" /></div>
-                  <span className="font-display font-extrabold text-2xl tracking-tight text-blue-600 dark:text-blue-400">ApexEnem</span>
+                <div className="flex justify-center items-center mb-2">
+                  <Logo variant="horizontal" className="h-10 w-auto" />
                 </div>
                 <p className="text-slate-500 dark:text-slate-400 text-sm">Bem-vindo à excelência na preparação para o ENEM</p>
               </div>

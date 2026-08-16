@@ -1,5 +1,6 @@
 import React from 'react';
-import { GraduationCap, RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'lucide-react';
+import Logo from './Logo';
 
 interface Section {
   title: string;
@@ -97,10 +98,7 @@ export default function RefundPolicyPage({
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#0a0814]/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-4xl mx-auto px-4 h-16 flex items-center justify-between">
           <button type="button" onClick={onBack} className="flex items-center gap-2.5 cursor-pointer">
-            <div className="p-1.5 bg-blue-600 text-white rounded-lg">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <span className="font-display font-extrabold text-lg tracking-tight">Apex<span className="text-blue-600">Enem</span></span>
+            <Logo variant="favicon-a" className="h-7 w-auto" />
           </button>
           <div className="flex items-center gap-3">
             <button type="button" onClick={onSignup} className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-semibold rounded-xl transition cursor-pointer">Criar conta</button>

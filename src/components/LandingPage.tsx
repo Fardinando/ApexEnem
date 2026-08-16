@@ -1,7 +1,8 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { GraduationCap, Sparkles, BookOpen, PenLine, BarChart3, Users, ArrowRight, ChevronDown, Brain, Shield, Zap, MapPin, ChevronRight, X } from 'lucide-react';
+import { Sparkles, BookOpen, PenLine, BarChart3, Users, ArrowRight, ChevronDown, Brain, Shield, Zap, MapPin, ChevronRight, X } from 'lucide-react';
 import { REGIONS, REGION_COLORS, STATES, getStatesByRegion, getCitiesByState, type RegionBR } from '../data/brazil-locations';
+import Logo from './Logo';
 import { REGION_MAP_DATA, BRAZIL_VIEWBOX, getStateBBox } from '../data/brazil-map-paths';
 import { CITY_COORDINATES } from '../data/brazil-city-coordinates';
 
@@ -459,10 +460,7 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
       <header className="fixed top-0 left-0 right-0 z-50 bg-white/80 dark:bg-[#0a0814]/80 backdrop-blur-xl border-b border-slate-100 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-4 h-16 flex items-center justify-between">
           <div className="flex items-center gap-2.5">
-            <div className="p-1.5 bg-blue-600 text-white rounded-lg">
-              <GraduationCap className="h-5 w-5" />
-            </div>
-            <span className="font-display font-extrabold text-lg tracking-tight">Apex<span className="text-blue-600">Enem</span></span>
+            <Logo variant="favicon-a" className="h-7 w-auto" />
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
             <button type="button" onClick={() => scrollTo('features')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Recursos</button>
@@ -604,7 +602,7 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
         <div className="max-w-6xl mx-auto px-4">
           <div className="flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
             <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-              <GraduationCap className="h-4 w-4" />
+              <Logo variant="favicon-a" className="h-4 w-auto opacity-60" />
               ApexEnem © 2026 — Plataforma Educacional Adaptativa
             </div>
             <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
