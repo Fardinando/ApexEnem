@@ -41,12 +41,32 @@ function nextOrKey() {
 
 const jobs = new Map();
 
+const MAX_JOBS = 250;
+const JOB_TIMEOUT_MS = 240000;       // deadline global por job (4 min)
+const STALE_PROCESSING_MS = 420000;  // processando há muito tempo => erro (7 min)
+let activeJobs = 0;
+const MAX_ACTIVE = 6;                // concorrência máxima de processJob
+
+process.on("unhandledRejection", (reason) => {
+  console.error("[unhandledRejection]", reason && reason.stack ? reason.stack : reason);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[uncaughtException]", err && err.stack ? err.stack : err);
+});
+
 setInterval(() => {
   const now = Date.now();
   for (const [cura, job] of jobs) {
     if (job.status === "done" || job.status === "error") {
       if (job.completedAt && now - job.completedAt > 5 * 60 * 1000) {
         jobs.delete(cura);
+      }
+    } else if (job.status === "processing") {
+      if (job.startedAt && now - job.startedAt > STALE_PROCESSING_MS) {
+        job.status = "error";
+        job.error = "Tempo de processamento excedido";
+        job.completedAt = now;
+        console.log(`[${cura}] marked stale processing job as error`);
       }
     }
   }
@@ -260,6 +280,8 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
   const job = jobs.get(cura);
   if (!job) return;
   job.attempts = attempt;
+  job.startedAt = job.startedAt || Date.now();
+  const deadline = job.startedAt + JOB_TIMEOUT_MS;
 
   const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
   const sysMsg = type === "general"
@@ -335,6 +357,7 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
   }
 
   for (const a of seqAttempts.slice(0, 12)) {
+    if (Date.now() > deadline) break;
     try {
       const result = await a.fn();
       if (type === "general") {
@@ -357,12 +380,13 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
       }
     } catch (err) {
       console.log(`[${cura}] seq ${a.name} failed: ${err.message?.slice(0, 60)}`);
+      if (Date.now() > deadline) break;
       await new Promise(r => setTimeout(r, err.message.includes("429") ? 2000 : 500));
     }
   }
 
-  if (attempt < 2) {
-    const delay = 15000;
+  if (attempt < 2 && Date.now() < deadline) {
+    const delay = Math.min(15000, deadline - Date.now());
     console.log(`[${cura}] All combos failed. Retry in ${delay/1000}s...`);
     await new Promise(r => setTimeout(r, delay));
     return processJob(cura, prompt, attempt + 1, type);
@@ -375,7 +399,11 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
 }
 
 app.get("/api/health", (req, res) => {
-  res.json({ ok: true, keys: { groq: groqKeys.length, gemini: !!googleApiKey, openrouter: openRouterKeys.length } });
+  const counts = { processing: 0, done: 0, error: 0 };
+  for (const job of jobs.values()) {
+    if (counts[job.status] !== undefined) counts[job.status]++;
+  }
+  res.json({ ok: true, keys: { groq: groqKeys.length, gemini: !!googleApiKey, openrouter: openRouterKeys.length }, jobs: counts, activeJobs });
 });
 
 app.post("/api/chat", async (req, res) => {
@@ -494,6 +522,13 @@ app.post("/api/process", (req, res) => {
     return res.status(400).json({ error: "cura and prompt required" });
   }
 
+  if (jobs.size >= MAX_JOBS) {
+    return res.status(429).json({ error: "limite de jobs atingido. Tente novamente em instantes." });
+  }
+  if (activeJobs >= MAX_ACTIVE) {
+    return res.status(429).json({ error: "servidor de IA ocupado. Tente novamente em instantes." });
+  }
+
   jobs.set(cura, {
     cura,
     status: "processing",
@@ -503,10 +538,24 @@ app.post("/api/process", (req, res) => {
     error: null,
     attempts: 0,
     createdAt: Date.now(),
+    startedAt: null,
     completedAt: null,
   });
 
-  processJob(cura, prompt, 1, type || "questions");
+  activeJobs++;
+  processJob(cura, prompt, 1, type || "questions")
+    .catch((err) => {
+      console.error(`[${cura}] processJob error:`, err?.message);
+      const j = jobs.get(cura);
+      if (j) {
+        j.status = "error";
+        j.error = err?.message || "erro interno";
+        j.completedAt = Date.now();
+      }
+    })
+    .finally(() => {
+      activeJobs = Math.max(0, activeJobs - 1);
+    });
 
   res.json({ ok: true, cura });
 });

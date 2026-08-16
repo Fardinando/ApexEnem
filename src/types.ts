@@ -142,8 +142,32 @@ export interface ActivityLog {
 
 export interface WrongAnswer {
   subject: string;
+  /** Método usado para resolver (ex.: Bhaskara). Detectado por IA. */
+  method?: string;
+  /** Assunto dentro da matéria (ex.: Adição e subtração de decimais). Detectado por IA. */
+  topic?: string;
   source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula';
   timestamp: number;
+}
+
+export interface PraticaItem {
+  title: string;
+  statement: string;
+  solution: string;
+  tips?: string[];
+}
+
+export interface PraticaAula {
+  subject?: string;
+  topic?: string;
+  practice: PraticaItem[];
+  quiz: AiQuestion[];
+}
+
+export interface QuestionMeta {
+  statement?: string;
+  topic?: string;
+  method?: string;
 }
 
 export interface LearningChapter {

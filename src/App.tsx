@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress, deleteEssaysByUser, deleteSimuladosByUser, deleteLogsByUser } from './lib/supabase';
-import type { EssayCorrection, ActivityLog, WrongAnswer } from './types';
+import type { EssayCorrection, ActivityLog, WrongAnswer, QuestionMeta } from './types';
+import { classifyQuestion } from './lib/api';
 import { calculateStreak, XP_REWARDS, getUnlockedAchievements, getAllAchievements, computeGamificationStats, type GamificationStats } from './lib/gamification';
 import { loadSpecialAds } from './lib/ads';
 import AuthView from './components/AuthView';
@@ -166,11 +167,35 @@ export default function App() {
     return () => { cancelled = true; };
   }, [session?.user?.id]);
 
-  const handleWrongAnswer = (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula') => {
-    const updated = [{ subject, source, timestamp: Date.now() }, ...wrongAnswers];
+  const handleWrongAnswer = (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula', meta?: QuestionMeta) => {
+    const entry: WrongAnswer = {
+      subject,
+      method: meta?.method,
+      topic: meta?.topic,
+      source,
+      timestamp: Date.now(),
+    };
+    const updated = [entry, ...wrongAnswers];
     setWrongAnswers(updated);
     if (session?.user?.email) {
       saveLearningProgress(session.user.email, { wrongAnswers: updated }).catch(() => {});
+    }
+
+    if (meta?.statement && !entry.topic && !entry.method) {
+      classifyQuestion(meta.statement, subject).then((cls) => {
+        if (!cls.topic && !cls.method) return;
+        setWrongAnswers((current) => {
+          const next = current.map((w) =>
+            w.timestamp === entry.timestamp
+              ? { ...w, subject: cls.subject || w.subject, method: cls.method || w.method, topic: cls.topic || w.topic }
+              : w
+          );
+          if (session?.user?.email) {
+            saveLearningProgress(session.user.email, { wrongAnswers: next }).catch(() => {});
+          }
+          return next;
+        });
+      }).catch(() => {});
     }
   };
 

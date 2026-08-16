@@ -27,13 +27,13 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { renderToString } from 'katex';
-import { SimuladoConfig, SimuladoQuestion, SimuladoState, WrongAnswer } from '../types';
+import { SimuladoConfig, SimuladoQuestion, SimuladoState, WrongAnswer, QuestionMeta } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
 
 interface SimuladosViewProps {
   onSaveSimuladoResult: (scorePercent: number, subject: string) => void;
-  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula') => void;
+  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula', meta?: QuestionMeta) => void;
   accessToken?: string;
   wrongAnswers?: WrongAnswer[];
 }
@@ -185,7 +185,7 @@ function renderContent(text: string): (React.ReactNode | string)[] {
   return parts.length > 0 ? parts : [text];
 }
 
-async function fetchENEMQuestions(subject: SimuladoConfig['subject'], count: number): Promise<SimuladoQuestion[]> {
+async function fetchENEMQuestions(subject: SubjectOption, count: number): Promise<SimuladoQuestion[]> {
   const apiSubject = subject === 'Recomendado' ? 'Geral' : subject;
   const res = await fetch(`/api/enem-questions?subject=${encodeURIComponent(apiSubject)}&count=${count}`);
   if (!res.ok) {
@@ -274,7 +274,11 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
       if (onWrongAnswer && simulado.config.subject !== 'Geral') {
         simulado.questions.forEach(q => {
           if (q.userAnswer && q.userAnswer !== q.correctAnswer) {
-            onWrongAnswer(simulado.config.subject, 'simulado');
+            const discipline = questionDisciplinesRef.current.get(q.id);
+            onWrongAnswer(simulado.config.subject, 'simulado', {
+              statement: q.statement || '',
+              topic: discipline ? API_TO_DISCIPLINE_DISPLAY[discipline] : undefined,
+            });
           }
         });
       }
@@ -505,7 +509,11 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
     if (onWrongAnswer && simulado.config.subject !== 'Geral') {
       simulado.questions.forEach(q => {
         if (q.userAnswer && q.userAnswer !== q.correctAnswer) {
-          onWrongAnswer(simulado.config.subject, 'simulado');
+          const discipline = questionDisciplinesRef.current.get(q.id);
+          onWrongAnswer(simulado.config.subject, 'simulado', {
+            statement: q.statement || '',
+            topic: discipline ? API_TO_DISCIPLINE_DISPLAY[discipline] : undefined,
+          });
         }
       });
     }

@@ -446,9 +446,12 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
   lessonCycle: {
     id: 'lessonCycle',
     label: 'Gerar aula cíclica com Cabrito',
-    buildPrompt: (area: string, level: number, topicIndex: number, weakTopics?: string[]) => {
+    buildPrompt: (area: string, level: number, topicIndex: number, weakTopics?: string[], topic?: string) => {
       const weakSection = weakTopics?.length
         ? `\nPontos fracos do aluno: ${weakTopics.join(', ')}. Foque nesses tópicos quando possível.`
+        : '';
+      const topicSection = topic
+        ? `\nASSUNTO ESPECÍFICO DA AULA: "${topic}". TODOS os ciclos e blocos devem ensinar exclusivamente este assunto dentro da área "${area}", com profundidade progressiva (básico → intermediário → avançado).`
         : '';
       const areaContext: Record<string, string> = {
         'Matemática': 'Matemática do ENEM: Álgebra, Geometria (plana, espacial, analítica), Trigonometria, Estatística, Probabilidade, Funções, Números e Operações.',
@@ -461,11 +464,11 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
       return {
         system: `Você é o Cabrito 🐐, tutor do ENEM. Gere uma aula completa em JSON sobre "${area}" (tópico #${topicIndex}).
 Área: ${context}
-Nível: ${level}/10. ${weakSection}
+Nível: ${level}/10. ${weakSection}${topicSection}
 
 ### ESTRUTURA: 3 CICLOS × 6 BLOCOS (18 blocos total)
 
-Cada ciclo = 1 subtema diferente de "${area}". Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
+Cada ciclo = 1 subtema diferente${topic ? ` do assunto "${topic}"` : ` de "${area}"`}. Ciclo 1 = básico, Ciclo 2 = intermediário, Ciclo 3 = avançado.
 Cada ciclo tem EXATAMENTE 6 blocos:
 
 **Bloco "story"**: Situação-problema REAL e DETALHADA com dados, cenário brasileiro, personagens. Deve ser uma narrativa envolvente com começo, meio e fim, contexto rico. (700-1000+ chars).
@@ -480,6 +483,8 @@ Ordem por ciclo: story → explanation → interactive → explanation → chall
 {
   "title": "Título chamativo e específico",
   "subtitle": "Subtítulo detalhado",
+  "subject": "${area}",
+  "assunto": "${topic || 'Geral'}",
   "cycles": [
     {"type":"story","cabritoSpeech":"Frase envolvente","content":"Narrativa longa e detalhada com dados reais..."},
     {"type":"explanation","cabritoSpeech":"Vamos aprender!","content":"Teoria completa com fórmulas, exemplos passo a passo, resumo rápido com bullets, pegadinhas ENEM..."},
@@ -516,9 +521,12 @@ Importante: correctIndex deve variar entre 0,1,2,3 nos 9 blocos com questões. O
   questoesComFeedback: {
     id: 'questoesComFeedback',
     label: 'Gerar questões com feedback do Cabrito',
-    buildPrompt: (area: string, count: number, weakTopics?: string[]) => {
+    buildPrompt: (area: string, count: number, weakTopics?: string[], topic?: string) => {
       const weakSection = weakTopics?.length
         ? `\nPontos fracos: ${weakTopics.join(', ')}. Foque nessas questões.`
+        : '';
+      const topicSection = topic
+        ? `\nAssunto específico: TODAS as questões devem ser sobre "${topic}".`
         : '';
       const areaContext: Record<string, string> = {
         'Matemática': 'Matemática: Álgebra, Geometria, Trigonometria, Estatística, Probabilidade, Funções.',
@@ -529,7 +537,7 @@ Importante: correctIndex deve variar entre 0,1,2,3 nos 9 blocos com questões. O
       };
       const context = areaContext[area] || area;
       return {
-        system: `Gere ${count} questões ENEM de múltipla escolha para "${context}". Nível: médio/difícil. ${weakSection}
+        system: `Gere ${count} questões ENEM de múltipla escolha para "${context}". Nível: médio/difícil. ${weakSection}${topicSection}
 
 Cada questão: enunciado com contexto (dados, situação-problema), 4 alternativas plausíveis (A-D), gabarito e explicação. Respostas corretas distribuídas entre A,B,C,D.
 
@@ -549,6 +557,85 @@ JSON:
 
 Retorne APENAS o JSON.`,
         user: `Gere ${count} questões estilo ENEM para "${area}". Retorne APENAS o JSON:`,
+      }
+    },
+    models: [
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
+    ],
+  },
+
+  praticaQuestoes: {
+    id: 'praticaQuestoes',
+    label: 'Prática "resolvendo na prática" + quiz final',
+    buildPrompt: (area: string, topic: string, weakTopics?: string[]) => {
+      const weakSection = weakTopics?.length
+        ? `\nPontos fracos: ${weakTopics.join(', ')}. Priorize exercícios sobre esses tópicos.`
+        : '';
+      return {
+        system: `Você é o Cabrito 🐐, tutor do ENEM. Gere uma aula de prática guiada em JSON sobre o assunto "${topic}" (área: ${area}).${weakSection}
+
+Objetivo: ensinar resolvendo na prática, com exemplos passo a passo do método, e depois TESTAR o aprendizado com um quiz final.
+
+### JSON exato:
+{
+  "subject": "${area}",
+  "topic": "${topic}",
+  "practice": [
+    {
+      "title": "Exemplo 1: título curto",
+      "statement": "Problema prático realista (estilo ENEM, com dados)",
+      "solution": "Resolução COMPLETA e passo a passo, mostrando o método, fórmulas e o raciocínio",
+      "tips": ["Dica 1", "Dica 2", "Dica 3"]
+    }
+  ],
+  "quiz": [
+    {
+      "id": "q1",
+      "statement": "Questão estilo ENEM sobre o assunto",
+      "options": [{"letter":"A","text":"..."},{"letter":"B","text":"..."},{"letter":"C","text":"..."},{"letter":"D","text":"..."}],
+      "correctAnswer": "C",
+      "explanation": "Resolução completa e análise dos distratores"
+    }
+  ]
+}
+
+Regras:
+- \`practice\` deve ter 3 a 4 exemplos com níveis progressivos (básico → difícil).
+- Cada \`statement\` deve ser um problema contextualizado com dados; \`solution\` deve explicar o método usado (ex.: "usando a fórmula de Bhaskara...").
+- \`quiz\` deve ter 3 a 4 questões estilo ENEM para testar o aprendizado, com gabaritos distribuídos entre A, B, C, D.
+- Todas as strings com aspas duplas internas escapadas com \\".
+Retorne APENAS o JSON válido.`,
+        user: `Gere a prática guiada e o quiz sobre "${topic}" em ${area}. Retorne APENAS o JSON:`,
+      }
+    },
+    models: [
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
+    ],
+  },
+
+  classificacaoErro: {
+    id: 'classificacaoErro',
+    label: 'Classificar erro: matéria, método e assunto',
+    buildPrompt: (statement: string, fallbackSubject?: string) => {
+      const subjectHint = fallbackSubject
+        ? `\nSugestão de matéria (confirme ou corrija): "${fallbackSubject}".`
+        : '';
+      return {
+        system: `Você é um classificador de questões do ENEM. Analise o enunciado e classifique em 3 campos:${subjectHint}
+
+1. "subject": a matéria/área (ex.: Matemática, Natureza, Humanas, Linguagens, Redação).
+2. "method": o método ou técnica usada para resolver (ex.: "Bhaskara", "Regra de três", "Análise de distratores", "Concordância verbal", "Leis de Newton").
+3. "topic": o assunto específico dentro da matéria (ex.: "Equações do 2º grau", "Adição e subtração de decimais", "Geometria plana", "Interpretação de texto").
+
+Retorne APENAS um JSON:
+{"subject":"...","method":"...","topic":"..."}
+
+Se não conseguir identificar um campo, retorne string vazia nesse campo.`,
+        user: `Enunciado da questão:\n\n${statement}\n\nClassifique:`,
       }
     },
     models: [

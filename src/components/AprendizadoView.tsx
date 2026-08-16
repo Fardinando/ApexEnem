@@ -37,8 +37,12 @@ import type {
   LessonBlock,
   AiQuestion,
   TopicDifficulty,
+  PraticaAula,
+  PraticaItem,
+  QuestionMeta,
 } from '../types';
 import { INITIAL_CHAPTERS, CHAPTER_EXERCISES } from '../data/learning-exercises';
+import { SUBJECT_TOPICS, getSubjectTopics, type SubjectTopic } from '../data/learning-topics';
 import { saveLearningProgress, fetchLearningProgress } from '../lib/supabase';
 import { computeTopicDifficulty } from '../lib/gamification';
 import AdPlaceholder from './AdPlaceholder';
@@ -73,11 +77,11 @@ interface AprendizadoViewProps {
   currentUser?: UserProfile;
   accessToken?: string;
   wrongAnswers?: WrongAnswer[];
-  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula') => void;
+  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula', meta?: QuestionMeta) => void;
 }
 
 type MainTab = 'cursinho' | 'questoes';
-type ViewMode = 'categories' | 'lesson' | 'questoes-play';
+type ViewMode = 'categories' | 'subjects' | 'lesson' | 'questoes-play' | 'pratica-play';
 
 interface CategoryCard {
   id: string;
@@ -251,6 +255,14 @@ export default function AprendizadoView({
   const [interactiveAnswer, setInteractiveAnswer] = useState<number | null>(null);
   const [interactiveChecked, setInteractiveChecked] = useState(false);
 
+  const [activeTopic, setActiveTopic] = useState<SubjectTopic | null>(null);
+  const [pratica, setPratica] = useState<PraticaAula | null>(null);
+  const [practiceStep, setPracticeStep] = useState(0);
+  const [loadingPratica, setLoadingPratica] = useState(false);
+  const [praticaError, setPraticaError] = useState(false);
+  const [showPracticeSolution, setShowPracticeSolution] = useState(false);
+  const [praticaActive, setPraticaActive] = useState(false);
+
   const [chapters, setChapters] = useState<LearningChapter[]>(INITIAL_CHAPTERS);
   const [activeChapter, setActiveChapter] = useState<LearningChapter | null>(
     null
@@ -349,22 +361,24 @@ export default function AprendizadoView({
   const [lessonError, setLessonError] = useState(false);
   const [questoesError, setQuestoesError] = useState(false);
 
-  const fetchLessonCycle = async (cat: CategoryCard, topicIdx: number, retry = 0) => {
+  const fetchLessonCycle = async (cat: CategoryCard, topicIdx: number, topicTitle?: string, retry = 0) => {
     setLoadingLesson(true);
     setAiLessonCycle(null);
     setLessonError(false);
     try {
-      const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
+      const wrongSubjects = (wrongAnswers || []).map(w => w.topic || w.method || w.subject);
+      const body: Record<string, unknown> = { area: cat.area, level: 5, weakTopics: wrongSubjects, topicIndex: topicIdx };
+      if (topicTitle) body.topic = topicTitle;
       const resp = await fetch('/api/lesson-v2', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area: cat.area, level: 5, weakTopics: wrongSubjects, topicIndex: topicIdx }),
+        body: JSON.stringify(body),
       });
       if (!resp.ok) {
         if (retry < 2) {
           await new Promise(r => setTimeout(r, 2000));
           setLoadingLesson(false);
-          return fetchLessonCycle(cat, topicIdx, retry + 1);
+          return fetchLessonCycle(cat, topicIdx, topicTitle, retry + 1);
         }
         setLessonError(true);
         setLoadingLesson(false);
@@ -403,7 +417,7 @@ export default function AprendizadoView({
         if (retry < 2) {
           await new Promise(r => setTimeout(r, 2000));
           setLoadingLesson(false);
-          return fetchLessonCycle(cat, topicIdx, retry + 1);
+          return fetchLessonCycle(cat, topicIdx, topicTitle, retry + 1);
         }
         setLessonError(true);
       }
@@ -411,29 +425,31 @@ export default function AprendizadoView({
       if (retry < 2) {
         await new Promise(r => setTimeout(r, 2000));
         setLoadingLesson(false);
-        return fetchLessonCycle(cat, topicIdx, retry + 1);
+        return fetchLessonCycle(cat, topicIdx, topicTitle, retry + 1);
       }
       setLessonError(true);
     }
     setLoadingLesson(false);
   };
 
-  const fetchQuestoesAI = async (area: string, retry = 0) => {
+  const fetchQuestoesAI = async (area: string, topic?: string, retry = 0) => {
     setLoadingQuestions(true);
     setAiQuestoes([]);
     setQuestoesError(false);
     try {
-      const wrongSubjects = (wrongAnswers || []).map(w => w.subject);
+      const wrongSubjects = (wrongAnswers || []).map(w => w.topic || w.method || w.subject);
+      const body: Record<string, unknown> = { area, count: 3, weakTopics: wrongSubjects };
+      if (topic) body.topic = topic;
       const resp = await fetch('/api/questoes-ai', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ area, count: 3, weakTopics: wrongSubjects }),
+        body: JSON.stringify(body),
       });
       if (!resp.ok) {
         if (retry < 2) {
           await new Promise(r => setTimeout(r, 2000));
           setLoadingQuestions(false);
-          return fetchQuestoesAI(area, retry + 1);
+          return fetchQuestoesAI(area, topic, retry + 1);
         }
         setQuestoesError(true);
         setLoadingQuestions(false);
@@ -476,7 +492,7 @@ export default function AprendizadoView({
         if (retry < 2) {
           await new Promise(r => setTimeout(r, 2000));
           setLoadingQuestions(false);
-          return fetchQuestoesAI(area, retry + 1);
+          return fetchQuestoesAI(area, topic, retry + 1);
         }
         setQuestoesError(true);
       }
@@ -484,14 +500,100 @@ export default function AprendizadoView({
       if (retry < 2) {
         await new Promise(r => setTimeout(r, 2000));
         setLoadingQuestions(false);
-        return fetchQuestoesAI(area, retry + 1);
+        return fetchQuestoesAI(area, topic, retry + 1);
       }
       setQuestoesError(true);
     }
     setLoadingQuestions(false);
   };
 
-  const [prefetchTarget, setPrefetchTarget] = useState<{ type: 'cursinho'; cat: CategoryCard; idx: number } | { type: 'questoes'; area: string } | null>(null);
+  const fetchPratica = async (area: string, topic: string, retry = 0) => {
+    setLoadingPratica(true);
+    setPratica(null);
+    setPraticaError(false);
+    try {
+      const wrongSubjects = (wrongAnswers || []).map(w => w.topic || w.method || w.subject);
+      const resp = await fetch('/api/pratica-questoes', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ area, topic, weakTopics: wrongSubjects }),
+      });
+      if (!resp.ok) {
+        if (retry < 2) {
+          await new Promise(r => setTimeout(r, 2000));
+          setLoadingPratica(false);
+          return fetchPratica(area, topic, retry + 1);
+        }
+        setPraticaError(true);
+        setLoadingPratica(false);
+        return;
+      }
+      const data = await resp.json();
+
+      let finalData = data;
+      if (data.pending && data.cura) {
+        let attempts = 0;
+        const maxAttempts = 60;
+        while (attempts < maxAttempts) {
+          await new Promise(r => setTimeout(r, 2500));
+          attempts++;
+          try {
+            const pollRes = await fetch(`/api/ai-task/${data.cura}`);
+            if (!pollRes.ok) continue;
+            const pollData = await pollRes.json();
+            if (pollData.status === 'done' && pollData.result) {
+              finalData = typeof pollData.result === 'string'
+                ? (() => { try { return JSON.parse(pollData.result); } catch { return null; } })()
+                : pollData.result;
+              break;
+            }
+            if (pollData.status === 'error') throw new Error(pollData.error || 'Falha na IA');
+          } catch (e: any) {
+            if (e?.message?.includes('Falha na IA')) throw e;
+          }
+        }
+      }
+
+      const normalized: PraticaAula | null = finalData && Array.isArray(finalData.practice) && Array.isArray(finalData.quiz)
+        ? {
+            subject: finalData.subject || area,
+            topic: finalData.topic || topic,
+            practice: finalData.practice.map((p: any) => ({
+              title: cleanTextFrontend(p.title || ''),
+              statement: cleanTextFrontend(p.statement || ''),
+              solution: cleanTextFrontend(p.solution || ''),
+              tips: Array.isArray(p.tips) ? p.tips.map((t: any) => String(t)) : [],
+            })),
+            quiz: finalData.quiz.map((q: any, i: number) => ({
+              id: q.id || `p-q-${i}`, statement: cleanTextFrontend(q.statement || ''),
+              options: q.options || [], correctAnswer: q.correctAnswer || 'A',
+              explanation: cleanTextFrontend(q.explanation || ''), topic: q.topic || '',
+            })),
+          }
+        : null;
+
+      if (normalized) {
+        setPratica(normalized);
+      } else {
+        if (retry < 2) {
+          await new Promise(r => setTimeout(r, 2000));
+          setLoadingPratica(false);
+          return fetchPratica(area, topic, retry + 1);
+        }
+        setPraticaError(true);
+      }
+    } catch {
+      if (retry < 2) {
+        await new Promise(r => setTimeout(r, 2000));
+        setLoadingPratica(false);
+        return fetchPratica(area, topic, retry + 1);
+      }
+      setPraticaError(true);
+    }
+    setLoadingPratica(false);
+  };
+
+  const [prefetchTarget, setPrefetchTarget] = useState<{ type: 'cursinho'; cat: CategoryCard; idx: number; topic?: string } | { type: 'questoes'; area: string; topic?: string } | null>(null);
 
   const handleAdGateContinue = useCallback(() => {
     setAdGateActive(false);
@@ -506,24 +608,40 @@ export default function AprendizadoView({
       setInteractiveAnswer(null);
       setInteractiveChecked(false);
     } else if (adGateTarget === 'questoes' && questoesArea) {
-      setViewMode('questoes-play');
+      if (praticaActive) {
+        setViewMode('pratica-play');
+      } else {
+        setViewMode('questoes-play');
+      }
     }
     setAdGateTarget(null);
-  }, [adGateTarget, activeCategory, questoesArea]);
+  }, [adGateTarget, activeCategory, questoesArea, praticaActive]);
 
   useEffect(() => {
     if (!adGateActive || !prefetchTarget) return;
     if (prefetchTarget.type === 'cursinho') {
-      fetchLessonCycle(prefetchTarget.cat, prefetchTarget.idx);
+      fetchLessonCycle(prefetchTarget.cat, prefetchTarget.idx, prefetchTarget.topic);
     } else if (prefetchTarget.type === 'questoes') {
-      fetchQuestoesAI(prefetchTarget.area);
+      if (prefetchTarget.topic) {
+        fetchPratica(prefetchTarget.area, prefetchTarget.topic);
+      } else {
+        fetchQuestoesAI(prefetchTarget.area);
+      }
     }
     setPrefetchTarget(null);
   }, [adGateActive, prefetchTarget]);
 
-  const handleStartCursinhoCategory = (cat: CategoryCard) => {
-    setActiveCategory(cat);
+  const handleSelectSubject = (cat: CategoryCard) => {
     if (cat.area === 'Recomendado' && wrongAnswers && wrongAnswers.length < 3) return;
+    setActiveCategory(cat);
+    setActiveTopic(null);
+    setViewMode('subjects');
+  };
+
+  const handleStartCursinhoTopic = (topic: SubjectTopic) => {
+    const area = (topic as any).__area || activeCategory?.area || '';
+    setActiveTopic(topic);
+    if (activeCategory) setActiveCategory({ ...activeCategory, area });
     setLessonStep(0);
     setLessonCompleted(false);
     setLessonCorrectCount(0);
@@ -533,13 +651,17 @@ export default function AprendizadoView({
     setInteractiveChecked(false);
     const nextIdx = lessonTopicIndex + 1;
     setLessonTopicIndex(nextIdx);
-    setPrefetchTarget({ type: 'cursinho', cat, idx: nextIdx });
+    setPraticaActive(false);
+    const topicTitle = topic.isRecommended && !(topic as any).__area ? undefined : topic.title;
+    setPrefetchTarget({ type: 'cursinho', cat: { ...activeCategory!, area }, idx: nextIdx, topic: topicTitle });
     setAdGateTarget('cursinho');
     setAdGateActive(true);
     setAdGateSecondsLeft(30);
   };
 
-  const handleStartQuestoes = (area: string) => {
+  const handleStartQuestoesTopic = (topic: SubjectTopic) => {
+    const area = (topic as any).__area || activeCategory?.area || '';
+    setActiveTopic(topic);
     setQuestoesArea(area);
     setQuestaoIdx(0);
     setSelectedLetter(null);
@@ -552,7 +674,12 @@ export default function AprendizadoView({
     setQuestaoFeedback('');
     setQuestaoTopic('');
     setAiQuestoes([]);
-    setPrefetchTarget({ type: 'questoes', area });
+    setPratica(null);
+    setPracticeStep(0);
+    setShowPracticeSolution(false);
+    setPraticaActive(true);
+    const topicTitle = topic.isRecommended && !(topic as any).__area ? undefined : topic.title;
+    setPrefetchTarget({ type: 'questoes', area, topic: topicTitle });
     setAdGateTarget('questoes');
     setAdGateActive(true);
     setAdGateSecondsLeft(30);
@@ -598,6 +725,12 @@ export default function AprendizadoView({
       setQuestaoCorrectCount(prev => prev + 1);
     } else {
       setQuestaoHearts(prev => prev - 1);
+      if (onWrongAnswer && questoesArea) {
+        onWrongAnswer(questoesArea, 'aula', {
+          statement: currentQ.statement || '',
+          topic: currentQ.topic || activeTopic?.title,
+        });
+      }
     }
   };
 
@@ -621,19 +754,340 @@ export default function AprendizadoView({
   const handleBackToCategories = () => {
     setViewMode('categories');
     setActiveCategory(null);
+    setActiveTopic(null);
     setQuestoesArea('');
     setLessonActive(false);
     setActiveChapter(null);
     setAiLessonCycle(null);
     setAiQuestoes([]);
+    setPratica(null);
+    setPracticeStep(0);
+    setShowPracticeSolution(false);
+    setPraticaActive(false);
     setLoadingLesson(false);
+    setLoadingPratica(false);
   };
 
   const totalLessonSteps = aiLessonCycle
     ? aiLessonCycle.cycles.length
     : 0;
 
+  const renderSubjectTopics = () => {
+    if (!activeCategory) return null;
+    const isRecomendadoArea = activeCategory.area === 'Recomendado';
+    const isQuestoesMode = mainTab === 'questoes';
+
+    let topics: (SubjectTopic & { __area?: string })[] = [];
+    if (isRecomendadoArea) {
+      topics = topicDifficulties.map(d => ({
+        id: `rec-${d.topic}`,
+        title: d.topic,
+        description: d.subject,
+        isRecommended: true,
+        __area: d.subject,
+      }));
+    } else {
+      topics = getSubjectTopics(activeCategory.area).map(t => ({ ...t }));
+    }
+
+    return (
+      <div className="space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => { setViewMode('categories'); setActiveTopic(null); }}
+              className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition"
+            >
+              ← Matérias
+            </button>
+            <div className={`${activeCategory.bgColor} ${activeCategory.darkBgColor} w-10 h-10 rounded-xl flex items-center justify-center ${activeCategory.color}`}>
+              {activeCategory.icon}
+            </div>
+            <div>
+              <h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">
+                {activeCategory.title}
+              </h3>
+              <p className="text-[10px] text-slate-400 font-medium">
+                {isRecomendadoArea
+                  ? 'Assuntos recomendados com base nos seus erros'
+                  : 'Escolha um assunto para começar'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {topics.length === 0 ? (
+          <div className="text-center py-12 space-y-3">
+            <span className="text-5xl block">🐐</span>
+            <h4 className="font-display font-black text-base text-slate-700 dark:text-slate-200">
+              Ainda não temos recomendações
+            </h4>
+            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+              Resolva questões e simulados para o Cabrito identificar seus pontos fracos e sugerir os melhores assuntos.
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {topics.map(topic => (
+              <div
+                key={topic.id}
+                className={`rounded-2xl p-5 space-y-3 shadow-sm hover:shadow-md transition-all duration-200 border ${
+                  topic.isRecommended
+                    ? 'bg-gradient-to-br from-purple-50 to-blue-50 dark:from-purple-950/30 dark:to-blue-950/30 border-2 border-purple-300 dark:border-purple-700/50'
+                    : 'bg-white dark:bg-[#1e293b] border-slate-200 dark:border-slate-800'
+                }`}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="space-y-1">
+                    <h4 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">
+                      {topic.title}
+                    </h4>
+                    <p className="text-[11px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                      {topic.description}
+                    </p>
+                  </div>
+                  {topic.isRecommended && (
+                    <span className="flex items-center gap-1 px-2 py-1 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-full text-[9px] font-bold border border-purple-200 dark:border-purple-800/40 shrink-0">
+                      <Sparkles className="h-3 w-3" />
+                      Recomendado
+                    </span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => isQuestoesMode ? handleStartQuestoesTopic(topic) : handleStartCursinhoTopic(topic)}
+                  className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm ${
+                    topic.isRecommended
+                      ? 'bg-purple-600 hover:bg-purple-700 text-white'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white'
+                  }`}
+                >
+                  {isQuestoesMode ? <Zap className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                  <span>{isQuestoesMode ? 'Praticar' : 'Começar a Aprender'}</span>
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const handleStartQuizFromPratica = () => {
+    if (!pratica) return;
+    const quiz = pratica.quiz || [];
+    if (quiz.length === 0) return;
+    setAiQuestoes(quiz);
+    setQuestaoIdx(0);
+    setSelectedLetter(null);
+    setHasChecked(false);
+    setIsCorrectAnswer(null);
+    setQuestaoHearts(5);
+    setQuestaoXp(0);
+    setQuestaoCompleted(false);
+    setQuestaoCorrectCount(0);
+    setQuestaoFeedback('');
+    setQuestaoTopic('');
+    setViewMode('questoes-play');
+  };
+
+  const renderPraticaTab = () => {
+    if (loadingPratica) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+          <div className="relative">
+            <span className="text-7xl animate-bounce">🐐</span>
+            <div className="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">IA</div>
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Preparando sua prática...</h3>
+            <p className="text-xs text-slate-400 max-w-xs">
+              O Cabrito está preparando exercícios de <strong>{activeTopic?.title || activeCategory?.title}</strong> para você resolver na prática!
+            </p>
+          </div>
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (praticaError) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+          <div className="relative">
+            <span className="text-7xl">🐐</span>
+            <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full border border-white">✕</div>
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">A IA não conseguiu gerar a prática</h3>
+            <p className="text-xs text-slate-400 max-w-xs">O serviço de IA pode estar sobrecarregado. Tente novamente em alguns segundos.</p>
+          </div>
+          <div className="flex flex-col gap-2 w-full max-w-xs">
+            <button
+              type="button"
+              onClick={() => fetchPratica(questoesArea, activeTopic?.title || questoesArea)}
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <RefreshCw className="h-4 w-4" />
+              <span>Tentar Novamente</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleBackToCategories}
+              className="w-full py-3 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+            >
+              Voltar ao Menu
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (!pratica) return null;
+
+    const practiceList = pratica.practice || [];
+    const isLastPractice = practiceStep >= practiceList.length;
+
+    if (isLastPractice) {
+      return (
+        <div className="max-w-2xl mx-auto space-y-6 animate-fade-in">
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-8 shadow-2xl text-center space-y-6">
+            <div className="inline-flex p-4 bg-green-50 dark:bg-green-950/40 text-green-500 rounded-3xl shadow-sm animate-bounce">
+              <CheckCircle2 className="h-12 w-12" />
+            </div>
+            <h3 className="text-2xl font-black text-slate-800 dark:text-white">
+              Prática Concluída!
+            </h3>
+            <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed max-w-sm mx-auto">
+              Você resolveu <strong>{practiceList.length}</strong> exercício{practiceList.length !== 1 ? 's' : ''} de <strong>{activeTopic?.title || pratica.topic}</strong>. Agora é hora de testar o que aprendeu!
+            </p>
+            <div className="flex flex-col gap-2 pt-2">
+              <button
+                type="button"
+                onClick={handleStartQuizFromPratica}
+                className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+              >
+                <Zap className="h-4 w-4" />
+                <span>Ir para as Questões Finais</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => { setPracticeStep(0); setShowPracticeSolution(false); }}
+                className="w-full py-3 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer"
+              >
+                Refazer a Prática
+              </button>
+            </div>
+          </div>
+        </div>
+      );
+    }
+
+    const item = practiceList[practiceStep];
+
+    return (
+      <div className="max-w-3xl mx-auto space-y-6 animate-fade-in">
+        <div className="flex items-center justify-between">
+          <button type="button" onClick={handleBackToCategories} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
+          <div className="flex items-center gap-2">
+            <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+              <div className="h-full bg-green-600 rounded-full transition-all duration-500" style={{ width: `${((practiceStep + 1) / Math.max(practiceList.length, 1)) * 100}%` }} />
+            </div>
+            <span className="text-[10px] font-mono text-slate-400">{practiceStep + 1}/{practiceList.length}</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 shadow-sm space-y-5">
+          <div className="flex items-center gap-2 flex-wrap">
+            <span className="px-2.5 py-1 bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+              Resolvendo na Prática
+            </span>
+            {activeTopic?.title && (
+              <span className="px-2.5 py-1 bg-purple-50 dark:bg-purple-950/30 text-purple-600 dark:text-purple-400 rounded-lg text-[10px] font-bold border border-purple-200 dark:border-purple-800/40">
+                📌 {activeTopic.title}
+              </span>
+            )}
+          </div>
+
+          <div className="space-y-1.5">
+            <h3 className="font-display font-black text-base text-slate-800 dark:text-slate-100">
+              {item.title}
+            </h3>
+            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+              Tente resolver antes de ver a solução
+            </p>
+          </div>
+
+          <div className="bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 p-4 rounded-2xl text-sm leading-relaxed text-slate-800 dark:text-slate-100">
+            <MathRenderer text={item.statement} />
+          </div>
+
+          {!showPracticeSolution ? (
+            <button
+              type="button"
+              onClick={() => setShowPracticeSolution(true)}
+              className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold transition shadow cursor-pointer flex items-center justify-center gap-1.5"
+            >
+              <CheckCircle2 className="h-4 w-4" />
+              <span>Ver Solução</span>
+            </button>
+          ) : (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="space-y-4"
+            >
+              <div className="p-4 rounded-2xl border border-green-200 dark:border-green-800/40 bg-green-50 dark:bg-green-950/20 text-xs text-slate-700 dark:text-slate-300 leading-relaxed space-y-2">
+                <p className="font-bold text-green-700 dark:text-green-400 flex items-center gap-1.5">
+                  <CheckCircle2 className="h-4 w-4" />
+                  Solução passo a passo
+                </p>
+                <p className="whitespace-pre-line"><MathRenderer text={item.solution} /></p>
+              </div>
+              {item.tips && item.tips.length > 0 && (
+                <div className="p-4 rounded-2xl border border-amber-200 dark:border-amber-800/40 bg-amber-50 dark:bg-amber-950/20 text-xs text-slate-700 dark:text-slate-300 leading-relaxed space-y-1.5">
+                  <p className="font-bold text-amber-700 dark:text-amber-400">💡 Dicas do Cabrito</p>
+                  <ul className="list-disc pl-4 space-y-1">
+                    {item.tips.map((tip, i) => (
+                      <li key={i}>{tip}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+            </motion.div>
+          )}
+
+          <div className="pt-2 flex justify-end">
+            <button
+              type="button"
+              onClick={() => {
+                if (practiceStep + 1 >= practiceList.length) {
+                  setPracticeStep(practiceList.length);
+                } else {
+                  setPracticeStep(prev => prev + 1);
+                  setShowPracticeSolution(false);
+                }
+              }}
+              className="px-6 py-2.5 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer shadow-md"
+            >
+              <span>{practiceStep + 1 >= practiceList.length ? 'Finalizar Prática' : 'Próximo Exercício'}</span>
+              <ArrowRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   const renderCursinhoTab = () => {
+    if (viewMode === 'subjects') {
+      return renderSubjectTopics();
+    }
+
     if (viewMode === 'lesson' && activeCategory && loadingLesson) {
       return (
         <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
@@ -685,7 +1139,10 @@ export default function AprendizadoView({
           <div className="flex flex-col gap-2 w-full max-w-xs">
             <button
               type="button"
-              onClick={() => fetchLessonCycle(activeCategory!, lessonTopicIndex)}
+              onClick={() => {
+                const topicTitle = activeTopic && activeTopic.isRecommended && !(activeTopic as any).__area ? undefined : activeTopic?.title;
+                fetchLessonCycle(activeCategory!, lessonTopicIndex, topicTitle);
+              }}
               className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
             >
               <RefreshCw className="h-4 w-4" />
@@ -771,7 +1228,7 @@ export default function AprendizadoView({
                     })}
                   </div>
                   {!interactiveChecked ? (
-                    <button type="button" disabled={interactiveAnswer === null} onClick={() => { setInteractiveChecked(true); if (interactiveAnswer === block.correctIndex) { setLessonCorrectCount(prev => prev + 1); setLessonXpEarned(prev => prev + 10); } else { if (onWrongAnswer && activeCategory) onWrongAnswer(activeCategory.area, 'aula'); } }} className={`px-5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${interactiveAnswer !== null ? 'bg-blue-600 hover:bg-blue-700 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}>Verificar Resposta</button>
+                    <button type="button" disabled={interactiveAnswer === null} onClick={() => { setInteractiveChecked(true); if (interactiveAnswer === block.correctIndex) { setLessonCorrectCount(prev => prev + 1); setLessonXpEarned(prev => prev + 10); } else { if (onWrongAnswer && activeCategory) onWrongAnswer(activeCategory.area, 'aula', { statement: typeof block.content === 'string' ? block.content : '', topic: activeTopic?.title }); } }} className={`px-5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${interactiveAnswer !== null ? 'bg-blue-600 hover:bg-blue-700 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}>Verificar Resposta</button>
                   ) : (
                     <div className="space-y-3">
                       <div className={`p-3 rounded-xl text-xs font-semibold ${interactiveAnswer === block.correctIndex ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'}`}>
@@ -872,7 +1329,8 @@ export default function AprendizadoView({
                     setLessonXpEarned(0);
                     setInteractiveAnswer(null);
                     setInteractiveChecked(false);
-                    fetchLessonCycle(activeCategory!, nextIdx);
+                    const nextTopic = activeTopic && activeTopic.isRecommended && !(activeTopic as any).__area ? undefined : activeTopic?.title;
+                    fetchLessonCycle(activeCategory!, nextIdx, nextTopic);
                   }}
                   className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
                 >
@@ -946,7 +1404,7 @@ export default function AprendizadoView({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => handleStartCursinhoCategory(cat)}
+                    onClick={() => handleSelectSubject(cat)}
                     className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm ${
                       isRecomendado
                         ? 'bg-purple-600 hover:bg-purple-700 text-white'
@@ -954,7 +1412,7 @@ export default function AprendizadoView({
                     }`}
                   >
                     <Play className="h-3.5 w-3.5" />
-                    <span>{isRecomendado ? 'Estudar Pontos Fracos' : 'Começar a Aprender'}</span>
+                    <span>{isRecomendado ? 'Estudar Pontos Fracos' : 'Escolher Assunto'}</span>
                   </button>
                 )}
               </div>
@@ -966,6 +1424,14 @@ export default function AprendizadoView({
   };
 
   const renderQuestoesTab = () => {
+    if (viewMode === 'subjects') {
+      return renderSubjectTopics();
+    }
+
+    if (viewMode === 'pratica-play') {
+      return renderPraticaTab();
+    }
+
     if (viewMode === 'questoes-play') {
       if (loadingQuestions) {
         return (
@@ -1001,7 +1467,14 @@ export default function AprendizadoView({
             <div className="flex flex-col gap-2 w-full max-w-xs">
               <button
                 type="button"
-                onClick={() => fetchQuestoesAI(questoesArea)}
+                onClick={() => {
+                  if (praticaActive) {
+                    setViewMode('pratica-play');
+                    setPraticaError(false);
+                  } else {
+                    fetchQuestoesAI(questoesArea, activeTopic?.title);
+                  }
+                }}
                 className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -1094,14 +1567,30 @@ export default function AprendizadoView({
               </div>
 
               <div className="flex flex-col gap-2 pt-2">
-                <button
-                  type="button"
-                  onClick={() => handleStartQuestoes(questoesArea)}
-                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
-                >
-                  <RefreshCw className="h-4 w-4" />
-                  <span>Tentar Novamente</span>
-                </button>
+                {praticaActive ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPracticeStep(0);
+                      setShowPracticeSolution(false);
+                      setQuestaoCompleted(false);
+                      setViewMode('pratica-play');
+                    }}
+                    className="w-full py-3 bg-green-600 hover:bg-green-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Refazer a Prática</span>
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleStartQuestoesTopic(activeTopic || { id: 'rec', title: questoesArea, description: questoesArea })}
+                    className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    <RefreshCw className="h-4 w-4" />
+                    <span>Tentar Novamente</span>
+                  </button>
+                )}
                 <button
                   type="button"
                   onClick={handleBackToCategories}
@@ -1291,7 +1780,18 @@ export default function AprendizadoView({
                   </div>
                   <button
                     type="button"
-                    onClick={() => handleStartQuestoes(questoesArea)}
+                    onClick={() => {
+                      setQuestaoIdx(0);
+                      setSelectedLetter(null);
+                      setHasChecked(false);
+                      setIsCorrectAnswer(null);
+                      setQuestaoHearts(5);
+                      setQuestaoXp(0);
+                      setQuestaoCompleted(false);
+                      setQuestaoCorrectCount(0);
+                      setQuestaoFeedback('');
+                      setQuestaoTopic('');
+                    }}
                     className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl shadow cursor-pointer transition flex items-center gap-2 mx-auto"
                   >
                     <RefreshCw className="h-4 w-4" />
@@ -1380,7 +1880,7 @@ export default function AprendizadoView({
                 ) : (
                   <button
                     type="button"
-                    onClick={() => handleStartQuestoes(cat.area)}
+                    onClick={() => handleSelectSubject(cat)}
                     className={`w-full py-2.5 rounded-xl text-xs font-bold transition flex items-center justify-center gap-1.5 cursor-pointer shadow-sm ${
                       isRecomendado
                         ? 'bg-purple-600 hover:bg-purple-700 text-white'
@@ -1388,7 +1888,7 @@ export default function AprendizadoView({
                     }`}
                   >
                     <Zap className="h-3.5 w-3.5" />
-                    <span>{isRecomendado ? 'Treinar Pontos Fracos' : 'Começar Questões'}</span>
+                    <span>{isRecomendado ? 'Treinar Pontos Fracos' : 'Escolher Assunto'}</span>
                   </button>
                 )}
               </div>
@@ -1485,13 +1985,13 @@ export default function AprendizadoView({
               <div className="text-center pb-4 border-b border-slate-200 dark:border-slate-800">
                 <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
                   {mainTab === 'cursinho'
-                    ? 'Cursinho ENEM'
-                    : 'Arena de Questões ENEM'}
+                    ? 'Aprendizado de Cursinho'
+                    : 'Resolvendo na Prática'}
                 </h3>
                 <p className="text-xs text-slate-400 max-w-sm mx-auto">
                   {mainTab === 'cursinho'
-                    ? 'Estude cada área do ENEM com lições guiadas pelo Cabrito.'
-                    : 'Pratique com questões estilo Duolingo e ganhe XP!'}
+                    ? 'Escolha a matéria e o assunto para assistir a uma aula guiada pelo Cabrito.'
+                    : 'Escolha a matéria e o assunto para resolver exercícios na prática e testar seu aprendizado com questões no final.'}
                 </p>
               </div>
 
@@ -1499,11 +1999,7 @@ export default function AprendizadoView({
                 <>{renderCursinhoTab()}</>
               )}
 
-              {mainTab === 'questoes' && viewMode === 'categories' && (
-                <>{renderQuestoesTab()}</>
-              )}
-
-              {mainTab === 'questoes' && viewMode === 'questoes-play' && (
+              {mainTab === 'questoes' && (
                 <>{renderQuestoesTab()}</>
               )}
             </div>
@@ -1524,7 +2020,7 @@ export default function AprendizadoView({
                 <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest font-bold">
                   {mainTab === 'cursinho'
                     ? 'Tutor de Bolso'
-                    : 'Companheiro de Questões'}
+                    : 'Treino na Prática'}
                 </span>
               </div>
 
@@ -1541,16 +2037,17 @@ export default function AprendizadoView({
                       e avance quando estiver pronto!
                     </p>
                   </>
-                ) : mainTab === 'questoes' && viewMode === 'questoes-play' ? (
+                ) : mainTab === 'questoes' && (viewMode === 'questoes-play' || viewMode === 'pratica-play') ? (
                   <>
                     <p className="font-semibold">
-                      "Mantenha o foco, estudioso(a)!"
+                      {viewMode === 'pratica-play' ? '"Resolva na prática!"' : '"Mantenha o foco, estudioso(a)!"'}
                     </p>
                     <p>
-                      Responda com atenção. Cada acerto te aproxima do
-                      ENEM dos sonhos!
+                      {viewMode === 'pratica-play'
+                        ? `Vamos resolver exercícios de ${activeTopic?.title || 'uma matéria'} passo a passo. Quando terminar, teste o que aprendeu nas questões finais!`
+                        : 'Responda com atenção. Cada acerto te aproxima do ENEM dos sonhos!'}
                     </p>
-                    {questaoHearts <= 2 && questaoHearts > 0 && (
+                    {viewMode === 'questoes-play' && questaoHearts <= 2 && questaoHearts > 0 && (
                       <p className="font-bold text-amber-600 dark:text-amber-400">
                         ⚠️ Cuidado! Estão sobrando poucas vidas!
                       </p>
@@ -1563,13 +2060,13 @@ export default function AprendizadoView({
                     </p>
                     <p>
                       {mainTab === 'cursinho'
-                        ? 'Escolha uma categoria para começar uma aula guiada com o Cabrito. Cada lição é uma jornada de conhecimento!'
-                        : 'Escolha uma categoria para praticar questões estilo Duolingo e ganhar XP!'}
+                        ? 'Escolha uma matéria e depois o assunto para começar uma aula guiada com o Cabrito. Cada lição é uma jornada de conhecimento!'
+                        : 'Escolha uma matéria e depois o assunto para resolver exercícios na prática e ganhar XP!'}
                     </p>
                     <p className="font-bold text-blue-600 dark:text-blue-400">
                       {mainTab === 'cursinho'
-                        ? 'Clique em "Começar a Aprender" para iniciar sua jornada!'
-                        : 'Clique em "Começar Questões" para desafiar seus conhecimentos!'}
+                        ? 'Escolha a matéria e o assunto para iniciar sua jornada!'
+                        : 'Escolha a matéria e o assunto para treinar na prática!'}
                     </p>
                   </>
                 )}

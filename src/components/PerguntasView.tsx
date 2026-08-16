@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen, Bug, Send, ExternalLink } from 'lucide-react';
-import type { Question } from '../types';
+import type { Question, QuestionMeta } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 import MathRenderer from './MathRenderer';
 import LoadingOverlay from './LoadingOverlay';
@@ -22,7 +22,7 @@ function cleanText(s: string): string {
 }
 
 interface PerguntasViewProps {
-  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula') => void;
+  onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula', meta?: QuestionMeta) => void;
   hardSubjects?: string[];
 }
 
@@ -160,7 +160,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [] }: Perg
 
     const q = questions.find(q => q.id === questionId);
     if (q && optionLetter !== q.correctAnswer && onWrongAnswer) {
-      onWrongAnswer(q.area, 'pergunta-ia');
+      onWrongAnswer(q.area, 'pergunta-ia', { statement: q.statement || '' });
     }
   };
 

@@ -178,7 +178,7 @@ export function computeTopicDifficulty(wrongAnswers: WrongAnswer[]): TopicDiffic
   const topicMap = new Map<string, { subject: string; count: number }>();
 
   for (const wa of wrongAnswers) {
-    const key = wa.subject;
+    const key = wa.topic || wa.method || wa.subject;
     const existing = topicMap.get(key);
     if (existing) {
       existing.count++;

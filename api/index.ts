@@ -110,7 +110,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
     "/lesson", "/lesson-v2", "/questoes-ai", "/stats", "/simulado-explanation",
-    "/ai-task"
+    "/pratica-questoes", "/classify-question", "/ai-task"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
   if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/ai-task/")) return next();
@@ -309,6 +309,44 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
 
   // Throw PENDING so endpoint returns {pending, cura} to frontend for polling
   throw new Error(`PENDING:${cura}`);
+}
+
+const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+async function callAISync(opts: { systemPrompt?: string; userPrompt: string; maxTokens?: number; temperature?: number; timeout?: number; type?: string; waitMs?: number }): Promise<string> {
+  const renderUrl = process.env.RENDER_PROCESS_URL;
+  if (!renderUrl) throw new Error("RENDER_PROCESS_URL not set");
+  const base = renderUrl.replace(/\/+$/, "");
+  const prompt = opts.systemPrompt ? `${opts.systemPrompt}\n\n${opts.userPrompt}` : opts.userPrompt;
+  const jobType = opts.type || "general";
+  const cura = crypto.randomUUID();
+
+  const r = await fetch(`${base}/api/process`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ cura, prompt, type: jobType }),
+    signal: AbortSignal.timeout(5000),
+  });
+  if (!r.ok) throw new Error("Serviço de IA indisponível.");
+
+  const deadline = Date.now() + (opts.waitMs || 60000);
+  while (Date.now() < deadline) {
+    await sleep(2500);
+    try {
+      const s = await fetch(`${base}/api/status/${cura}`, { signal: AbortSignal.timeout(4000) });
+      if (!s.ok) continue;
+      const data = await s.json();
+      if (data?.status === "done" && typeof data?.result === "string" && data.result.length > 0) {
+        return data.result;
+      }
+      if (data?.status === "error") {
+        throw new Error("IA não conseguiu processar a solicitação.");
+      }
+    } catch (err: any) {
+      if (err?.message?.startsWith("IA não")) throw err;
+    }
+  }
+  throw new Error("Tempo esgotado ao processar na IA.");
 }
 
 const FREE_MODELS = [
@@ -634,12 +672,12 @@ Para a área "${area}", sugira tópicos variados como:
 app.post("/api/lesson-v2", async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   try {
-    const { area, level, weakTopics, topicIndex } = req.body;
+    const { area, level, weakTopics, topicIndex, topic } = req.body;
     if (!area) return res.status(400).json({ error: "area is required" });
 
   const topicNum = typeof topicIndex === 'number' ? topicIndex : Math.floor(Math.random() * 100);
   const promptDef = PROMPTS.lessonCycle;
-  const built = promptDef.buildPrompt(area, level || 5, topicNum, weakTopics);
+  const built = promptDef.buildPrompt(area, level || 5, topicNum, weakTopics, topic);
   const systemPrompt = typeof built === 'string' ? built : built.system;
   const userPrompt = typeof built === 'string' ? '' : built.user;
 
@@ -680,11 +718,11 @@ app.post("/api/lesson-v2", async (req, res) => {
 app.post("/api/questoes-ai", async (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   try {
-    const { area, count, weakTopics } = req.body;
+    const { area, count, weakTopics, topic } = req.body;
     if (!area) return res.status(400).json({ error: "area is required" });
 
   const promptDef = PROMPTS.questoesComFeedback;
-  const built = promptDef.buildPrompt(area, count || 5, weakTopics);
+  const built = promptDef.buildPrompt(area, count || 5, weakTopics, topic);
   const systemPrompt = typeof built === 'string' ? built : built.system;
   const userPrompt = typeof built === 'string' ? '' : built.user;
 
@@ -721,6 +759,105 @@ app.post("/api/questoes-ai", async (req, res) => {
   } catch (err) {
     console.error('[questoes-ai] fatal:', err);
     return res.status(503).json({ error: "Erro ao gerar questões. Tente novamente." });
+  }
+});
+
+app.post("/api/pratica-questoes", async (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  try {
+    const { area, topic, weakTopics } = req.body;
+    if (!area) return res.status(400).json({ error: "area is required" });
+    if (!topic) return res.status(400).json({ error: "topic is required" });
+
+  const promptDef = PROMPTS.praticaQuestoes;
+  const built = promptDef.buildPrompt(area, topic, weakTopics);
+  const systemPrompt = typeof built === 'string' ? built : built.system;
+  const userPrompt = typeof built === 'string' ? '' : built.user;
+
+  function parsePraticaJson(content: string): any | null {
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (Array.isArray(parsed.practice) && parsed.practice.length >= 1 && Array.isArray(parsed.quiz) && parsed.quiz.length >= 1) {
+        return parsed;
+      }
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[0]);
+          if (Array.isArray(parsed.practice) && Array.isArray(parsed.quiz)) return parsed;
+        } catch {}
+      }
+    }
+    return null;
+  }
+
+  try {
+    const raw = await callAI({ systemPrompt, userPrompt: userPrompt || systemPrompt, maxTokens: 8192, temperature: 0.85, timeout: 25000 });
+    const pratica = parsePraticaJson(raw);
+    if (pratica) return res.json(pratica);
+  } catch (err: any) {
+    if (err?.message?.startsWith("PENDING:")) {
+      return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Prática em processamento via IA..." });
+    }
+  }
+
+  return res.status(503).json({ error: "IA não conseguiu gerar a prática. Tente novamente." });
+  } catch (err) {
+    console.error('[pratica-questoes] fatal:', err);
+    return res.status(503).json({ error: "Erro ao gerar a prática. Tente novamente." });
+  }
+});
+
+app.post("/api/classify-question", async (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  try {
+    const { statement, subject } = req.body;
+    if (!statement || typeof statement !== 'string' || statement.trim().length < 10) {
+      return res.status(400).json({ error: "statement is required" });
+    }
+
+  const promptDef = PROMPTS.classificacaoErro;
+  const built = promptDef.buildPrompt(statement, subject);
+  const systemPrompt = typeof built === 'string' ? built : built.system;
+  const userPrompt = typeof built === 'string' ? '' : built.user;
+
+  function parseClassificacao(content: string): { subject: string; method: string; topic: string } | null {
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (typeof parsed?.subject === 'string' && typeof parsed?.method === 'string' && typeof parsed?.topic === 'string') {
+        return { subject: parsed.subject, method: parsed.method, topic: parsed.topic };
+      }
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[0]);
+          if (parsed && typeof parsed.subject === 'string' && typeof parsed.method === 'string' && typeof parsed.topic === 'string') {
+            return { subject: parsed.subject, method: parsed.method, topic: parsed.topic };
+          }
+        } catch {}
+      }
+    }
+    return null;
+  }
+
+  try {
+    const raw = await callAISync({ systemPrompt, userPrompt: userPrompt || systemPrompt, maxTokens: 512, temperature: 0.2, timeout: 25000, waitMs: 45000 });
+    const classificacao = parseClassificacao(raw);
+    if (classificacao) {
+      return res.json(classificacao);
+    }
+  } catch (err: any) {
+    console.error('[classify-question] erro IA:', err?.message);
+  }
+
+  return res.json({ subject: subject || '', method: '', topic: '' });
+  } catch (err) {
+    console.error('[classify-question] fatal:', err);
+    return res.status(503).json({ error: "Erro ao classificar a questão." });
   }
 });
 
