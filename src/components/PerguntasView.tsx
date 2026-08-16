@@ -4,6 +4,7 @@ import type { Question, QuestionMeta, TriProfile, QuestionResponse } from '../ty
 import AdPlaceholder from './AdPlaceholder';
 import MathRenderer from './MathRenderer';
 import LoadingOverlay from './LoadingOverlay';
+import { getParamsForQuestion, generateQuestionId } from '../lib/tri-params';
 
 function cleanText(s: string): string {
   if (!s || typeof s !== 'string') return s || '';
@@ -163,6 +164,22 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
     const q = questions.find(q => q.id === questionId);
     if (q && optionLetter !== q.correctAnswer && onWrongAnswer) {
       onWrongAnswer(q.area, 'pergunta-ia', { statement: q.statement || '' });
+    }
+
+    if (onSaveResponses && q) {
+      onSaveResponses([{
+        id: generateQuestionId('pergunta-ia', q.statement || ''),
+        userId: '',
+        questionId: q.id,
+        selectedAnswer: optionLetter,
+        correctAnswer: q.correctAnswer,
+        isCorrect: optionLetter === q.correctAnswer,
+        subject: q.area,
+        source: 'pergunta-ia' as const,
+        itemParams: getParamsForQuestion('pergunta-ia'),
+        responseTimeMs: undefined,
+        createdAt: Date.now(),
+      }]);
     }
   };
 

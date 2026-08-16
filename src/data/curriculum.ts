@@ -14,6 +14,8 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'mat-num-mmc-mdc', title: 'MMC e MDC', description: 'Mínimo múltiplo comum e máximo divisor comum. Decomposição em fatores primos.', difficulty: 1, estimatedMinutes: 20 },
           { id: 'mat-num-fraccoes', title: 'Frações e Decimais', description: 'Operações com frações, frações geratrizes, dízimas periódicas.', difficulty: 1, estimatedMinutes: 30 },
           { id: 'mat-num-potencia', title: 'Potenciação e Radiciação', description: 'Propriedades de potências, raiz quadrada, cubica, n-ésima. Expressões com radicais.', difficulty: 2, estimatedMinutes: 30 },
+          { id: 'mat-num-expressoes', title: 'Expressões Algébricas', description: 'Simplificação, fatoração, produtos notáveis, identidades trigonométricas.', difficulty: 2, estimatedMinutes: 30 },
+          { id: 'mat-num-numerabilidade', title: 'Numerabilidade', description: 'Leitura e interpretação de grandes números, notação científica, prefixos do SI.', difficulty: 1, estimatedMinutes: 20 },
         ],
       },
       {
@@ -37,6 +39,7 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'mat-geo-espacial', title: 'Geometria Espacial', description: 'Prismas, cilindros, pirâmides, cones, esferas. Volume e área superficial.', difficulty: 2, estimatedMinutes: 35 },
           { id: 'mat-geo-analitica', title: 'Geometria Analítica', description: 'Distância entre pontos, equações de retas, ponto médio, ângulo entre retas.', difficulty: 3, estimatedMinutes: 35 },
           { id: 'mat-geo-semelhanca', title: 'Semelhança e Congruência', description: 'Critérios de semelhança e congruência, Teorema de Tales, razão trigonométrica.', difficulty: 2, estimatedMinutes: 30 },
+          { id: 'mat-geo-area-perimetro', title: 'Área e Perímetro Avançado', description: 'Decomposição de figuras, polígonos irregulares, figuras mistas, aplicação de fórmulas.', difficulty: 2, estimatedMinutes: 30 },
         ],
       },
       {
@@ -68,6 +71,15 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'mat-prog-pg', title: 'Progressão Geométrica (PG)', description: 'Razão, termo geral, soma dos n primeiros termos, soma infinita.', difficulty: 2, estimatedMinutes: 30 },
         ],
       },
+      {
+        id: 'mat-analise-combinatoria',
+        title: 'Análise Combinatória',
+        description: 'Princípios contagem, arranjos, permutações, combinações e aplicações.',
+        chapters: [
+          { id: 'mat-ac-principios', title: 'Princípio Multiplicativo e Aditivo', description: 'Contagem sistemática, árvores de possibilidades, soma e produto de eventos.', difficulty: 2, estimatedMinutes: 25 },
+          { id: 'mat-ac-formas', title: 'Arranjo, Permutação e Combinação', description: 'Fórmulas, distinção entre ordenados e não ordenados, repetição e sem repetição.', difficulty: 3, estimatedMinutes: 35 },
+        ],
+      },
     ],
   },
   {
@@ -85,6 +97,9 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'nat-bio-ecologia', title: 'Ecologia', description: 'Cadeias alimentares, ciclos biogeoquímicos, biomas, impacto ambiental.', difficulty: 1, estimatedMinutes: 25 },
           { id: 'nat-bio-fisiologia', title: 'Fisiologia Humana', description: 'Sistemas: circulatório, respiratório, digestório, nervoso, excretor, reprodutor.', difficulty: 2, estimatedMinutes: 35 },
           { id: 'nat-bio-evolucao', title: 'Evolução', description: 'Teorias evolutivas, seleção natural, especiação, homologia e analogia.', difficulty: 2, estimatedMinutes: 25 },
+          { id: 'nat-bio-biotecnologia', title: 'Biotecnologia e GMO', description: 'Organismos geneticamente modificados, transgenicidade, riscos e benefícios.', difficulty: 3, estimatedMinutes: 30 },
+          { id: 'nat-bio-saude', title: 'Saúde e Doenças', description: 'Epidemiologia, imunologia, vacinas, doenças crônico-degenerativas e infectocontagiosas.', difficulty: 2, estimatedMinutes: 30 },
+          { id: 'nat-bio-genetica-molecular', title: 'Genética Molecular', description: 'Dogma central, expressão gênica, mutações, PCR, sequenciamento genômico.', difficulty: 3, estimatedMinutes: 35 },
         ],
       },
       {
@@ -97,6 +112,9 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'nat-quim-solucoes', title: 'Soluções', description: 'Tipos, concentração (molaridade, massica, fracional), diluição, propriedades coligativas.', difficulty: 2, estimatedMinutes: 30 },
           { id: 'nat-quim-organica', title: 'Química Orgânica', description: 'Hidrocarbonetos, funções orgânicas, nomenclatura, isomeria, reações orgânicas.', difficulty: 2, estimatedMinutes: 35 },
           { id: 'nat-quim-ambiental', title: 'Química Ambiental', description: 'Poluição, camada de ozônio, efeito estufa, combustíveis, energia renovável.', difficulty: 1, estimatedMinutes: 20 },
+          { id: 'nat-quim-inorganica', title: 'Química Inorgânica', description: 'Tabela periódica,-metais, não-metais, semimetais, oxidação, hidrólise salina.', difficulty: 2, estimatedMinutes: 30 },
+          { id: 'nat-quim-cinetica', title: 'Cinética Química', description: 'Velocidade de reação, fatores que influenciam, energia de ativação, catalisadores.', difficulty: 3, estimatedMinutes: 30 },
+          { id: 'nat-quim-eletroquimica', title: 'Eletroquímica', description: 'Pilhas, eletrólise, oxirredução, potencial de eletrodo, energia livre de Gibbs.', difficulty: 3, estimatedMinutes: 35 },
         ],
       },
       {
@@ -110,6 +128,9 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'nat-fis-termo', title: 'Termodinâmica', description: 'Temperatura, calor, primeiro e segundo leis, transformações termodinâmicas.', difficulty: 2, estimatedMinutes: 30 },
           { id: 'nat-fis-eletricidade', title: 'Eletricidade', description: 'Carga, campo elétrico, potencial, circuitos, Lei de Ohm, potência elétrica.', difficulty: 2, estimatedMinutes: 35 },
           { id: 'nat-fis-optica', title: 'Óptica', description: 'Propagação reta, reflexão, refração, espelhos, lentes, fenômenos ondulatórios.', difficulty: 2, estimatedMinutes: 30 },
+          { id: 'nat-fis-ondas', title: 'Ondas e Acústica', description: 'Propagação ondulatória, som, ultrassom, infrassom, interferência e ressonância.', difficulty: 2, estimatedMinutes: 30 },
+          { id: 'nat-fis-nuclear', title: 'Física Nuclear', description: 'Radioatividade, fissão, fusão, meia-vida, energia nuclear, riscos e aplicações.', difficulty: 3, estimatedMinutes: 30 },
+          { id: 'nat-fis-magnetismo', title: 'Magnetismo', description: 'Campo magnético, eletromagnetismo, indução, Lei de Faraday, aplicação em motores.', difficulty: 3, estimatedMinutes: 35 },
         ],
       },
     ],
@@ -130,6 +151,9 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'hum-hist-vargas', title: 'Era Vargas', description: 'Revolução de 30,Estado Novo, trabalhismo,getúlio, legado.', difficulty: 2, estimatedMinutes: 25 },
           { id: 'hum-hist-ditadura', title: 'Ditadura Militar', description: '1964-1985, AI-5, "milagre econômico", resistência, redemocratização.', difficulty: 2, estimatedMinutes: 25 },
           { id: 'hum-hist-contemporaneo', title: 'Brasil Contemporâneo', description: 'Nova República, PT, Lula, Dilma, Bolsonaro, Lula III, desafios atuais.', difficulty: 1, estimatedMinutes: 20 },
+          { id: 'hum-hist-guerra1', title: 'Primeira Guerra Mundial', description: 'Causas, frente ocidental e oriental, consequências geopolíticas, Tratado de Versalhes.', difficulty: 2, estimatedMinutes: 30 },
+          { id: 'hum-hist-guerra2', title: 'Segunda Guerra Mundial', description: 'Nazismo, Holocausto, frentes de batalha, Pearl Harbor, bombas atômicas, ONU.', difficulty: 2, estimatedMinutes: 35 },
+          { id: 'hum-hist-guerrafria', title: 'Guerra Fria', description: 'EUA vs URSS, corrida armamentista, espacialismo, Cortina de Ferro, dissolução da URSS.', difficulty: 2, estimatedMinutes: 30 },
         ],
       },
       {
@@ -142,6 +166,8 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'hum-geo-urbanizacao', title: 'Urbanização', description: 'Metrópoles, periferização, mobilidade urbana, segregação espacial.', difficulty: 2, estimatedMinutes: 25 },
           { id: 'hum-geo-geopolitica', title: 'Geopolítica Mundial', description: 'Guerra Fria, blocos econômicos, ONU, conflitos contemporâneos, BRICS.', difficulty: 2, estimatedMinutes: 30 },
           { id: 'hum-geo-meioambiente', title: 'Meio Ambiente', description: 'Desmatamento, aquecimento global, recursos hídricos, energia, sustentabilidade.', difficulty: 1, estimatedMinutes: 25 },
+          { id: 'hum-geo-cartografia', title: 'Cartografia', description: 'Leitura de mapas, escalas, coordenadas, projeções, imagens de satélite, GIS.', difficulty: 1, estimatedMinutes: 25 },
+          { id: 'hum-geo-agricultura', title: 'Agricultura e Soberania Alimentar', description: 'Agronegócio, reforma agrária, segurança alimentar, transgênicos, cadeia produtiva.', difficulty: 2, estimatedMinutes: 30 },
         ],
       },
       {
@@ -152,6 +178,7 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'hum-fil-antiga', title: 'Filosofia Antiga', description: 'Sócrates, Platão, Aristóteles. Lógica, ética, política, metafísica.', difficulty: 2, estimatedMinutes: 30 },
           { id: 'hum-fil-moderna', title: 'Filosofia Moderna', description: 'Descartes, Hobbes, Locke, Rousseau, Kant. Iluminismo, contrato social.', difficulty: 2, estimatedMinutes: 30 },
           { id: 'hum-fil-contemporanea', title: 'Filosofia Contemporânea', description: 'Marx, Nietzsche, Freud, Sartre, Habermas. Existencialismo, pós-modernidade.', difficulty: 3, estimatedMinutes: 30 },
+          { id: 'hum-fil-estetica', title: 'Estética e Arte', description: 'Conceito de beleza, subjetividade, função da arte, cultura visual, crítica estética.', difficulty: 3, estimatedMinutes: 30 },
         ],
       },
       {
@@ -162,6 +189,7 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'hum-soc-classicos', title: 'Sociologia Clássica', description: 'Durkheim, Weber, Marx. Fato social, burocracia, luta de classes.', difficulty: 2, estimatedMinutes: 30 },
           { id: 'hum-soc-movimentos', title: 'Movimentos Sociais', description: 'Sindicalismo, feminismo, movimentos negros, LGBTQ+, ambientalismo.', difficulty: 2, estimatedMinutes: 25 },
           { id: 'hum-soc-contemporanea', title: 'Sociedade Contemporânea', description: 'Globalização, desigualdade, cultura de massa, mídia, educação.', difficulty: 1, estimatedMinutes: 25 },
+          { id: 'hum-soc-cultura', title: 'Cultura e Identidade', description: 'Identidade de gênero, etnia, multiculturalismo, patrimônio cultural, cultura digital.', difficulty: 2, estimatedMinutes: 30 },
         ],
       },
     ],
@@ -178,6 +206,7 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'lin-int-leitura', title: 'Técnicas de Leitura', description: 'Leitura rápida, skimming, scanning, sublinhado, resumo.', difficulty: 1, estimatedMinutes: 20 },
           { id: 'lin-int-generos', title: 'Gêneros Textuais', description: 'Notícia, artigo, crônica, charges, anúncios, textos informativos e opinativos.', difficulty: 1, estimatedMinutes: 25 },
           { id: 'lin-int-inferencia', title: 'Inferência e Implicitude', description: 'O que o texto não diz diretamente. Pressuposto, subentendido, ironia.', difficulty: 2, estimatedMinutes: 25 },
+          { id: 'lin-int-charges', title: 'Leitura Crítica de Charges e Propagandas', description: 'Análise de imagens, intenção comunicativa, discurso implícito, persuasão visual.', difficulty: 2, estimatedMinutes: 25 },
         ],
       },
       {
@@ -190,6 +219,7 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'lin-gra-concordancia', title: 'Concordância Verbal e Nominal', description: 'Regras de concordância, sujeito coletivo, expressões partitivas.', difficulty: 2, estimatedMinutes: 25 },
           { id: 'lin-gra-regencia', title: 'Regência e Crase', description: 'Regência verbal e nominal, crase facultativa, obrigatória, proibida.', difficulty: 2, estimatedMinutes: 30 },
           { id: 'lin-gra-pontuacao', title: 'Pontuação', description: 'Vírgula, ponto e vírgula, dois-pontos, ponto final, travessão, parênteses.', difficulty: 2, estimatedMinutes: 25 },
+          { id: 'lin-gra-sintaxe-oracao', title: 'Sintaxe da Oração', description: 'Classificação das orações: subordinadas, coordenadas, advérbias, reduzidas.', difficulty: 3, estimatedMinutes: 30 },
         ],
       },
       {
@@ -237,6 +267,8 @@ export const CURRICULUM: CurriculumSubject[] = [
           { id: 'red-mec-conectivos', title: 'Coesão e Conectivos', description: 'Adição, causalidade, consecutiva, adversativa, condicional, concessiva.', difficulty: 1, estimatedMinutes: 20 },
           { id: 'red-mec-norma', title: 'Norma Culta (C1)', description: 'Concordância, regência, crase, pontuação, vocabulário preciso.', difficulty: 2, estimatedMinutes: 30 },
           { id: 'red-mec-intervencao', title: 'Proposta de Intervenção', description: 'Agentes, ações, meios, finalidades, detalhamento. Erros comuns.', difficulty: 2, estimatedMinutes: 25 },
+          { id: 'red-mec-estrategias', title: 'Estratégias de Prova', description: 'Gerenciamento de tempo, leitura do tema, planejamento da redação, revisão final.', difficulty: 1, estimatedMinutes: 20 },
+          { id: 'red-mec-repertorio-cientifico', title: 'Repertório Científico', description: 'Uso de dados, estudos, artigos acadêmicos e teorias como base argumentativa.', difficulty: 3, estimatedMinutes: 35 },
         ],
       },
     ],

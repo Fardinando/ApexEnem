@@ -556,6 +556,7 @@ export default function App() {
               activityLogs={activityLogs}
               gamificationStats={gamificationStats}
               achievements={allAchievements}
+              triProfile={triProfile}
             />
           )}
           {activeTab === 'redacao' && (
@@ -609,6 +610,7 @@ export default function App() {
               gamificationStats={gamificationStats}
               achievements={allAchievements}
               setActiveTab={setActiveTab}
+              triProfile={triProfile}
             />
           )}
         </Suspense>

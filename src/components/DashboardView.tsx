@@ -17,10 +17,12 @@ import {
   Clock,
   Trophy,
   Zap,
-  Star
+  Star,
+  Target,
 } from 'lucide-react';
-import { UserProfile, EssayCorrection, ActivityLog } from '../types';
+import { UserProfile, EssayCorrection, ActivityLog, TriProfile } from '../types';
 import { getLevelFromXp, getLevelTitle, type GamificationStats, type Achievement } from '../lib/gamification';
+import { triScore, thetaToLabel, thetaToColor, getMinimumResponsesForReliable } from '../lib/tri';
 import AdPlaceholder from './AdPlaceholder';
 
 interface DashboardViewProps {
@@ -31,6 +33,7 @@ interface DashboardViewProps {
   activityLogs: ActivityLog[];
   gamificationStats: GamificationStats;
   achievements: Achievement[];
+  triProfile?: TriProfile;
 }
 
 export default function DashboardView({ 
@@ -41,6 +44,7 @@ export default function DashboardView({
   activityLogs,
   gamificationStats,
   achievements,
+  triProfile,
 }: DashboardViewProps) {
   const [hoveredPoint, setHoveredPoint] = useState<number | null>(null);
 
@@ -266,6 +270,36 @@ export default function DashboardView({
           </div>
 
         </div>
+
+        {/* TRI Score Widget */}
+        {triProfile && Object.keys(triProfile.subjectThetas).length > 0 && (
+          <div id="bento-tri" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-5 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
+            <div className="flex justify-between items-center mb-4">
+              <div className="flex items-center gap-1.5">
+                <Target className="h-4.5 w-4.5 text-blue-500" />
+                <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">Nota TRI</h3>
+              </div>
+              <span className="text-[9px] px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded font-mono font-bold">Escala ENEM</span>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              {['Matemática', 'Humanas', 'Natureza', 'Linguagens'].map(subject => {
+                const theta = triProfile.subjectThetas[subject] || 0;
+                const score = triScore(theta);
+                const total = triProfile.totalResponses[subject] || 0;
+                const reliable = total >= getMinimumResponsesForReliable();
+                const color = thetaToColor(theta);
+                return (
+                  <div key={subject} className="p-3 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-center space-y-1">
+                    <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">{subject}</span>
+                    <span className="text-xl font-display font-black block" style={{ color }}>{score}</span>
+                    <span className="text-[8px] block" style={{ color }}>{thetaToLabel(theta)}</span>
+                    {!reliable && <span className="text-[7px] text-yellow-500 block">{total} resp.</span>}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        )}
 
         {/* Bento Card 3: Line Chart (Evolução em Redação) - Large Column */}
         <div id="bento-chart-line" className="md:col-span-8 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card flex flex-col justify-between space-y-4">

@@ -25,8 +25,9 @@ import {
   Shield,
   Activity,
 } from 'lucide-react';
-import { UserProfile, EssayCorrection, ActivityLog, WrongAnswer, SimuladoQuestion } from '../types';
+import { UserProfile, EssayCorrection, ActivityLog, WrongAnswer, SimuladoQuestion, TriProfile } from '../types';
 import { getLevelFromXp, getLevelTitle, type GamificationStats, type Achievement } from '../lib/gamification';
+import { triScore, thetaToLabel, thetaToColor, getMinimumResponsesForReliable } from '../lib/tri';
 import AdPlaceholder from './AdPlaceholder';
 
 interface PerfilViewProps {
@@ -38,6 +39,7 @@ interface PerfilViewProps {
   gamificationStats: GamificationStats;
   achievements: Achievement[];
   setActiveTab: (tab: string) => void;
+  triProfile?: TriProfile;
 }
 
 export default function PerfilView({
@@ -49,6 +51,7 @@ export default function PerfilView({
   gamificationStats,
   achievements,
   setActiveTab,
+  triProfile,
 }: PerfilViewProps) {
   const levelInfo = getLevelFromXp(currentUser.totalXp || 0);
   const levelTitle = getLevelTitle(levelInfo.level);
@@ -463,6 +466,59 @@ export default function PerfilView({
               })
             )}
           </div>
+        </div>
+
+        {/* TRI Score Section */}
+        <div id="bento-profile-tri" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
+          <div className="flex justify-between items-center mb-5">
+            <div className="flex items-center gap-1.5">
+              <Target className="h-4.5 w-4.5 text-blue-500" />
+              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">Nota TRI por Matéria</h3>
+            </div>
+            <span className="text-[10px] px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded font-mono font-bold">
+              Escala ENEM (500±100)
+            </span>
+          </div>
+
+          {!triProfile || Object.keys(triProfile.subjectThetas).length === 0 ? (
+            <div className="py-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
+              <Target className="h-8 w-8 text-blue-300 mx-auto mb-2" />
+              <p className="text-xs font-bold text-slate-500">Nenhum dado TRI ainda</p>
+              <p className="text-[10px] text-slate-400 mt-1">Responda questões para calcular sua nota TRI.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {['Matemática', 'Humanas', 'Natureza', 'Linguagens'].map(subject => {
+                const theta = triProfile.subjectThetas[subject] || 0;
+                const score = triScore(theta);
+                const total = triProfile.totalResponses[subject] || 0;
+                const reliable = total >= getMinimumResponsesForReliable();
+                const barPct = Math.max(5, Math.min(100, ((score - 200) / 600) * 100));
+                const color = thetaToColor(theta);
+                const label = thetaToLabel(theta);
+                return (
+                  <div key={subject} className="p-3 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl space-y-2">
+                    <div className="flex justify-between items-center">
+                      <span className="text-[10px] font-mono text-slate-500 uppercase font-bold">{subject}</span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[9px] text-slate-400">{total} resp.</span>
+                        {!reliable && <span className="text-[8px] px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded font-bold">Em progresso</span>}
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <div className="flex-1 h-3 bg-slate-200/50 dark:bg-slate-800/50 rounded-full overflow-hidden">
+                        <div className="h-full rounded-full transition-all duration-700" style={{ width: `${barPct}%`, backgroundColor: color }} />
+                      </div>
+                      <span className="text-sm font-display font-black w-14 text-right" style={{ color }}>{score}</span>
+                    </div>
+                    <div className="flex justify-between items-center">
+                      <span className="text-[9px] font-bold" style={{ color }}>{label}</span>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* Wrong Answers Breakdown */}

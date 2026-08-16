@@ -30,6 +30,7 @@ import { renderToString } from 'katex';
 import { SimuladoConfig, SimuladoQuestion, SimuladoState, WrongAnswer, QuestionMeta, TriProfile, QuestionResponse } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
+import { getParamsForQuestion, generateQuestionId } from '../lib/tri-params';
 
 interface SimuladosViewProps {
   onSaveSimuladoResult: (scorePercent: number, subject: string) => void;
@@ -284,6 +285,23 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
           }
         });
       }
+
+      const timerResponses: QuestionResponse[] = simulado.questions
+        .filter(q => q.userAnswer)
+        .map(q => ({
+          id: generateQuestionId('simulado', q.statement || ''),
+          userId: '',
+          questionId: q.id,
+          selectedAnswer: q.userAnswer || '',
+          correctAnswer: q.correctAnswer,
+          isCorrect: q.userAnswer === q.correctAnswer,
+          subject: simulado.config.subject !== 'Geral' ? simulado.config.subject : (questionDisciplinesRef.current.get(q.id) ? API_TO_DISCIPLINE_DISPLAY[questionDisciplinesRef.current.get(q.id)!] : 'Matemática'),
+          source: 'simulado' as const,
+          itemParams: getParamsForQuestion('simulado'),
+          responseTimeMs: undefined,
+          createdAt: Date.now(),
+        }));
+      onSaveResponses?.(timerResponses);
     }
   }, [timerExpired]);
 
@@ -519,6 +537,23 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
         }
       });
     }
+
+    const responses: QuestionResponse[] = simulado.questions
+      .filter(q => q.userAnswer)
+      .map(q => ({
+        id: generateQuestionId('simulado', q.statement || ''),
+        userId: '',
+        questionId: q.id,
+        selectedAnswer: q.userAnswer || '',
+        correctAnswer: q.correctAnswer,
+        isCorrect: q.userAnswer === q.correctAnswer,
+        subject: simulado.config.subject !== 'Geral' ? simulado.config.subject : (questionDisciplinesRef.current.get(q.id) ? API_TO_DISCIPLINE_DISPLAY[questionDisciplinesRef.current.get(q.id)!] : 'Matemática'),
+        source: 'simulado' as const,
+        itemParams: getParamsForQuestion('simulado'),
+        responseTimeMs: undefined,
+        createdAt: Date.now(),
+      }));
+    onSaveResponses?.(responses);
   };
 
   const handleConfirmCancelExam = () => {
