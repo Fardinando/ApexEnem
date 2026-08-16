@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useMemo, useCallback, lazy, Suspense } from 'react';
 import { supabase, getProfile, fetchEssays, fetchSimulados, fetchLogs, saveEssay, saveSimulado, saveLog, upsertProfile, fetchLearningProgress, saveLearningProgress, deleteEssaysByUser, deleteSimuladosByUser, deleteLogsByUser } from './lib/supabase';
-import type { EssayCorrection, ActivityLog, WrongAnswer, QuestionMeta } from './types';
+import type { EssayCorrection, ActivityLog, WrongAnswer, QuestionMeta, QuestionResponse, TriProfile } from './types';
 import { classifyQuestion } from './lib/api';
+import { computeTriProfile, EMPTY_TRI_PROFILE } from './lib/tri';
+import { saveQuestionResponses, fetchQuestionResponses } from './lib/supabase';
 import { calculateStreak, XP_REWARDS, getUnlockedAchievements, getAllAchievements, computeGamificationStats, type GamificationStats } from './lib/gamification';
 import { loadSpecialAds } from './lib/ads';
 import AuthView from './components/AuthView';
@@ -61,6 +63,7 @@ export default function App() {
     const saved = localStorage.getItem('ApexEnem_longest_streak');
     return saved ? parseInt(saved, 10) : 0;
   });
+  const [triProfile, setTriProfile] = useState<TriProfile>(EMPTY_TRI_PROFILE);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
   const navigate = (path: string) => {
@@ -160,6 +163,11 @@ export default function App() {
         setSimuladosHistory(sims);
         setActivityLogs(logs);
         if (progress?.wrongAnswers) setWrongAnswers(progress.wrongAnswers);
+
+        const responses = await fetchQuestionResponses(session.user.id).catch(() => [] as QuestionResponse[]);
+        if (!cancelled && responses.length > 0) {
+          setTriProfile(computeTriProfile(responses));
+        }
       } catch (err) {
         console.error("Failed to load user data:", err);
       }
@@ -198,6 +206,15 @@ export default function App() {
       }).catch(() => {});
     }
   };
+
+  const handleSaveQuestionResponses = useCallback(async (responses: QuestionResponse[]) => {
+    if (!session?.user?.id || responses.length === 0) return;
+    await saveQuestionResponses(session.user.id, responses).catch(() => {});
+    const allResponses = await fetchQuestionResponses(session.user.id).catch(() => [] as QuestionResponse[]);
+    if (allResponses.length > 0) {
+      setTriProfile(computeTriProfile(allResponses));
+    }
+  }, [session?.user?.id]);
 
   useEffect(() => {
     if (isDarkMode) {
@@ -548,13 +565,15 @@ export default function App() {
             />
           )}
           {activeTab === 'perguntas' && (
-            <PerguntasView onWrongAnswer={handleWrongAnswer} hardSubjects={profile?.hard_subjects || []} />
+            <PerguntasView onWrongAnswer={handleWrongAnswer} hardSubjects={profile?.hard_subjects || []} triProfile={triProfile} onSaveResponses={handleSaveQuestionResponses} />
           )}
           {activeTab === 'simulados' && (
             <SimuladosView
               onSaveSimuladoResult={handleSaveSimuladoResult}
               onWrongAnswer={handleWrongAnswer}
               accessToken={session.access_token}
+              triProfile={triProfile}
+              onSaveResponses={handleSaveQuestionResponses}
             />
           )}
           {activeTab === 'aprendizado' && (
@@ -565,6 +584,8 @@ export default function App() {
               accessToken={session.access_token}
               wrongAnswers={wrongAnswers}
               onWrongAnswer={handleWrongAnswer}
+              triProfile={triProfile}
+              onSaveResponses={handleSaveQuestionResponses}
             />
           )}
           {activeTab === 'configuracoes' && (

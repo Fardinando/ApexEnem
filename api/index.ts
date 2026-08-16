@@ -109,7 +109,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/supabase/keep-alive",
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
-    "/lesson", "/lesson-v2", "/questoes-ai", "/stats", "/simulado-explanation",
+    "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
     "/pratica-questoes", "/classify-question", "/ai-task"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
@@ -712,6 +712,51 @@ app.post("/api/lesson-v2", async (req, res) => {
   } catch (err) {
     console.error('[lesson-v2] fatal:', err);
     return res.status(503).json({ error: "Erro ao gerar aula. Tente novamente." });
+  }
+});
+
+app.post("/api/chapter-lesson", async (req, res) => {
+  res.setHeader('Content-Type', 'application/json');
+  try {
+    const { subject, moduleTitle, chapterTitle, chapterDescription, difficulty, weakTopics } = req.body;
+    if (!subject || !chapterTitle) return res.status(400).json({ error: "subject and chapterTitle are required" });
+
+  const promptDef = PROMPTS.chapterLesson;
+  const built = promptDef.buildPrompt(subject, moduleTitle || '', chapterTitle, chapterDescription || '', difficulty || 2, weakTopics);
+  const systemPrompt = typeof built === 'string' ? built : built.system;
+  const userPrompt = typeof built === 'string' ? '' : built.user;
+
+  function parseChapterJson(content: string): any | null {
+    const cleaned = content.replace(/```json/g, '').replace(/```/g, '').trim();
+    try {
+      const parsed = JSON.parse(cleaned);
+      if (parsed.chapterTitle && Array.isArray(parsed.sections) && parsed.sections.length >= 5) return parsed;
+    } catch {
+      const match = cleaned.match(/\{[\s\S]*\}/);
+      if (match) {
+        try {
+          const parsed = JSON.parse(match[0]);
+          if (parsed.chapterTitle && Array.isArray(parsed.sections)) return parsed;
+        } catch {}
+      }
+    }
+    return null;
+  }
+
+  try {
+    const raw = await callAI({ systemPrompt, userPrompt: userPrompt || systemPrompt, maxTokens: 12288, temperature: 0.85, timeout: 25000 });
+    const lesson = parseChapterJson(raw);
+    if (lesson) return res.json(lesson);
+  } catch (err: any) {
+    if (err?.message?.startsWith("PENDING:")) {
+      return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Aula do capítulo em processamento via IA..." });
+    }
+  }
+
+  return res.status(503).json({ error: "IA não conseguiu gerar a aula do capítulo. Tente novamente." });
+  } catch (err) {
+    console.error('[chapter-lesson] fatal:', err);
+    return res.status(503).json({ error: "Erro ao gerar aula do capítulo. Tente novamente." });
   }
 });
 

@@ -27,7 +27,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { renderToString } from 'katex';
-import { SimuladoConfig, SimuladoQuestion, SimuladoState, WrongAnswer, QuestionMeta } from '../types';
+import { SimuladoConfig, SimuladoQuestion, SimuladoState, WrongAnswer, QuestionMeta, TriProfile, QuestionResponse } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd, incrementRewardCounter } from './RewardAdOverlay';
 
@@ -36,6 +36,8 @@ interface SimuladosViewProps {
   onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula', meta?: QuestionMeta) => void;
   accessToken?: string;
   wrongAnswers?: WrongAnswer[];
+  triProfile?: TriProfile;
+  onSaveResponses?: (responses: QuestionResponse[]) => void;
 }
 
 const ENEM_API_BASE = 'https://api.enem.dev/v1';
@@ -214,7 +216,7 @@ async function fetchENEMQuestions(subject: SubjectOption, count: number): Promis
   }));
 }
 
-export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, accessToken, wrongAnswers }: SimuladosViewProps) {
+export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, accessToken, wrongAnswers, triProfile, onSaveResponses }: SimuladosViewProps) {
   const [selectedSubject, setSelectedSubject] = useState<SubjectOption>('Recomendado');
   const [questionCount, setQuestionCount] = useState(5);
 

@@ -205,3 +205,84 @@ export interface Exercise {
 
   explanation: string;
 }
+
+export interface ItemParameters {
+  a: number;
+  b: number;
+  c: number;
+}
+
+export interface QuestionResponse {
+  id: string;
+  userId: string;
+  questionId: string;
+  selectedAnswer: string;
+  correctAnswer: string;
+  isCorrect: boolean;
+  subject: string;
+  source: 'simulado' | 'pergunta-ia' | 'aula' | 'pratica';
+  itemParams: ItemParameters;
+  responseTimeMs?: number;
+  createdAt: number;
+}
+
+export interface TriProfile {
+  subjectThetas: Record<string, number>;
+  totalResponses: Record<string, number>;
+  lastUpdated: number;
+}
+
+export interface ChapterSection {
+  type: 'introduction' | 'theory' | 'example' | 'exercise' | 'insight' | 'summary' | 'quiz';
+  title: string;
+  content: string;
+  options?: string[];
+  correctIndex?: number;
+  explanation?: string;
+  questions?: ChapterQuizQuestion[];
+}
+
+export interface ChapterQuizQuestion {
+  statement: string;
+  options: string[];
+  correctIndex: number;
+  explanation: string;
+}
+
+export interface ChapterLesson {
+  chapterTitle: string;
+  moduleTitle: string;
+  subject: string;
+  sections: ChapterSection[];
+}
+
+export interface CurriculumChapter {
+  id: string;
+  title: string;
+  description: string;
+  difficulty: 1 | 2 | 3;
+  estimatedMinutes: number;
+}
+
+export interface CurriculumModule {
+  id: string;
+  title: string;
+  description: string;
+  chapters: CurriculumChapter[];
+}
+
+export interface CurriculumSubject {
+  id: string;
+  name: string;
+  modules: CurriculumModule[];
+}
+
+export interface ChapterProgress {
+  chapterId: string;
+  completed: boolean;
+  score: number;
+  sectionsViewed: number;
+  totalSections: number;
+  startedAt: number;
+  completedAt?: number;
+}

@@ -196,3 +196,61 @@ export async function fetchLearningProgress(email: string) {
     return null;
   }
 }
+
+export async function saveQuestionResponses(userId: string, responses: any[]) {
+  try {
+    const mapped = responses.map(r => ({
+      id: r.id,
+      user_id: userId,
+      question_id: r.questionId,
+      selected_answer: r.selectedAnswer,
+      correct_answer: r.correctAnswer,
+      is_correct: r.isCorrect,
+      subject: r.subject,
+      source: r.source,
+      item_params: r.itemParams,
+      response_time_ms: r.responseTimeMs || null,
+    }));
+    const { error } = await supabase
+      .from('question_responses')
+      .insert(mapped);
+    if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
+      return false;
+    }
+    return !error;
+  } catch {
+    return false;
+  }
+}
+
+export async function fetchQuestionResponses(userId: string, subject?: string) {
+  try {
+    let query = supabase
+      .from('question_responses')
+      .select('*')
+      .eq('user_id', userId)
+      .order('created_at', { ascending: false });
+    if (subject) {
+      query = query.eq('subject', subject);
+    }
+    const { data, error } = await query;
+    if (error?.message?.includes('relation') || error?.message?.includes('does not exist')) {
+      return [];
+    }
+    return (data || []).map((r: any) => ({
+      id: r.id,
+      userId: r.user_id,
+      questionId: r.question_id,
+      selectedAnswer: r.selected_answer,
+      correctAnswer: r.correct_answer,
+      isCorrect: r.is_correct,
+      subject: r.subject,
+      source: r.source,
+      itemParams: r.item_params,
+      responseTimeMs: r.response_time_ms,
+      createdAt: new Date(r.created_at).getTime(),
+    }));
+  } catch {
+    return [];
+  }
+}

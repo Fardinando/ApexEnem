@@ -644,6 +644,86 @@ Se não conseguir identificar um campo, retorne string vazia nesse campo.`,
       MODELS.openRouterFree(),
     ],
   },
+
+  chapterLesson: {
+    id: 'chapterLesson',
+    label: 'Gerar aula completa de capítulo',
+    buildPrompt: (subject: string, moduleTitle: string, chapterTitle: string, chapterDescription: string, difficulty: number, weakTopics?: string[]) => {
+      const weakSection = weakTopics?.length
+        ? `\nPontos fracos do aluno: ${weakTopics.join(', ')}. Foque nesses tópicos com mais exemplos e exercícios.`
+        : '';
+      const diffLabel = difficulty === 1 ? 'básico' : difficulty === 2 ? 'intermediário' : 'avançado';
+      const areaContext: Record<string, string> = {
+        'Matemática': 'Matemática do ENEM: Álgebra, Geometria, Trigonometria, Estatística, Probabilidade, Funções, Números.',
+        'Natureza': 'Ciências da Natureza do ENEM: Física, Química, Biologia.',
+        'Humanas': 'Ciências Humanas do ENEM: História, Geografia, Filosofia, Sociologia.',
+        'Linguagens': 'Linguagens e Códigos do ENEM: Interpretação, gramática, literatura, línguas.',
+        'Redação': 'Redação do ENEM: 5 competências, estrutura, teses, argumentos, coesão.',
+      };
+      const context = areaContext[subject] || subject;
+      return {
+        system: `Você é um professor universitário e especialista no ENEM. Gere uma AULA COMPLETA e DETALHADA sobre o capítulo "${chapterTitle}" do módulo "${moduleTitle}" na área "${subject}".
+
+Área: ${context}
+Módulo: ${moduleTitle}
+Capítulo: ${chapterTitle}
+Descrição: ${chapterDescription}
+Nível: ${diffLabel} ${weakSection}
+
+### ESTRUTURA OBRIGATÓRIA
+
+Gere EXATAMENTE 8-12 seções de conteúdo DENSO e DETALHADO. Cada seção deve ter NO MÍNIMO 500 caracteres de conteúdo real e informativo.
+
+**Seções obrigatórias (nesta ordem):**
+
+1. **introduction**: Introdução motivadora. Por que este assunto é importante? Onde aparece no ENEM? Contextualize com dados reais e situações do cotidiano brasileiro.
+
+2. **theory** (2-3 seções): Teoria COMPLETA e PROFUNDA. Definições formais, fórmulas com demonstração quando relevante, leis, conceitos-chave, propriedades. Use exemplos numéricos para ilustrar cada conceito. Inclua "Lembre-se" com pontos-chave e "Cuidado!" com erros comuns.
+
+3. **example** (2-3 seções): Exemplos RESOLVIDOS PASSO A PASSO. Cada exemplo deve ter: enunciado claro, resolução detalhada (múltiplos passos), resposta final destacada. Varie a dificuldade (um fácil, um intermediário, um difícil).
+
+4. **exercise** (1-2 seções): Exercícios para o aluno resolver. Questões estilo ENEM com enunciado contextualizado, 4 alternativas, e explicação DETALHADA da resposta correta com análise de cada alternativa (por que está certa/errada).
+
+5. **insight**: Dicas exclusivas para o ENEM. Erros que a banca espera que você cometa. Atalhos de resolução. Conexões com outros tópicos. O que cai frequente.
+
+6. **summary**: Resumo COMPLETO do capítulo. Lista de fórmulas essenciais, checklist de tópicos, "O que você deve lembrar na prova".
+
+7. **quiz**: Quiz de fixação com 3-4 questões variadas (diferentes dos exercícios anteriores). Cada questão: enunciado longo e contextualizado, 4 alternativas, gabarito e explicação detalhada.
+
+### JSON exato:
+{
+  "chapterTitle": "${chapterTitle}",
+  "moduleTitle": "${moduleTitle}",
+  "subject": "${subject}",
+  "sections": [
+    {"type":"introduction","title":"Introdução","content":"Texto motivador longo e detalhado..."},
+    {"type":"theory","title":"Conceitos Fundamentais","content":"Definições, fórmulas, demonstrações..."},
+    {"type":"example","title":"Exemplo 1: Caso Básico","content":"Enunciado + resolução passo a passo detalhada..."},
+    {"type":"theory","title":"Aprofundamento Teórico","content":"Propriedades avançadas, conexões..."},
+    {"type":"example","title":"Exemplo 2: Caso Intermediário","content":"Resolução completa com múltiplos passos..."},
+    {"type":"exercise","title":"Pratique!","content":"Questão estilo ENEM...","options":["A","B","C","D"],"correctIndex":1,"explanation":"Resolução passo a passo..."},
+    {"type":"insight","title":"Dicas para o ENEM","content":"Erros comuns, atalhos, o que a banca cobra..."},
+    {"type":"summary","title":"Resumo do Capítulo","content":"Fórmulas, checklist, pontos-chave..."},
+    {"type":"quiz","title":"Quiz de Fixação","questions":[{"statement":"...","options":["A","B","C","D"],"correctIndex":2,"explanation":"..."},{"statement":"...","options":["A","B","C","D"],"correctIndex":0,"explanation":"..."}]}
+  ]
+}
+
+IMPORTANTE:
+- Cada seção de conteúdo DEVE ter NO MÍNIMO 500 caracteres de texto real e informativo
+- Não gere conteúdo superficial ou genérico — seja específico e detalhado
+- Use exemplos numéricos reais, dados do ENEM, situações do cotidiano brasileiro
+- O quiz deve ter questões DIFFERENTES dos exercícios anteriores
+- correctIndex deve variar entre 0,1,2,3
+- Retorne APENAS o JSON válido`,
+        user: `Gere a aula completa do capítulo "${chapterTitle}" (${moduleTitle} - ${subject}). Nível: ${diffLabel}. Retorne APENAS o JSON com 8-12 seções de conteúdo DENSO e DETALHADO:`,
+      }
+    },
+    models: [
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
+    ],
+  },
 }
 
 export function getLoadingMessages(): string[] {

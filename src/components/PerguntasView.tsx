@@ -1,6 +1,6 @@
 import React, { useState, useRef } from 'react';
 import { Sparkles, HelpCircle, Check, X, RefreshCw, BookOpen, Bug, Send, ExternalLink } from 'lucide-react';
-import type { Question, QuestionMeta } from '../types';
+import type { Question, QuestionMeta, TriProfile, QuestionResponse } from '../types';
 import AdPlaceholder from './AdPlaceholder';
 import MathRenderer from './MathRenderer';
 import LoadingOverlay from './LoadingOverlay';
@@ -24,9 +24,11 @@ function cleanText(s: string): string {
 interface PerguntasViewProps {
   onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula', meta?: QuestionMeta) => void;
   hardSubjects?: string[];
+  triProfile?: TriProfile;
+  onSaveResponses?: (responses: QuestionResponse[]) => void;
 }
 
-export default function PerguntasView({ onWrongAnswer, hardSubjects = [] }: PerguntasViewProps) {
+export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triProfile, onSaveResponses }: PerguntasViewProps) {
   const [selectedArea, setSelectedArea] = useState<'Matemática' | 'Humanas' | 'Natureza' | 'Linguagens'>('Matemática');
   const [questions, setQuestions] = useState<Question[]>([]);
   const [isLoading, setIsLoading] = useState(false);

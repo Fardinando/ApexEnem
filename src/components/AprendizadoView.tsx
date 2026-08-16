@@ -40,11 +40,20 @@ import type {
   PraticaAula,
   PraticaItem,
   QuestionMeta,
+  TriProfile,
+  QuestionResponse,
+  CurriculumSubject,
+  CurriculumModule,
+  CurriculumChapter,
+  ChapterLesson,
+  ChapterProgress,
 } from '../types';
 import { INITIAL_CHAPTERS, CHAPTER_EXERCISES } from '../data/learning-exercises';
 import { SUBJECT_TOPICS, getSubjectTopics, type SubjectTopic } from '../data/learning-topics';
+import { CURRICULUM, getSubjectCurriculum } from '../data/curriculum';
 import { saveLearningProgress, fetchLearningProgress } from '../lib/supabase';
 import { computeTopicDifficulty } from '../lib/gamification';
+import { getParamsForQuestion, generateQuestionId } from '../lib/tri-params';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, {
   shouldShowRewardAd,
@@ -78,10 +87,12 @@ interface AprendizadoViewProps {
   accessToken?: string;
   wrongAnswers?: WrongAnswer[];
   onWrongAnswer?: (subject: string, source: 'simulado' | 'pergunta-ia' | 'redacao' | 'aula', meta?: QuestionMeta) => void;
+  triProfile?: TriProfile;
+  onSaveResponses?: (responses: QuestionResponse[]) => void;
 }
 
 type MainTab = 'cursinho' | 'questoes';
-type ViewMode = 'categories' | 'subjects' | 'lesson' | 'questoes-play' | 'pratica-play';
+type ViewMode = 'categories' | 'subjects' | 'lesson' | 'questoes-play' | 'pratica-play' | 'modules' | 'chapters' | 'chapter-lesson';
 
 interface CategoryCard {
   id: string;
@@ -220,6 +231,8 @@ export default function AprendizadoView({
   accessToken,
   wrongAnswers,
   onWrongAnswer,
+  triProfile,
+  onSaveResponses,
 }: AprendizadoViewProps) {
   const [mainTab, setMainTab] = useState<MainTab>('cursinho');
   const [viewMode, setViewMode] = useState<ViewMode>('categories');
@@ -301,6 +314,15 @@ export default function AprendizadoView({
     'cursinho' | 'questoes' | null
   >(null);
   const [supabaseConfigured, setSupabaseConfigured] = useState(false);
+
+  const [curriculumSubject, setCurriculumSubject] = useState<CurriculumSubject | null>(null);
+  const [selectedModule, setSelectedModule] = useState<CurriculumModule | null>(null);
+  const [selectedChapter, setSelectedChapter] = useState<CurriculumChapter | null>(null);
+  const [chapterLesson, setChapterLesson] = useState<ChapterLesson | null>(null);
+  const [chapterStep, setChapterStep] = useState(0);
+  const [loadingChapterLesson, setLoadingChapterLesson] = useState(false);
+  const [chapterLessonError, setChapterLessonError] = useState(false);
+  const [chapterProgressMap, setChapterProgressMap] = useState<Record<string, ChapterProgress>>({});
   const [syncStatus, setSyncStatus] = useState<string>('Local');
 
   const weakAreas = getWeakAreas(
@@ -633,9 +655,13 @@ export default function AprendizadoView({
 
   const handleSelectSubject = (cat: CategoryCard) => {
     if (cat.area === 'Recomendado' && wrongAnswers && wrongAnswers.length < 3) return;
-    setActiveCategory(cat);
-    setActiveTopic(null);
-    setViewMode('subjects');
+    if (mainTab === 'cursinho') {
+      handleSelectCurriculumSubject(cat);
+    } else {
+      setActiveCategory(cat);
+      setActiveTopic(null);
+      setViewMode('subjects');
+    }
   };
 
   const handleStartCursinhoTopic = (topic: SubjectTopic) => {
@@ -766,6 +792,13 @@ export default function AprendizadoView({
     setPraticaActive(false);
     setLoadingLesson(false);
     setLoadingPratica(false);
+    setCurriculumSubject(null);
+    setSelectedModule(null);
+    setSelectedChapter(null);
+    setChapterLesson(null);
+    setChapterStep(0);
+    setLoadingChapterLesson(false);
+    setChapterLessonError(false);
   };
 
   const totalLessonSteps = aiLessonCycle
@@ -872,6 +905,84 @@ export default function AprendizadoView({
         )}
       </div>
     );
+  };
+
+  const handleSelectCurriculumSubject = (cat: CategoryCard) => {
+    const subjectName = cat.area === 'Recomendado' ? (wrongAnswers?.[0]?.subject || 'Matemática') : cat.area;
+    const curr = getSubjectCurriculum(subjectName);
+    if (curr) {
+      setCurriculumSubject(curr);
+      setActiveCategory(cat);
+      setViewMode('modules');
+    }
+  };
+
+  const handleSelectModule = (mod: CurriculumModule) => {
+    setSelectedModule(mod);
+    setViewMode('chapters');
+  };
+
+  const handleSelectChapter = async (chapter: CurriculumChapter) => {
+    setSelectedChapter(chapter);
+    setLoadingChapterLesson(true);
+    setChapterLessonError(false);
+    setChapterLesson(null);
+    setChapterStep(0);
+
+    const weakTopics = (wrongAnswers || []).map(w => w.topic || w.method || w.subject).filter(Boolean);
+
+    try {
+      const base = import.meta.env.VITE_API_BASE || '';
+      const res = await fetch(`${base}/api/chapter-lesson`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          subject: curriculumSubject?.name || 'Matemática',
+          moduleTitle: selectedModule?.title || '',
+          chapterTitle: chapter.title,
+          chapterDescription: chapter.description,
+          difficulty: chapter.difficulty,
+          weakTopics: weakTopics.slice(0, 5),
+        }),
+      });
+
+      if (!res.ok) throw new Error('Erro ao gerar aula');
+      const data = await res.json();
+
+      if (data.pending) {
+        const pollRes = await pollChapterLesson(data.cura);
+        if (pollRes) { setChapterLesson(pollRes); setViewMode('chapter-lesson'); }
+        else setChapterLessonError(true);
+      } else if (data.chapterTitle && Array.isArray(data.sections)) {
+        setChapterLesson(data);
+        setViewMode('chapter-lesson');
+      } else {
+        setChapterLessonError(true);
+      }
+    } catch {
+      setChapterLessonError(true);
+    } finally {
+      setLoadingChapterLesson(false);
+    }
+  };
+
+  const pollChapterLesson = async (cura: string): Promise<ChapterLesson | null> => {
+    const base = import.meta.env.VITE_API_BASE || '';
+    const deadline = Date.now() + 90000;
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, 3000));
+      try {
+        const s = await fetch(`${base}/api/status/${cura}`);
+        if (!s.ok) continue;
+        const d = await s.json();
+        if (d?.status === 'done' && d?.result) {
+          const raw = typeof d.result === 'string' ? d.result : JSON.stringify(d.result);
+          try { return JSON.parse(raw); } catch { return null; }
+        }
+        if (d?.status === 'error') return null;
+      } catch { /* retry */ }
+    }
+    return null;
   };
 
   const handleStartQuizFromPratica = () => {
@@ -1084,6 +1195,202 @@ export default function AprendizadoView({
   };
 
   const renderCursinhoTab = () => {
+    if (viewMode === 'modules' && curriculumSubject) {
+      return (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={handleBackToCategories} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
+            <h2 className="font-display font-black text-base text-slate-800 dark:text-slate-100">{curriculumSubject.name}</h2>
+            <div className="w-16" />
+          </div>
+          <p className="text-xs text-slate-400 text-center">Escolha um módulo para começar</p>
+          <div className="grid gap-4">
+            {curriculumSubject.modules.map((mod, idx) => (
+              <div key={mod.id} className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => handleSelectModule(mod)}>
+                <div className="flex items-start gap-4">
+                  <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center text-blue-600 dark:text-blue-400 font-display font-black text-sm shrink-0">
+                    {idx + 1}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <h3 className="font-display font-bold text-sm text-slate-800 dark:text-slate-100">{mod.title}</h3>
+                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">{mod.description}</p>
+                    <p className="text-[10px] text-slate-300 dark:text-slate-600 mt-2">{mod.chapters.length} capítulos</p>
+                  </div>
+                  <span className="text-slate-300 dark:text-slate-600 text-lg shrink-0">→</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (viewMode === 'chapters' && selectedModule) {
+      return (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={() => { setSelectedModule(null); setViewMode('modules'); }} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
+            <div className="text-center">
+              <p className="text-[10px] text-slate-400">{curriculumSubject?.name}</p>
+              <h2 className="font-display font-black text-base text-slate-800 dark:text-slate-100">{selectedModule.title}</h2>
+            </div>
+            <div className="w-16" />
+          </div>
+          <div className="grid gap-3">
+            {selectedModule.chapters.map((ch, idx) => {
+              const progress = chapterProgressMap[ch.id];
+              const isCompleted = progress?.completed;
+              return (
+                <div key={ch.id} className={`bg-white dark:bg-[#1e293b] rounded-2xl border p-4 shadow-sm hover:shadow-md transition cursor-pointer ${isCompleted ? 'border-green-200 dark:border-green-800/40' : 'border-slate-200 dark:border-slate-800'}`} onClick={() => handleSelectChapter(ch)}>
+                  <div className="flex items-center gap-3">
+                    <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-display font-bold text-xs shrink-0 ${isCompleted ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'}`}>
+                      {isCompleted ? '✓' : idx + 1}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h3 className="font-display font-bold text-xs text-slate-800 dark:text-slate-100">{ch.title}</h3>
+                      <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{ch.description}</p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${ch.difficulty === 1 ? 'bg-green-100 text-green-600' : ch.difficulty === 2 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}`}>
+                        {ch.difficulty === 1 ? 'Básico' : ch.difficulty === 2 ? 'Intermediário' : 'Avançado'}
+                      </span>
+                      <p className="text-[9px] text-slate-300 mt-1">{ch.estimatedMinutes}min</p>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      );
+    }
+
+    if (viewMode === 'chapter-lesson' && chapterLesson && selectedChapter) {
+      const totalSections = chapterLesson.sections.length;
+      const section = chapterLesson.sections[chapterStep];
+      if (!section) return null;
+      const isQuiz = section.type === 'quiz';
+      const isInteractive = section.type === 'exercise' && Array.isArray(section.options) && section.options.length >= 2;
+
+      return (
+        <div className="space-y-6 animate-fade-in">
+          <div className="flex items-center justify-between">
+            <button type="button" onClick={() => { setChapterLesson(null); setViewMode('chapters'); setChapterStep(0); }} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
+            <div className="flex items-center gap-2">
+              <div className="w-32 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
+                <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${((chapterStep + 1) / totalSections) * 100}%` }} />
+              </div>
+              <span className="text-[10px] font-mono text-slate-400">{chapterStep + 1}/{totalSections}</span>
+            </div>
+          </div>
+          <div className="text-center">
+            <p className="text-[10px] text-slate-400">{chapterLesson.moduleTitle}</p>
+            <h2 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">{chapterLesson.chapterTitle}</h2>
+          </div>
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
+            <div className="flex items-center gap-2">
+              <span className="px-2.5 py-1 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 rounded-lg text-[10px] font-bold uppercase tracking-wider">
+                {section.type === 'introduction' ? '📖 Introdução' : section.type === 'theory' ? '📚 Teoria' : section.type === 'example' ? '✏️ Exemplo Resolvido' : section.type === 'exercise' ? '🎯 Exercício' : section.type === 'insight' ? '💡 Dicas ENEM' : section.type === 'summary' ? '📋 Resumo' : section.type === 'quiz' ? '🏆 Quiz de Fixação' : '📚 Conteúdo'}
+              </span>
+            </div>
+            <h3 className="font-display font-bold text-base text-slate-800 dark:text-slate-100">{section.title}</h3>
+            <div className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">
+              <MathRenderer text={section.content} />
+            </div>
+            {isInteractive && section.options && (
+              <div className="space-y-3 pt-2">
+                {section.options.map((opt, i) => (
+                  <button key={i} type="button" className="w-full text-left p-3 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50 text-xs text-slate-700 dark:text-slate-300 transition cursor-pointer">
+                    <span className="font-bold mr-2">{String.fromCharCode(65 + i)})</span>{opt}
+                  </button>
+                ))}
+                {section.explanation && (
+                  <div className="p-3 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800/40 rounded-xl text-xs text-slate-700 dark:text-slate-300">
+                    <p className="font-bold text-green-700 dark:text-green-400 mb-1">Resposta:</p>
+                    <MathRenderer text={section.explanation} />
+                  </div>
+                )}
+              </div>
+            )}
+            {isQuiz && section.questions && (
+              <div className="space-y-4 pt-2">
+                {section.questions.map((q, qi) => (
+                  <div key={qi} className="p-4 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl space-y-2">
+                    <p className="text-xs font-bold text-slate-600 dark:text-slate-300">Questão {qi + 1}</p>
+                    <p className="text-xs text-slate-700 dark:text-slate-300"><MathRenderer text={q.statement} /></p>
+                    {q.options.map((opt, oi) => (
+                      <div key={oi} className={`text-[11px] px-3 py-1.5 rounded-lg border ${oi === q.correctIndex ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 font-bold' : 'border-slate-200 dark:border-slate-800 text-slate-500'}`}>
+                        {String.fromCharCode(65 + oi)}) {opt}
+                      </div>
+                    ))}
+                    <p className="text-[10px] text-slate-400 italic"><MathRenderer text={q.explanation} /></p>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end">
+            <button type="button" onClick={() => {
+              if (chapterStep + 1 >= totalSections) {
+                const newProgress: ChapterProgress = { chapterId: selectedChapter.id, completed: true, score: 100, sectionsViewed: totalSections, totalSections, startedAt: Date.now(), completedAt: Date.now() };
+                setChapterProgressMap(prev => ({ ...prev, [selectedChapter.id]: newProgress }));
+                setViewMode('chapters');
+                setChapterStep(0);
+                setChapterLesson(null);
+              } else {
+                setChapterStep(prev => prev + 1);
+              }
+            }} className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow cursor-pointer">
+              {chapterStep + 1 >= totalSections ? '✓ Concluir Capítulo' : 'Próxima Seção →'}
+            </button>
+          </div>
+        </div>
+      );
+    }
+
+    if (viewMode === 'chapter-lesson' && loadingChapterLesson) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+          <div className="relative">
+            <span className="text-7xl animate-bounce">🐐</span>
+            <div className="absolute -top-1 -right-1 h-5 w-5 bg-blue-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full animate-pulse border border-white">IA</div>
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Preparando sua aula...</h3>
+            <p className="text-xs text-slate-400 max-w-xs">O Cabrito está preparando o conteúdo completo de <strong>{selectedChapter?.title}</strong>!</p>
+          </div>
+          <div className="flex gap-1.5">
+            {[0, 1, 2].map(i => (
+              <div key={i} className="w-2.5 h-2.5 rounded-full bg-blue-500 animate-bounce" style={{ animationDelay: `${i * 0.15}s` }} />
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    if (viewMode === 'chapter-lesson' && chapterLessonError) {
+      return (
+        <div className="flex flex-col items-center justify-center py-16 space-y-6 animate-fade-in">
+          <div className="relative">
+            <span className="text-7xl">🐐</span>
+            <div className="absolute -top-1 -right-1 h-5 w-5 bg-red-500 text-white text-[9px] font-extrabold flex items-center justify-center rounded-full border border-white">✕</div>
+          </div>
+          <div className="text-center space-y-2">
+            <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Não consegui gerar a aula</h3>
+            <p className="text-xs text-slate-400 max-w-xs">O serviço pode estar sobrecarregado. Tente novamente.</p>
+          </div>
+          <div className="flex flex-col gap-2 w-full max-w-xs">
+            <button type="button" onClick={() => selectedChapter && handleSelectChapter(selectedChapter)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5">
+              <RefreshCw className="h-4 w-4" /><span>Tentar Novamente</span>
+            </button>
+            <button type="button" onClick={() => { setChapterLessonError(false); setViewMode('chapters'); }} className="w-full py-3 border border-slate-200 dark:border-slate-800 text-slate-500 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-xl text-xs font-bold transition cursor-pointer">
+              Voltar aos Capítulos
+            </button>
+          </div>
+        </div>
+      );
+    }
+
     if (viewMode === 'subjects') {
       return renderSubjectTopics();
     }

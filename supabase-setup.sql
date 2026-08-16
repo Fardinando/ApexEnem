@@ -121,7 +121,33 @@ CREATE POLICY "all_access" ON public."ApexEnem_progress"
   USING (auth.jwt() ->> 'email' = email)
   WITH CHECK (auth.jwt() ->> 'email' = email);
 
--- 6. TRIGGER: Auto-criar profile ao registrar
+-- 6. TABELA: question_responses (TRI)
+CREATE TABLE IF NOT EXISTS public.question_responses (
+  id TEXT PRIMARY KEY,
+  user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+  question_id TEXT NOT NULL,
+  selected_answer TEXT NOT NULL,
+  correct_answer TEXT NOT NULL,
+  is_correct BOOLEAN NOT NULL,
+  subject TEXT NOT NULL,
+  source TEXT NOT NULL,
+  item_params JSONB NOT NULL,
+  response_time_ms INTEGER,
+  created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+CREATE INDEX IF NOT EXISTS idx_qr_user ON public.question_responses(user_id);
+CREATE INDEX IF NOT EXISTS idx_qr_user_subject ON public.question_responses(user_id, subject);
+
+ALTER TABLE public.question_responses ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "qr_read" ON public.question_responses;
+DROP POLICY IF EXISTS "qr_insert" ON public.question_responses;
+
+CREATE POLICY "qr_read" ON public.question_responses FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "qr_insert" ON public.question_responses FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 7. TRIGGER: Auto-criar profile ao registrar
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS TRIGGER AS $$
 BEGIN
