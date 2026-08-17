@@ -289,16 +289,21 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
   const renderUrl = process.env.RENDER_PROCESS_URL;
   if (!renderUrl) throw new Error("RENDER_PROCESS_URL not set");
   const base = renderUrl.replace(/\/+$/, "");
-  const prompt = opts.systemPrompt ? `${opts.systemPrompt}\n\n${opts.userPrompt}` : opts.userPrompt;
   const jobType = opts.type || "general";
   const cura = crypto.randomUUID();
 
-  // Await POST to Render (fast ~2s) so the job is actually created before Vercel kills the function
   try {
     const r = await fetch(`${base}/api/process`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cura, prompt, type: jobType }),
+      body: JSON.stringify({
+        cura,
+        prompt: opts.userPrompt,
+        type: jobType,
+        systemPrompt: opts.systemPrompt || null,
+        maxTokens: opts.maxTokens || 8192,
+        temperature: opts.temperature ?? 0.85,
+      }),
       signal: AbortSignal.timeout(5000),
     });
     if (!r.ok) console.error("[callAI] Render /api/process returned", r.status);
@@ -307,7 +312,6 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
     throw new Error("Serviço de IA indisponível. Tente novamente.");
   }
 
-  // Throw PENDING so endpoint returns {pending, cura} to frontend for polling
   throw new Error(`PENDING:${cura}`);
 }
 
@@ -317,14 +321,20 @@ async function callAISync(opts: { systemPrompt?: string; userPrompt: string; max
   const renderUrl = process.env.RENDER_PROCESS_URL;
   if (!renderUrl) throw new Error("RENDER_PROCESS_URL not set");
   const base = renderUrl.replace(/\/+$/, "");
-  const prompt = opts.systemPrompt ? `${opts.systemPrompt}\n\n${opts.userPrompt}` : opts.userPrompt;
   const jobType = opts.type || "general";
   const cura = crypto.randomUUID();
 
   const r = await fetch(`${base}/api/process`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ cura, prompt, type: jobType }),
+    body: JSON.stringify({
+      cura,
+      prompt: opts.userPrompt,
+      type: jobType,
+      systemPrompt: opts.systemPrompt || null,
+      maxTokens: opts.maxTokens || 8192,
+      temperature: opts.temperature ?? 0.85,
+    }),
     signal: AbortSignal.timeout(5000),
   });
   if (!r.ok) throw new Error("Serviço de IA indisponível.");
@@ -524,7 +534,7 @@ app.post("/api/questions", async (req, res) => {
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cura, prompt }),
+      body: JSON.stringify({ cura, prompt, type: "questions" }),
       signal: AbortSignal.timeout(5000),
     });
     if (!r.ok) console.error("[questions] Render returned", r.status);
@@ -936,7 +946,7 @@ Retorne APENAS um JSON no formato: {"explanations": {"id_da_questao": "explicaç
       await fetch(`${base}/api/process`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cura, prompt: `${systemPrompt}\n\n${batchPrompt}`, type: "general" }),
+        body: JSON.stringify({ cura, prompt: batchPrompt, type: "general", systemPrompt }),
         signal: AbortSignal.timeout(5000),
       });
     } catch {}
