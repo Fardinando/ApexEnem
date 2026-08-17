@@ -534,7 +534,7 @@ app.post("/api/questions", async (req, res) => {
     const r = await fetch(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cura, prompt, type: "questions" }),
+      body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 16384, temperature: 0.9 }),
       signal: AbortSignal.timeout(5000),
     });
     if (!r.ok) console.error("[questions] Render returned", r.status);
