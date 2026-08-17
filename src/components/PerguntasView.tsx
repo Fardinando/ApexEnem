@@ -93,14 +93,14 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
 
       const data = await res.json();
 
-      if (!res.ok || !data?.cura) {
+      if (!res.ok || !data?.curas) {
         const errMsg = data?.error || `Erro ${res.status}: não foi possível iniciar geração.`;
         setError(errMsg);
         setIsLoading(false);
         return;
       }
 
-      const cura = data.cura;
+      const curas: string[] = data.curas;
       const pollStart = Date.now();
       const POLL_INTERVAL = 2500;
       const MAX_POLL = 120000;
@@ -115,11 +115,18 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
         await new Promise(r => setTimeout(r, POLL_INTERVAL));
 
         try {
-          const sr = await fetch(`/api/questions/status/${cura}`);
-          const status = await sr.json();
+          const sr = await fetch(`/api/questions/status-batch?curas=${curas.join(',')}`);
+          const results = await sr.json();
 
-          if (status.status === 'done' && Array.isArray(status.result) && status.result.length > 0) {
-            const enriched = status.result.map((q: any, i: number) => ({
+          if (!Array.isArray(results)) return poll();
+
+          const allDone = results.every((r: any) => r.status === 'done' || r.status === 'error');
+          const allQuestions = results
+            .filter((r: any) => r.status === 'done' && Array.isArray(r.result))
+            .flatMap((r: any) => r.result);
+
+          if (allQuestions.length > 0 && allDone) {
+            const enriched = allQuestions.map((q: any, i: number) => ({
               ...q,
               id: q.id || `ai-q-${Date.now()}-${i}`,
               area: q.area || selectedArea,
@@ -131,8 +138,8 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
             return;
           }
 
-          if (status.status === 'error') {
-            setError(status.error || 'Falha na geração de questões. Tente novamente.');
+          if (allDone && allQuestions.length === 0) {
+            setError('Nenhuma questão válida foi gerada. Tente novamente.');
             setIsLoading(false);
             return;
           }

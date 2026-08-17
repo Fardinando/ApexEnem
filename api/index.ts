@@ -523,26 +523,39 @@ app.post("/api/questions", async (req, res) => {
     fetchReferenceQuestions(targetArea, 4).catch(() => []),
     new Promise<any[]>(r => setTimeout(() => r([]), 1500))
   ]);
-  const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions, hardSubjects) as string;
-
-  const cura = crypto.randomUUID();
 
   const url = `${renderUrl.replace(/\/+$/, "")}/api/process`;
-  console.log("[questions] Sending to:", url, "prompt length:", prompt.length);
+  console.log("[questions] Sending", numQuestions, "parallel jobs to:", url);
 
-  try {
-    const r = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 16384, temperature: 0.9 }),
-      signal: AbortSignal.timeout(5000),
-    });
-    if (!r.ok) console.error("[questions] Render returned", r.status);
-    return res.json({ cura });
-  } catch (err: any) {
-    console.error("[questions] Failed to reach Render:", err?.name, err?.message);
-    return res.status(502).json({ error: "Render service unavailable: " + (err?.message || "timeout") });
+  const curas: string[] = [];
+  const jobs = [];
+
+  for (let i = 0; i < numQuestions; i++) {
+    const cura = crypto.randomUUID();
+    curas.push(cura);
+    const prompt = promptDef.buildPrompt(1, targetArea, referenceQuestions, hardSubjects) as string;
+    jobs.push(
+      fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 4096, temperature: 0.9 }),
+        signal: AbortSignal.timeout(5000),
+      }).catch(err => {
+        console.error("[questions] Failed job", i, ":", err?.message);
+        return null;
+      })
+    );
   }
+
+  const results = await Promise.all(jobs);
+  const successCount = results.filter(r => r && r.ok).length;
+  console.log("[questions] Submitted", successCount, "of", numQuestions, "jobs");
+
+  if (successCount === 0) {
+    return res.status(502).json({ error: "Render service unavailable" });
+  }
+
+  return res.json({ curas });
 });
 
 app.get("/api/questions/status/:cura", async (req, res) => {
@@ -570,6 +583,39 @@ app.get("/api/questions/status/:cura", async (req, res) => {
     console.error("[questions/status] Failed:", err?.name, err?.message);
     return res.status(502).json({ error: "Render unavailable: " + (err?.message || "timeout") });
   }
+});
+
+app.get("/api/questions/status-batch", async (req, res) => {
+  const renderUrl = process.env.RENDER_PROCESS_URL;
+  if (!renderUrl) {
+    return res.status(503).json({ error: "Serviço indisponível." });
+  }
+
+  const curasParam = req.query.curas as string;
+  if (!curasParam) {
+    return res.status(400).json({ error: "curas query param required" });
+  }
+
+  const curas = curasParam.split(",").filter(Boolean);
+  const results = await Promise.all(curas.map(async (cura) => {
+    try {
+      const url = `${renderUrl.replace(/\/+$/, "")}/api/status/${cura}`;
+      const ctrl = new AbortController();
+      const tid = setTimeout(() => ctrl.abort(), 10000);
+      const r = await fetch(url, { signal: ctrl.signal });
+      clearTimeout(tid);
+      if (!r.ok) return { cura, status: "error", result: null };
+      const data = await r.json();
+      if (data.status === "done" && Array.isArray(data.result)) {
+        data.result = sanitizeQuestions(data.result);
+      }
+      return data;
+    } catch {
+      return { cura, status: "error", result: null };
+    }
+  }));
+
+  return res.json(results);
 });
 
 app.get("/api/ai-task/:cura", async (req, res) => {
