@@ -8,6 +8,7 @@ app.use(express.json({ limit: "2mb" }));
 
 const PORT = process.env.PORT || 3001;
 
+// ─── API Keys ────────────────────────────────────────────────────────────────
 const googleApiKey = process.env.GOOGLE_API_KEY;
 
 const groqKeys = [
@@ -39,13 +40,13 @@ function nextOrKey() {
   return k;
 }
 
+// ─── Job Queue ───────────────────────────────────────────────────────────────
 const jobs = new Map();
-
 const MAX_JOBS = 250;
-const JOB_TIMEOUT_MS = 240000;       // deadline global por job (4 min)
-const STALE_PROCESSING_MS = 420000;  // processando há muito tempo => erro (7 min)
+const MAX_ACTIVE = 6;
+const JOB_TIMEOUT_MS = 240000;       // 4 min per job
+const STALE_PROCESSING_MS = 420000;   // 7 min => mark stale
 let activeJobs = 0;
-const MAX_ACTIVE = 6;                // concorrência máxima de processJob
 
 process.on("unhandledRejection", (reason) => {
   console.error("[unhandledRejection]", reason && reason.stack ? reason.stack : reason);
@@ -72,6 +73,7 @@ setInterval(() => {
   }
 }, 30000);
 
+// ─── JSON / Text Helpers ─────────────────────────────────────────────────────
 function extractJson(raw) {
   let t = raw.trim();
   t = t.replace(/```(?:json)?\s*/gi, "").replace(/\s*```/gi, "").trim();
@@ -98,96 +100,6 @@ function extractJson(raw) {
   return null;
 }
 
-async function callGroq(prompt, keyOverride, type) {
-  const key = keyOverride || nextGroqKey();
-  if (!key) throw new Error("no groq keys");
-  const sysMsg = type === "general"
-    ? "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON."
-    : "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text.";
-  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), 30000));
-  const fetchPromise = (async () => {
-    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-      body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
-        messages: [
-          { role: "system", content: sysMsg },
-          { role: "user", content: prompt },
-        ],
-        max_tokens: 8192,
-        temperature: 0.85,
-      }),
-    });
-    if (!r.ok) throw new Error(`groq ${r.status}`);
-    const d = await r.json();
-    const raw = d.choices?.[0]?.message?.content;
-    if (!raw) throw new Error("empty response");
-    return type === "general" ? raw.trim() : extractJson(raw);
-  })();
-  return Promise.race([fetchPromise, timer]);
-}
-
-async function callGemini(prompt, type) {
-  if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
-  const sysMsg = type === "general"
-    ? "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON."
-    : "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha.";
-  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), 30000));
-  const fetchPromise = (async () => {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        contents: [{ role: "user", parts: [{ text: prompt }] }],
-        systemInstruction: { parts: [{ text: sysMsg }] },
-        generationConfig: { temperature: 0.9, maxOutputTokens: 8192 },
-      }),
-    });
-    if (!r.ok) throw new Error(`gemini ${r.status}`);
-    const d = await r.json();
-    const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text;
-    if (!raw) throw new Error("empty response");
-    return type === "general" ? raw.trim() : extractJson(raw);
-  })();
-  return Promise.race([fetchPromise, timer]);
-}
-
-async function callOpenRouter(prompt, type) {
-  const key = nextOrKey();
-  if (!key) throw new Error("no openrouter keys");
-  const sysMsg = type === "general"
-    ? "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON."
-    : "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text.";
-  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), 15000));
-  const fetchPromise = (async () => {
-    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${key}`,
-        "HTTP-Referer": "https://apexenem.app",
-        "X-Title": "ApexAI",
-      },
-      body: JSON.stringify({
-        model: "google/gemma-4-31b-it:free",
-        messages: [
-          { role: "system", content: sysMsg },
-          { role: "user", content: prompt },
-        ],
-        max_tokens: 8192,
-        temperature: 0.85,
-      }),
-    });
-    if (!r.ok) throw new Error(`openrouter ${r.status}`);
-    const d = await r.json();
-    const raw = d.choices?.[0]?.message?.content;
-    if (!raw) throw new Error("empty response");
-    return type === "general" ? raw.trim() : extractJson(raw);
-  })();
-  return Promise.race([fetchPromise, timer]);
-}
-
 function stripCodeFences(s) {
   if (typeof s !== "string") return s;
   let t = s.trim();
@@ -211,17 +123,6 @@ function cleanText(s) {
   t = t.replace(/ {2,}/g, " ");
   t = t.replace(/\n{3,}/g, "\n\n");
   return t.trim();
-}
-
-function validateQuestions(qs) {
-  if (!Array.isArray(qs)) return false;
-  return qs.length > 0 && qs.every(q =>
-    q && typeof q.statement === "string" && q.statement.length > 30 &&
-    Array.isArray(q.options) && q.options.length >= 2 &&
-    q.options.every(o => typeof o === "object" && o !== null && typeof o.text === "string" && o.text.length > 0 && typeof o.letter === "string") &&
-    typeof q.correctAnswer === "string" && /^[A-E]$/.test(q.correctAnswer) &&
-    typeof q.explanation === "string" && q.explanation.length > 20
-  );
 }
 
 function fixEncoding(s) {
@@ -266,7 +167,6 @@ function normalizeOption(opt, idx) {
 }
 
 function normalizeQuestions(qs) {
-  const letters = "ABCDE";
   return qs.map((q, qi) => ({
     ...q,
     statement: fixEncoding(cleanText(q.statement)),
@@ -276,108 +176,189 @@ function normalizeQuestions(qs) {
   })).filter(q => q.options.length >= 2);
 }
 
-async function processJob(cura, prompt, attempt = 1, type = "questions") {
+function validateQuestions(qs) {
+  if (!Array.isArray(qs)) return false;
+  return qs.length > 0 && qs.every(q =>
+    q && typeof q.statement === "string" && q.statement.length > 30 &&
+    Array.isArray(q.options) && q.options.length >= 2 &&
+    q.options.every(o => typeof o === "object" && o !== null && typeof o.text === "string" && o.text.length > 0 && typeof o.letter === "string") &&
+    typeof q.correctAnswer === "string" && /^[A-E]$/.test(q.correctAnswer) &&
+    typeof q.explanation === "string" && q.explanation.length > 20
+  );
+}
+
+// ─── Provider Callers ────────────────────────────────────────────────────────
+const OR_MODELS = [
+  "nvidia/nemotron-3-nano-30b-a3b:free",
+  "nvidia/nemotron-nano-9b-v2:free",
+  "google/gemma-4-31b-it:free",
+];
+
+async function callGroq(sysMsg, userPrompt, key, maxTokens, temperature, timeoutMs) {
+  if (!key) throw new Error("no groq key");
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), timeoutMs || 60000));
+  const fetchPromise = (async () => {
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "system", content: sysMsg },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: maxTokens || 8192,
+        temperature: temperature || 0.85,
+      }),
+    });
+    if (!r.ok) throw new Error(`groq ${r.status}`);
+    const d = await r.json();
+    const raw = d.choices?.[0]?.message?.content;
+    if (!raw) throw new Error("empty response from groq");
+    return raw;
+  })();
+  return Promise.race([fetchPromise, timer]);
+}
+
+async function callGemini(sysMsg, userPrompt, maxTokens, temperature, timeoutMs) {
+  if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), timeoutMs || 60000));
+  const fetchPromise = (async () => {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        systemInstruction: { parts: [{ text: sysMsg }] },
+        generationConfig: { temperature: temperature || 0.85, maxOutputTokens: maxTokens || 8192 },
+      }),
+    });
+    if (!r.ok) throw new Error(`gemini ${r.status}`);
+    const d = await r.json();
+    const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) throw new Error("empty response from gemini");
+    return raw;
+  })();
+  return Promise.race([fetchPromise, timer]);
+}
+
+async function callOpenRouter(sysMsg, userPrompt, key, model, maxTokens, temperature, timeoutMs) {
+  if (!key) throw new Error("no openrouter key");
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), timeoutMs || 60000));
+  const fetchPromise = (async () => {
+    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        "HTTP-Referer": "https://apexenem.app",
+        "X-Title": "ApexAI",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: sysMsg },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: maxTokens || 8192,
+        temperature: temperature || 0.85,
+      }),
+    });
+    if (!r.ok) throw new Error(`openrouter ${r.status}`);
+    const d = await r.json();
+    const raw = d.choices?.[0]?.message?.content;
+    if (!raw) throw new Error("empty response from openrouter");
+    return raw;
+  })();
+  return Promise.race([fetchPromise, timer]);
+}
+
+// ─── Job Processor ───────────────────────────────────────────────────────────
+async function processJob(cura, opts, attempt = 1) {
   const job = jobs.get(cura);
   if (!job) return;
   job.attempts = attempt;
   job.startedAt = job.startedAt || Date.now();
   const deadline = job.startedAt + JOB_TIMEOUT_MS;
 
-  const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
-  const sysMsg = type === "general"
-    ? "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON."
-    : "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados.";
+  const { prompt, type, systemPrompt, maxTokens, temperature } = opts;
+  const isQuestions = type === "questions";
+  const mt = maxTokens || 8192;
+  const temp = temperature || 0.85;
 
-  async function callOrWithKey(key, model, timeout) {
-    const timeoutMs = timeout || 30000;
-    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error(`openrouter timeout after ${timeoutMs}ms`)), timeoutMs));
-    const fetchPromise = (async () => {
-      const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://apexenem.app", "X-Title": "ApexAI" },
-        body: JSON.stringify({ model, messages: [{ role: "system", content: sysMsg }, { role: "user", content: prompt }], max_tokens: 8192, temperature: 0.85 }),
-      });
-      if (!r.ok) throw new Error(`openrouter ${r.status}`);
-      const d = await r.json();
-      const raw = d.choices?.[0]?.message?.content;
-      if (!raw) throw new Error("empty");
-      return type === "general" ? raw.trim() : extractJson(raw);
-    })();
-    return Promise.race([fetchPromise, timer]);
+  const defaultSysMsg = isQuestions
+    ? "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados."
+    : "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON.";
+  const sysMsg = systemPrompt || defaultSysMsg;
+
+  // Build a list of provider calls to try (parallel then sequential)
+  function buildParallelBatch() {
+    const batch = [];
+    if (groqKeys.length > 0) batch.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[0], mt, temp, 70000) });
+    if (groqKeys.length > 1) batch.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[1], mt, temp, 70000) });
+    if (googleApiKey) batch.push({ name: "gemini", fn: () => callGemini(sysMsg, prompt, mt, temp, 70000) });
+    if (openRouterKeys.length > 0) batch.push({ name: `or-${OR_MODELS[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[0], OR_MODELS[0], mt, temp, 70000) });
+    if (openRouterKeys.length > 1) batch.push({ name: `or-${OR_MODELS[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[1], OR_MODELS[1], mt, temp, 70000) });
+    return batch;
+  }
+
+  function buildSequentialAttempts() {
+    const seq = [];
+    for (const k of groqKeys) seq.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(sysMsg, prompt, k, mt, temp, 60000) });
+    if (googleApiKey) seq.push({ name: "gemini", fn: () => callGemini(sysMsg, prompt, mt, temp, 60000) });
+    if (openRouterKeys.length > 0) {
+      for (const m of OR_MODELS) {
+        seq.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[0], m, mt, temp, 60000) });
+      }
+    }
+    if (openRouterKeys.length > 1) {
+      for (const m of OR_MODELS) {
+        seq.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[1], m, mt, temp, 60000) });
+      }
+    }
+    return seq;
   }
 
   async function tryOneOrThrow(name, fn) {
-    const result = await fn();
-    if (type === "general") {
-      if (result && typeof result === "string" && result.length > 0) return { name, value: stripCodeFences(result) };
-      throw new Error(`${name} returned empty text`);
+    const raw = await fn();
+    if (!raw || (typeof raw === "string" && raw.length === 0)) throw new Error(`${name} returned empty`);
+    if (isQuestions) {
+      const parsed = extractJson(raw);
+      if (!Array.isArray(parsed)) throw new Error(`${name} returned non-array`);
+      const normalized = normalizeQuestions(parsed);
+      if (!validateQuestions(normalized)) throw new Error(`${name} failed validation`);
+      return { name, value: normalized };
     }
-    if (Array.isArray(result)) {
-      const normalized = normalizeQuestions(result);
-      if (validateQuestions(normalized)) return { name, value: normalized };
-      throw new Error(`${name} failed validation`);
-    }
-    throw new Error(`${name} returned non-array`);
+    const text = stripCodeFences(typeof raw === "string" ? raw : JSON.stringify(raw));
+    if (!text) throw new Error(`${name} returned empty text`);
+    return { name, value: text };
   }
 
+  // ── Parallel batch ──
   console.log(`[${cura}] Attempt ${attempt}: trying parallel batch`);
-
-  const batch1 = [];
-  if (groqKeys.length > 0) batch1.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[0], type) });
-  if (groqKeys.length > 1) batch1.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(prompt, groqKeys[1], type) });
-  if (googleApiKey) batch1.push({ name: "gemini", fn: () => callGemini(prompt, type) });
-  if (openRouterKeys.length > 0) batch1.push({ name: `or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], orModels[0], 70000) });
-  if (openRouterKeys.length > 1) batch1.push({ name: `or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], orModels[1], 70000) });
-
+  const parallel = buildParallelBatch();
   try {
-    const parallelResult = await Promise.any(batch1.map(a => tryOneOrThrow(a.name, a.fn)));
+    const winner = await Promise.any(parallel.map(a => tryOneOrThrow(a.name, a.fn)));
     job.status = "done";
-    job.result = parallelResult.value;
+    job.result = winner.value;
     job.completedAt = Date.now();
-    console.log(`[${cura}] OK via ${parallelResult.name} (parallel)`);
+    console.log(`[${cura}] OK via ${winner.name} (parallel)`);
     return;
   } catch (e) {
     console.log(`[${cura}] Parallel batch failed (${e.errors?.length || 0} providers), trying sequential fallback`);
   }
 
-  const seqAttempts = [];
-  for (const k of groqKeys) {
-    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(prompt, k, type) });
-  }
-  if (googleApiKey) seqAttempts.push({ name: "gemini", fn: () => callGemini(prompt, type) });
-  if (openRouterKeys.length > 0) {
-    for (const m of orModels) {
-      seqAttempts.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[0], m, 60000) });
-    }
-  }
-  if (openRouterKeys.length > 1) {
-    for (const m of orModels) {
-      seqAttempts.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOrWithKey(openRouterKeys[1], m, 60000) });
-    }
-  }
-
+  // ── Sequential fallback ──
+  const seqAttempts = buildSequentialAttempts();
   for (const a of seqAttempts.slice(0, 12)) {
     if (Date.now() > deadline) break;
     try {
-      const result = await a.fn();
-      if (type === "general") {
-        if (result && typeof result === "string" && result.length > 0) {
-          job.status = "done";
-          job.result = stripCodeFences(result);
-          job.completedAt = Date.now();
-          console.log(`[${cura}] OK via ${a.name} (sequential general)`);
-          return;
-        }
-        throw new Error(`${a.name} returned empty text`);
-      }
-      const normalized = Array.isArray(result) ? normalizeQuestions(result) : null;
-      if (normalized && validateQuestions(normalized)) {
-        job.status = "done";
-        job.result = normalized;
-        job.completedAt = Date.now();
-        console.log(`[${cura}] OK via ${a.name} (sequential)`);
-        return;
-      }
+      const result = await tryOneOrThrow(a.name, a.fn);
+      job.status = "done";
+      job.result = result.value;
+      job.completedAt = Date.now();
+      console.log(`[${cura}] OK via ${a.name} (sequential)`);
+      return;
     } catch (err) {
       console.log(`[${cura}] seq ${a.name} failed: ${err.message?.slice(0, 60)}`);
       if (Date.now() > deadline) break;
@@ -385,11 +366,12 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
     }
   }
 
+  // ── Retry once ──
   if (attempt < 2 && Date.now() < deadline) {
     const delay = Math.min(15000, deadline - Date.now());
-    console.log(`[${cura}] All combos failed. Retry in ${delay/1000}s...`);
+    console.log(`[${cura}] All combos failed. Retry in ${delay / 1000}s...`);
     await new Promise(r => setTimeout(r, delay));
-    return processJob(cura, prompt, attempt + 1, type);
+    return processJob(cura, opts, attempt + 1);
   }
 
   job.status = "error";
@@ -398,126 +380,25 @@ async function processJob(cura, prompt, attempt = 1, type = "questions") {
   console.log(`[${cura}] FAILED after ${attempt} attempts`);
 }
 
+// ─── Routes ──────────────────────────────────────────────────────────────────
+
+// Health check
 app.get("/api/health", (req, res) => {
   const counts = { processing: 0, done: 0, error: 0 };
   for (const job of jobs.values()) {
     if (counts[job.status] !== undefined) counts[job.status]++;
   }
-  res.json({ ok: true, keys: { groq: groqKeys.length, gemini: !!googleApiKey, openrouter: openRouterKeys.length }, jobs: counts, activeJobs });
+  res.json({
+    ok: true,
+    keys: { groq: groqKeys.length, gemini: !!googleApiKey, openrouter: openRouterKeys.length },
+    jobs: counts,
+    activeJobs,
+  });
 });
 
-app.post("/api/chat", async (req, res) => {
-  const { systemPrompt, userPrompt, maxTokens, temperature } = req.body;
-  if (!userPrompt) return res.status(400).json({ error: "userPrompt required" });
-
-  const sys = systemPrompt || "Voce e um professor especialista no ENEM. NUNCA coloque quebras de linha entre caracteres. Texto deve ser continuo e fluido.";
-  const mt = maxTokens || 4096;
-  const temp = temperature || 0.7;
-
-  async function chatGroq(key, model) {
-    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), 10000));
-    const fetchPromise = (async () => {
-      const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
-        body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }], max_tokens: mt, temperature: temp }),
-      });
-      if (!r.ok) throw new Error(`groq ${r.status}`);
-      const d = await r.json();
-      return d.choices?.[0]?.message?.content || null;
-    })();
-    return Promise.race([fetchPromise, timer]);
-  }
-
-  async function chatOr(key, model) {
-    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), 20000));
-    const fetchPromise = (async () => {
-      const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}`, "HTTP-Referer": "https://apexenem.app", "X-Title": "ApexAI" },
-        body: JSON.stringify({ model, messages: [{ role: "system", content: sys }, { role: "user", content: userPrompt }], max_tokens: mt, temperature: temp }),
-      });
-      if (!r.ok) throw new Error(`openrouter ${r.status}`);
-      const d = await r.json();
-      return d.choices?.[0]?.message?.content || null;
-    })();
-    return Promise.race([fetchPromise, timer]);
-  }
-
-  async function chatGemini() {
-    if (!googleApiKey) throw new Error("no gemini key");
-    const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), 10000));
-    const fetchPromise = (async () => {
-      const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ contents: [{ role: "user", parts: [{ text: userPrompt }] }], systemInstruction: { parts: [{ text: sys }] }, generationConfig: { temperature: temp, maxOutputTokens: mt } }),
-      });
-      if (!r.ok) throw new Error(`gemini ${r.status}`);
-      const d = await r.json();
-      return d?.candidates?.[0]?.content?.parts?.[0]?.text || null;
-    })();
-    return Promise.race([fetchPromise, timer]);
-  }
-
-  const orModels = ["nvidia/nemotron-3-nano-30b-a3b:free", "nvidia/nemotron-nano-9b-v2:free", "google/gemma-4-31b-it:free"];
-
-  async function tryChatOrThrow(name, fn) {
-    const text = await fn();
-    if (!text) throw new Error(`${name} returned empty`);
-    return { name, text };
-  }
-
-  const batch = [];
-  if (groqKeys.length > 0) batch.push(tryChatOrThrow(`groq-${groqKeys[0].slice(-4)}`, () => chatGroq(groqKeys[0], "llama-3.3-70b-versatile")));
-  if (googleApiKey) batch.push(tryChatOrThrow("gemini", chatGemini));
-  if (openRouterKeys.length > 0) batch.push(tryChatOrThrow(`or-${orModels[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, () => chatOr(openRouterKeys[0], orModels[0])));
-  if (openRouterKeys.length > 1) batch.push(tryChatOrThrow(`or-${orModels[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, () => chatOr(openRouterKeys[1], orModels[1])));
-
-  try {
-    const winner = await Promise.any(batch);
-    console.log(`[chat] OK via ${winner.name} (parallel)`);
-    return res.json({ text: cleanText(winner.text), model: winner.name });
-  } catch {
-    console.log(`[chat] Parallel batch failed, trying sequential fallback`);
-  }
-
-  const seqAttempts = [];
-  if (openRouterKeys.length > 0) {
-    for (const m of orModels) {
-      seqAttempts.push({ name: `or-${m.slice(0,10)}-${openRouterKeys[0].slice(-4)}`, fn: () => chatOr(openRouterKeys[0], m) });
-    }
-  }
-  if (openRouterKeys.length > 1) {
-    for (const m of orModels) {
-      seqAttempts.push({ name: `or-${m.slice(0,10)}-${openRouterKeys[1].slice(-4)}`, fn: () => chatOr(openRouterKeys[1], m) });
-    }
-  }
-  for (const k of groqKeys) {
-    seqAttempts.push({ name: `groq-${k.slice(-4)}`, fn: () => chatGroq(k, "llama-3.3-70b-versatile") });
-  }
-  if (googleApiKey) seqAttempts.push({ name: "gemini", fn: chatGemini });
-
-  for (const a of seqAttempts.slice(0, 6)) {
-    try {
-      const text = await a.fn();
-      if (text) {
-        console.log(`[chat] OK via ${a.name}`);
-        return res.json({ text: cleanText(text), model: a.name });
-      }
-    } catch (err) {
-      if (err.message.includes("429")) {
-        await new Promise(r => setTimeout(r, 1500));
-      }
-    }
-  }
-
-  console.error(`[chat] ALL attempts failed`);
-  return res.status(503).json({ error: "all models failed" });
-});
-
+// Submit a job (async)
 app.post("/api/process", (req, res) => {
-  const { cura, prompt, type } = req.body;
+  const { cura, prompt, type, systemPrompt, maxTokens, temperature } = req.body;
   if (!cura || !prompt) {
     return res.status(400).json({ error: "cura and prompt required" });
   }
@@ -529,11 +410,16 @@ app.post("/api/process", (req, res) => {
     return res.status(429).json({ error: "servidor de IA ocupado. Tente novamente em instantes." });
   }
 
+  const jobType = type || "general";
+
   jobs.set(cura, {
     cura,
     status: "processing",
     prompt,
-    type: type || "questions",
+    type: jobType,
+    systemPrompt: systemPrompt || null,
+    maxTokens: maxTokens || 8192,
+    temperature: temperature || 0.85,
     result: null,
     error: null,
     attempts: 0,
@@ -543,7 +429,7 @@ app.post("/api/process", (req, res) => {
   });
 
   activeJobs++;
-  processJob(cura, prompt, 1, type || "questions")
+  processJob(cura, { prompt, type: jobType, systemPrompt, maxTokens, temperature }, 1)
     .catch((err) => {
       console.error(`[${cura}] processJob error:`, err?.message);
       const j = jobs.get(cura);
@@ -560,6 +446,7 @@ app.post("/api/process", (req, res) => {
   res.json({ ok: true, cura });
 });
 
+// Poll job status
 app.get("/api/status/:cura", (req, res) => {
   const job = jobs.get(req.params.cura);
   if (!job) {
@@ -577,12 +464,14 @@ app.get("/api/status/:cura", (req, res) => {
   });
 });
 
+// All jobs (for dashboard)
 app.get("/api/all", (req, res) => {
   const all = [];
   for (const [cura, job] of jobs) {
     all.push({
       cura,
       status: job.status,
+      type: job.type,
       attempts: job.attempts,
       createdAt: job.createdAt,
       completedAt: job.completedAt,
@@ -596,6 +485,7 @@ app.get("/api/all", (req, res) => {
   res.json(all);
 });
 
+// Dashboard
 app.get("/", (req, res) => {
   res.send(dashboardHtml);
 });
@@ -630,6 +520,7 @@ tr:hover{background:#1a2744}
 .badge.error{background:#7f1d1d;color:#fca5a5}
 .cura-id{font-family:monospace;font-size:12px;color:#94a3b8}
 .time{font-size:12px;color:#64748b;font-family:monospace}
+.type-badge{background:#1e3a5f;color:#93c5fd;padding:2px 8px;border-radius:9999px;font-size:10px;font-weight:600}
 .result-btn{background:#1e40af;color:#93c5fd;border:none;padding:4px 12px;border-radius:6px;cursor:pointer;font-size:11px;font-weight:700}
 .result-btn:hover{background:#1d4ed8}
 .result-json{background:#0f172a;border:1px solid #334155;border-radius:8px;padding:12px;font-family:monospace;font-size:11px;white-space:pre-wrap;max-height:400px;overflow:auto;margin-top:8px;color:#94a3b8;display:none}
@@ -640,7 +531,7 @@ tr:hover{background:#1a2744}
 <body>
 <div class="header">
 <h1>ApexAI</h1>
-<span class="badge">DASHBOARD</span>
+<span class="badge">DASHBOARD v2</span>
 </div>
 <div class="stats" id="stats"></div>
 <div class="table-wrap">
@@ -649,6 +540,7 @@ tr:hover{background:#1a2744}
 <tr>
 <th>CURA</th>
 <th>Status</th>
+<th>Tipo</th>
 <th>Tentativas</th>
 <th>Criado</th>
 <th>Completado</th>
@@ -686,7 +578,8 @@ const expMs=j.expiresAt||0;
 return '<tr>'+
 '<td><span class="cura-id">'+trunc(j.cura)+'</span></td>'+
 '<td><span class="badge '+j.status+'">'+j.status+'</span></td>'+
-'<td>'+j.attempts+'/3</td>'+
+'<td><span class="type-badge">'+(j.type||'-')+'</span></td>'+
+'<td>'+j.attempts+'</td>'+
 '<td class="time">'+fmt(j.createdAt)+'</td>'+
 '<td class="time">'+fmt(j.completedAt)+'</td>'+
 '<td class="countdown">'+countdown(expMs)+'</td>'+
@@ -700,16 +593,11 @@ return '<tr>'+
 }
 function toggle(i){const el=document.getElementById('json-'+i);el.style.display=el.style.display==='block'?'none':'block'}
 refresh();setInterval(refresh,5000);
-setInterval(()=>{
-document.querySelectorAll('.countdown').forEach(el=>{
-const idx=[...document.querySelectorAll('tr')].indexOf(el.closest('tr'));
-});
-},1000);
 </script>
 </body>
 </html>`;
 
 app.listen(PORT, () => {
-  console.log("ApexAI running on port " + PORT);
-  console.log("Keys: Groq=" + groqKeys.length + " Gemini=" + (googleApiKey?"yes":"no") + " OR=" + openRouterKeys.length);
+  console.log("ApexAI v2 running on port " + PORT);
+  console.log("Keys: Groq=" + groqKeys.length + " Gemini=" + (googleApiKey ? "yes" : "no") + " OR=" + openRouterKeys.length);
 });
