@@ -534,16 +534,19 @@ app.post("/api/questions", async (req, res) => {
     const cura = crypto.randomUUID();
     curas.push(cura);
     const prompt = promptDef.buildPrompt(1, targetArea, referenceQuestions, hardSubjects) as string;
+    const delay = i * 3000;
     jobs.push(
-      fetch(url, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 4096, temperature: 0.9 }),
-        signal: AbortSignal.timeout(5000),
-      }).catch(err => {
-        console.error("[questions] Failed job", i, ":", err?.message);
-        return null;
-      })
+      new Promise(resolve => setTimeout(resolve, delay)).then(() =>
+        fetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 4096, temperature: 0.9 }),
+          signal: AbortSignal.timeout(5000),
+        }).catch(err => {
+          console.error("[questions] Failed job", i, ":", err?.message);
+          return null;
+        })
+      )
     );
   }
 
