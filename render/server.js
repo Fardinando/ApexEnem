@@ -193,6 +193,8 @@ const OR_MODELS = [
   "nvidia/nemotron-3-nano-30b-a3b:free",
   "nvidia/nemotron-nano-9b-v2:free",
   "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "openai/gpt-oss-20b:free",
 ];
 
 async function callGroq(sysMsg, userPrompt, key, maxTokens, temperature, timeoutMs) {
@@ -203,7 +205,7 @@ async function callGroq(sysMsg, userPrompt, key, maxTokens, temperature, timeout
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "llama-3.3-70b-versatile",
+        model: "meta-llama/llama-4-scout-17b-16e-instruct",
         messages: [
           { role: "system", content: sysMsg },
           { role: "user", content: userPrompt },
@@ -225,7 +227,7 @@ async function callGemini(sysMsg, userPrompt, maxTokens, temperature, timeoutMs)
   if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
   const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), timeoutMs || 60000));
   const fetchPromise = (async () => {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${googleApiKey}`, {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
