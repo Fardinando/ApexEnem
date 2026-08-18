@@ -205,7 +205,7 @@ async function callGroq(sysMsg, userPrompt, key, maxTokens, temperature, timeout
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "meta-llama/llama-4-scout-17b-16e-instruct",
+        model: "qwen/qwen3.6-27b",
         messages: [
           { role: "system", content: sysMsg },
           { role: "user", content: userPrompt },
