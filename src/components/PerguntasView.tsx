@@ -104,11 +104,16 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
       const pollStart = Date.now();
       const POLL_INTERVAL = 2500;
       const MAX_POLL = 120000;
+      const seenCuras = new Set<string>();
 
       const poll = async (): Promise<void> => {
         if (Date.now() - pollStart > MAX_POLL) {
-          setError('Tempo limite de geração excedido. Tente novamente.');
-          setIsLoading(false);
+          if (questions.length === 0) {
+            setError('Tempo limite de geração excedido. Tente novamente.');
+            setIsLoading(false);
+          } else {
+            setIsLoading(false);
+          }
           return;
         }
 
@@ -120,26 +125,37 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
 
           if (!Array.isArray(results)) return poll();
 
-          const allDone = results.every((r: any) => r.status === 'done' || r.status === 'error');
-          const allQuestions = results
-            .filter((r: any) => r.status === 'done' && Array.isArray(r.result))
-            .flatMap((r: any) => r.result);
+          const newQuestions: any[] = [];
+          let anyProcessing = false;
 
-          if (allQuestions.length > 0 && allDone) {
-            const enriched = allQuestions.map((q: any, i: number) => ({
+          for (const r of results) {
+            if (r.status === 'processing' || r.status === undefined) {
+              anyProcessing = true;
+              continue;
+            }
+            if (r.status === 'done' && Array.isArray(r.result) && !seenCuras.has(r.cura)) {
+              seenCuras.add(r.cura);
+              newQuestions.push(...r.result);
+            }
+          }
+
+          if (newQuestions.length > 0) {
+            const enriched = newQuestions.map((q: any, i: number) => ({
               ...q,
               id: q.id || `ai-q-${Date.now()}-${i}`,
               area: q.area || selectedArea,
               statement: cleanText(q.statement || ''),
               explanation: cleanText(q.explanation || ''),
             }));
-            setQuestions(enriched);
-            setIsLoading(false);
-            return;
+            setQuestions(prev => {
+              const merged = [...prev, ...enriched];
+              if (prev.length === 0) setIsLoading(false);
+              return merged;
+            });
+            setRevealedQuestions(prev => prev === 0 ? 1 : prev);
           }
 
-          if (allDone && allQuestions.length === 0) {
-            setError('Nenhuma questão válida foi gerada. Tente novamente.');
+          if (!anyProcessing && seenCuras.size > 0) {
             setIsLoading(false);
             return;
           }
