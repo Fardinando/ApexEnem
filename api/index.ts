@@ -113,7 +113,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/pratica-questoes", "/classify-question", "/ai-task"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
-  if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/")) return next();
+    if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/")) return next();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -607,6 +607,29 @@ app.get("/api/questions/status/:cura", async (req, res) => {
     return res.json(data);
   } catch (err: any) {
     console.error("[questions/status] Failed:", err?.name, err?.message);
+    return res.status(502).json({ error: "Render unavailable: " + (err?.message || "timeout") });
+  }
+});
+
+app.get("/api/status/:cura", async (req, res) => {
+  const renderUrl = process.env.RENDER_PROCESS_URL;
+  if (!renderUrl) {
+    return res.status(503).json({ error: "Serviço indisponível." });
+  }
+
+  const url = `${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`;
+  try {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), 10000);
+    const r = await fetch(url, { signal: ctrl.signal });
+    clearTimeout(tid);
+    if (!r.ok) {
+      return res.status(502).json({ error: "Render returned " + r.status });
+    }
+    const data = await r.json();
+    return res.json(data);
+  } catch (err: any) {
+    console.error("[status] Failed:", err?.name, err?.message);
     return res.status(502).json({ error: "Render unavailable: " + (err?.message || "timeout") });
   }
 });
