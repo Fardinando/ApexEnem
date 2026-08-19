@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Shield, CheckCircle, XCircle, Clock, RefreshCw } from 'lucide-react';
+import { Shield, CheckCircle, XCircle, Clock, RefreshCw, X, Maximize2 } from 'lucide-react';
 
 interface BetaRequest {
   id: string;
@@ -14,6 +14,7 @@ export default function AdminBetaRequests() {
   const [requests, setRequests] = useState<BetaRequest[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selectedRequest, setSelectedRequest] = useState<BetaRequest | null>(null);
 
   const fetchRequests = async () => {
     setLoading(true);
@@ -125,7 +126,7 @@ export default function AdminBetaRequests() {
               </thead>
               <tbody className="divide-y divide-slate-700/30">
                 {requests.map(req => (
-                  <tr key={req.id} className="hover:bg-slate-800/30 transition-colors">
+                  <tr key={req.id} className="hover:bg-slate-800/30 transition-colors cursor-pointer" onClick={() => setSelectedRequest(req)}>
                     <td className="px-4 py-3 font-medium">{req.name}</td>
                     <td className="px-4 py-3 text-slate-400">{req.email}</td>
                     <td className="px-4 py-3 text-slate-400 max-w-xs truncate" title={req.reason}>
@@ -137,30 +138,7 @@ export default function AdminBetaRequests() {
                     <td className="px-4 py-3">{statusBadge(req.status)}</td>
                     <td className="px-4 py-3 text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {req.status !== 'approved' && (
-                          <button
-                            onClick={() => updateStatus(req.id, 'approved')}
-                            className="px-3 py-1.5 rounded-lg bg-green-900/40 hover:bg-green-800/50 text-green-400 text-xs font-medium border border-green-700/50 transition-colors"
-                          >
-                            Aprovar
-                          </button>
-                        )}
-                        {req.status !== 'rejected' && (
-                          <button
-                            onClick={() => updateStatus(req.id, 'rejected')}
-                            className="px-3 py-1.5 rounded-lg bg-red-900/40 hover:bg-red-800/50 text-red-400 text-xs font-medium border border-red-700/50 transition-colors"
-                          >
-                            Rejeitar
-                          </button>
-                        )}
-                        {req.status !== 'pending' && (
-                          <button
-                            onClick={() => updateStatus(req.id, 'pending')}
-                            className="px-3 py-1.5 rounded-lg bg-amber-900/40 hover:bg-amber-800/50 text-amber-400 text-xs font-medium border border-amber-700/50 transition-colors"
-                          >
-                            Pendente
-                          </button>
-                        )}
+                        <Maximize2 className="w-3.5 h-3.5 text-slate-500" />
                       </div>
                     </td>
                   </tr>
@@ -170,6 +148,71 @@ export default function AdminBetaRequests() {
           </div>
         )}
       </div>
+
+      {selectedRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4" onClick={() => setSelectedRequest(null)}>
+          <div className="bg-[#1e293b] rounded-3xl border border-slate-700 shadow-2xl max-w-lg w-full p-8 space-y-6 animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-bold text-lg">
+                  {selectedRequest.name.charAt(0).toUpperCase()}
+                </div>
+                <div>
+                  <h2 className="text-lg font-bold text-white">{selectedRequest.name}</h2>
+                  <p className="text-sm text-slate-400">{selectedRequest.email}</p>
+                </div>
+              </div>
+              <button onClick={() => setSelectedRequest(null)} className="p-2 rounded-xl hover:bg-slate-700 transition cursor-pointer">
+                <X className="w-5 h-5 text-slate-400" />
+              </button>
+            </div>
+
+            <div className="space-y-4">
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Data do pedido</p>
+                <p className="text-sm text-slate-300">{new Date(selectedRequest.created_at).toLocaleString('pt-BR')}</p>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Status atual</p>
+                <div>{statusBadge(selectedRequest.status)}</div>
+              </div>
+              <div>
+                <p className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Motivo</p>
+                <p className="text-sm text-slate-300 leading-relaxed bg-slate-800/50 rounded-xl p-4 border border-slate-700/50 min-h-[80px]">
+                  {selectedRequest.reason || 'Nenhum motivo informado.'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-3 pt-2 border-t border-slate-700/50">
+              {selectedRequest.status !== 'approved' && (
+                <button
+                  onClick={() => { updateStatus(selectedRequest.id, 'approved'); setSelectedRequest({ ...selectedRequest, status: 'approved' }); }}
+                  className="flex-1 py-2.5 rounded-xl bg-green-600 hover:bg-green-500 text-white text-sm font-bold transition cursor-pointer"
+                >
+                  Aprovar
+                </button>
+              )}
+              {selectedRequest.status !== 'rejected' && (
+                <button
+                  onClick={() => { updateStatus(selectedRequest.id, 'rejected'); setSelectedRequest({ ...selectedRequest, status: 'rejected' }); }}
+                  className="flex-1 py-2.5 rounded-xl bg-red-600 hover:bg-red-500 text-white text-sm font-bold transition cursor-pointer"
+                >
+                  Rejeitar
+                </button>
+              )}
+              {selectedRequest.status !== 'pending' && (
+                <button
+                  onClick={() => { updateStatus(selectedRequest.id, 'pending'); setSelectedRequest({ ...selectedRequest, status: 'pending' }); }}
+                  className="flex-1 py-2.5 rounded-xl bg-slate-600 hover:bg-slate-500 text-white text-sm font-bold transition cursor-pointer"
+                >
+                  Voltar pra Pendente
+                </button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
