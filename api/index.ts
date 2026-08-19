@@ -168,7 +168,8 @@ function repairJson(text: string): string {
 }
 
 function extractJsonFromText(rawText: string): any {
-  const trimmed = rawText.trim();
+  const cleaned = rawText.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();
+  const trimmed = cleaned || rawText.trim();
 
   const parsed = tryParse(trimmed) || tryParse(trimmed.replace(/```(?:json)?\s*/gi, '').replace(/\s*```/gi, '').trim());
   if (parsed) { console.error("extract: parsed OK, len=" + trimmed.length); return parsed; }
@@ -422,9 +423,9 @@ Apenas JSON puro.`;
 
   try {
     const raw = await callAI({
-      systemPrompt: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado.',
+      systemPrompt: 'Você é um corretor oficial do ENEM. Retorne APENAS o JSON de avaliação estrito sem rodeios nem introduções estruturado exatamente como solicitado. NÃO inclua seu raciocínio ou pensamento, apenas o JSON final.',
       userPrompt: prompt,
-      maxTokens: 2048,
+      maxTokens: 4096,
       temperature: 0,
       timeout: 25000,
     });

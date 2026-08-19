@@ -76,7 +76,7 @@ setInterval(() => {
 
 // ─── JSON / Text Helpers ─────────────────────────────────────────────────────
 function extractJson(raw) {
-  let t = raw.trim();
+  let t = raw.replace(/<think>[\s\S]*?<\/think>/gi, "").trim();
   t = t.replace(/```(?:json)?\s*/gi, "").replace(/\s*```/gi, "").trim();
 
   try { return JSON.parse(t); } catch {}
