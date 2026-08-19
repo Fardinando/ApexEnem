@@ -400,7 +400,18 @@ app.post("/api/correct", async (req, res) => {
 
   const contentToEvaluate = text || "[O aluno enviou uma imagem contendo o manuscrito de redação para transcrição e correção direta.]";
 
-  const prompt = `Corretor oficial ENEM 2025. Avalie justa e objetivamente.
+  const prompt = `Corretor oficial ENEM 2025. Avalie com precisão técnica.
+
+REGRAS OBRIGATÓRIAS:
+- Cada competência recebe 0, 40, 80, 120, 160 ou 200.
+- 200 = NENHUM defeito detectável. Se você não consegue apontar um erro concreto, a nota É 200.
+- 160 = 1 único ponto fraco específico e identificável (ex: 1 repertório genérico, 1 coesão redundante).
+- 120 = 2+ defeitos OU 1 problema sério que prejudica a compreensão.
+- 80 = problema grave que compromete a clareza.
+- 40 = quase não atende o critério.
+- 0 = ausente.
+
+IMPORTANTE: Redações com texto coeso, vocabulário variado, proposta detalhada com 5 elementos e repertório produtivo devem receber 200 em todas as competências. Não desconte detalhes triviais — avalie como banca do ENEM real, não como professor exigente.
 
 Tema: "${title || "Sem título"}"
 
@@ -409,17 +420,28 @@ Redação:
 ${contentToEvaluate}
 """
 
-NOTAS POR COMPETÊNCIA (0, 40, 80, 120, 160 ou 200):
-C1 - Domínio escrita formal: 200=excelente, 160=bom, 120=mediano, 80=insuficiente, 40=precário, 0=desconhecimento
-C2 - Compreensão tema: 200=argumentação consistente+repertório produtivo, 160=bom, 120=previsível, 80=cópia/insuficiente, 40=tangencia, 0=fuga
-C3 - Organização argumentos: 200=consistente+autoria, 160=organizada, 120=limitada, 80=desorganizada, 40=pouco relacionado, 0=sem relação
-C4 - Coesão: 200=excelente, 160=bom, 120=mediano, 80=insuficiente, 40=precário, 0=sem articulação
-C5 - Proposta intervenção: 200=detalhada+5 elementos (Agente,Ação,Meio,Efeito,Detalhe), 160=bom, 120=mediana, 80=insuficiente, 40=vaga, 0=ausente
+NOTAS POR COMPETÊNCIA:
+C1 - Domínio da escrita formal (ausência de erros ortográficos, acentuação, concordância, regência, pontuação)
+C2 - Compreensão do tema e逄ao de argumentação (desenvolvimento do tema, repertório sociocultural produtivo)
+C3 - Organização dos argumentos (estrutura do texto, uso de conectivos, autoria, progressão de ideias)
+C4 - Coesão textual (articulação entre parágrafos, uso de operadores argumentativos, sequenciação)
+C5 - Proposta de intervenção (5 elementos: AGENTE + AÇÃO + MEIO + EFEITO + DETALHAMENTO)
 
-TRAVAS: 200 requer texto impecável. Redação mediana=480-560. Impecável=900-1000. Boa=640-800. Ruim<400.
-
-Retorne JSON: {score, generalFeedback, competencies:[{id,name,description,score,feedback}x5], strengths:[], weaknesses:[]}
-Apenas JSON puro.`;
+Retorne APENAS este JSON exato:
+{
+  "score": 900,
+  "generalFeedback": "...",
+  "competencies": [
+    {"id": 1, "name": "Domínio da Escrita Formal", "description": "...", "score": 200, "feedback": "..."},
+    {"id": 2, "name": "Compreensão da Tema", "description": "...", "score": 200, "feedback": "..."},
+    {"id": 3, "name": "Organização dos Argumentos", "description": "...", "score": 200, "feedback": "..."},
+    {"id": 4, "name": "Coesão Textual", "description": "...", "score": 200, "feedback": "..."},
+    {"id": 5, "name": "Proposta de Intervenção", "description": "...", "score": 200, "feedback": "..."}
+  ],
+  "strengths": ["..."],
+  "weaknesses": ["..."]
+}
+Apenas JSON puro, sem markdown.`;
 
   try {
     const raw = await callAI({
