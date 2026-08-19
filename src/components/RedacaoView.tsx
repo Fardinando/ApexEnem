@@ -23,6 +23,7 @@ import { EssayCorrection, ActivityLog } from '../types';
 import { supabase } from '../lib/supabase';
 import AdPlaceholder from './AdPlaceholder';
 import RewardAdOverlay, { shouldShowRewardAd } from './RewardAdOverlay';
+import LoadingOverlay from './LoadingOverlay';
 
 const APEX_GUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
 
@@ -273,7 +274,8 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
   return (
     <div id="redacao-wrapper" className="space-y-6 animate-fade-in">
-      
+      <LoadingOverlay isVisible={isLoading} title="Corrigindo sua Redação" onCancel={() => { setIsLoading(false); }} />
+
       {/* Top Section Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>

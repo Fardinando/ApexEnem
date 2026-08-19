@@ -110,7 +110,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
     "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
-    "/pratica-questoes", "/classify-question", "/ai-task"
+    "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
     if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/")) return next();
@@ -388,6 +388,30 @@ async function assertModelIsFree(modelName: string): Promise<void> {
     throw new Error(`Modelo pago bloqueado: ${modelName} (R$ ${promptPrice}/R$ ${completionPrice} por token). Use apenas modelos gratuitos.`);
   }
 }
+
+
+
+app.post("/api/beta-request", async (req, res) => {
+  const { name, email, reason } = req.body;
+  if (!name || !email) {
+    return res.status(400).json({ error: "Nome e e-mail são obrigatórios." });
+  }
+  console.log(`[beta-request] NEW: name="${name}" email="${email}" reason="${reason || ''}"`);
+  try {
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.from('beta_requests').insert({
+        name,
+        email: email.toLowerCase().trim(),
+        reason: reason || '',
+        created_at: new Date().toISOString(),
+      });
+      if (error) console.error('[beta-request] insert failed:', error.message);
+    }
+  } catch (e: any) {
+    console.error('[beta-request] error:', e?.message);
+  }
+  return res.json({ ok: true });
+});
 
 
 

@@ -12,6 +12,7 @@ function renderSegment(text: string, display: boolean): string {
 }
 
 function renderMath(html: string): string {
+  if (!html || typeof html !== 'string') return '';
   return html
     .replace(DISPLAY_MATH, (_, expr) => renderSegment(expr.trim(), true))
     .replace(INLINE_MATH, (_, expr) => renderSegment(expr.trim(), false))

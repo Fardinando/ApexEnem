@@ -6,6 +6,8 @@ interface LoadingOverlayProps {
   isVisible: boolean
   onCancel?: () => void
   keySwitchMessage?: string | null
+  title?: string
+  subtitle?: string
 }
 
 const ENEM_COLORS = [
@@ -14,7 +16,7 @@ const ENEM_COLORS = [
   'from-[#002776] to-[#002776]/80',
 ]
 
-export default function LoadingOverlay({ isVisible, onCancel, keySwitchMessage }: LoadingOverlayProps) {
+export default function LoadingOverlay({ isVisible, onCancel, keySwitchMessage, title, subtitle }: LoadingOverlayProps) {
   const [messageIndex, setMessageIndex] = useState(0)
   const [progress, setProgress] = useState(0)
   const [showKeySwitch, setShowKeySwitch] = useState(false)
@@ -73,10 +75,10 @@ export default function LoadingOverlay({ isVisible, onCancel, keySwitchMessage }
             <Loader2 className="h-10 w-10 text-white animate-spin" />
           </div>
           <h2 className="text-xl font-extrabold text-slate-800 dark:text-slate-100">
-            Gerando Questões
+            {title || 'Gerando Questões'}
           </h2>
           <p className="text-sm text-slate-500 dark:text-slate-400 leading-relaxed animate-pulse min-h-[3rem] transition-all duration-500">
-            {messages.current[messageIndex]}
+            {subtitle || messages.current[messageIndex]}
           </p>
         </div>
 

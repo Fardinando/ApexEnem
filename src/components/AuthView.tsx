@@ -1,9 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
-import { Mail, Lock, Eye, EyeOff, ArrowRight, User, MapPin, Globe, CheckCircle } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, ArrowRight, User, MapPin, Globe, CheckCircle, Send, X } from 'lucide-react';
 import Logo from './Logo';
 import type { RegionBR } from '../types';
 import { REGIONS as BRAZIL_REGIONS, STATES, getCitiesByState, getStatesByRegion } from '../data/brazil-locations';
+
+const ALLOWED_EMAILS_RAW = import.meta.env.VITE_ALLOWED_EMAILS || '';
+const ALLOWED_LIST = ALLOWED_EMAILS_RAW.split(',').map((e: string) => e.trim().toLowerCase()).filter(Boolean);
+const ACCESS_DISABLED = ALLOWED_LIST.length > 0;
 
 interface AuthViewProps {
   onSuccess: () => void;
@@ -31,6 +35,9 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
   const [region, setRegion] = useState<RegionBR>('Sudeste');
   const [state, setState] = useState('');
   const [city, setCity] = useState('');
+  const [showBetaRequest, setShowBetaRequest] = useState(false);
+  const [betaRequestSent, setBetaRequestSent] = useState(false);
+  const [betaRequestLoading, setBetaRequestLoading] = useState(false);
 
   const states = getStatesByRegion(region);
   const selectedStateObj = states.find(s => s.name === state);
@@ -129,6 +136,11 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
     }
     if (!acceptedTerms) {
       setErrorMessage('Você precisa aceitar os Termos de Uso para criar uma conta.');
+      return;
+    }
+    if (ACCESS_DISABLED && !ALLOWED_LIST.includes(email.toLowerCase().trim())) {
+      setErrorMessage('Este e-mail não está na lista de acesso autorizado. Solicite acesso ao Beta Testing.');
+      setShowBetaRequest(true);
       return;
     }
     setLoading(true);
@@ -360,6 +372,54 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
             </div>
           </div>
         </>
+      )}
+      {showBetaRequest && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowBetaRequest(false)}>
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-8 max-w-md w-full space-y-5 animate-fade-in" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-display font-extrabold text-lg text-slate-800 dark:text-slate-100">Solicitar Acesso Beta</h3>
+              <button type="button" onClick={() => { setShowBetaRequest(false); setBetaRequestSent(false); }} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4 text-slate-400" /></button>
+            </div>
+            {betaRequestSent ? (
+              <div className="text-center space-y-4 py-6">
+                <div className="mx-auto p-3 bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 rounded-full w-fit"><CheckCircle className="h-8 w-8" /></div>
+                <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Solicitação enviada!</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Analisaremos seu pedido e você receberá um e-mail quando sua conta for liberada.</p>
+                <button type="button" onClick={() => { setShowBetaRequest(false); setBetaRequestSent(false); }} className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold rounded-xl cursor-pointer">Fechar</button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">O cadastro está temporariamente restrito a participantes autorizados do Programa Beta Testing. Solicite seu acesso abaixo:</p>
+                <div className="space-y-2">
+                  <input type="text" placeholder="Seu nome completo" id="beta-name" className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 dark:text-white" />
+                  <input type="email" placeholder="Seu e-mail" id="beta-email" defaultValue={email} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 dark:text-white" />
+                  <textarea placeholder="Por que você quer participar do Beta? (opcional)" id="beta-reason" rows={3} className="w-full px-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 dark:text-white resize-none" />
+                </div>
+                <button type="button" disabled={betaRequestLoading}
+                  onClick={async () => {
+                    const bName = (document.getElementById('beta-name') as HTMLInputElement)?.value || '';
+                    const bEmail = (document.getElementById('beta-email') as HTMLInputElement)?.value || '';
+                    const bReason = (document.getElementById('beta-reason') as HTMLTextAreaElement)?.value || '';
+                    if (!bName.trim() || !bEmail.trim()) return;
+                    setBetaRequestLoading(true);
+                    try {
+                      await fetch('/api/beta-request', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ name: bName.trim(), email: bEmail.trim(), reason: bReason.trim() }),
+                      });
+                    } catch { /* ok */ }
+                    setBetaRequestLoading(false);
+                    setBetaRequestSent(true);
+                  }}
+                  className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white font-bold rounded-xl text-xs transition-all flex items-center justify-center gap-2 cursor-pointer">
+                  <Send className="h-3.5 w-3.5" />
+                  {betaRequestLoading ? 'Enviando...' : 'Enviar Solicitação'}
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );

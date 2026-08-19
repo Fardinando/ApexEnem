@@ -167,3 +167,16 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
+
+-- Beta requests table
+CREATE TABLE IF NOT EXISTS public.beta_requests (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  name TEXT NOT NULL,
+  email TEXT NOT NULL,
+  reason TEXT DEFAULT '',
+  created_at TIMESTAMPTZ DEFAULT now(),
+  status TEXT DEFAULT 'pending'
+);
+ALTER TABLE public.beta_requests ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "insert_beta" ON public.beta_requests FOR INSERT WITH CHECK (true);
+CREATE POLICY "read_beta" ON public.beta_requests FOR SELECT USING (true);
