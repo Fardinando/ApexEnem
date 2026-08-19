@@ -18,6 +18,7 @@ import CookieConsentBanner from './components/CookieConsentBanner';
 import SubscriptionTermsPage from './components/SubscriptionTermsPage';
 import RefundPolicyPage from './components/RefundPolicyPage';
 import DevNoticeBanner from './components/DevNoticeBanner';
+import AdminBetaRequests from './components/AdminBetaRequests';
 
 const DashboardView = lazy(() => import('./components/DashboardView'));
 const RedacaoView = lazy(() => import('./components/RedacaoView'));
@@ -511,6 +512,15 @@ export default function App() {
         <LandingPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} />
         <CookieConsentBanner />
         <DevNoticeBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/admin/beta-requests') {
+    return (
+      <>
+        <AdminBetaRequests />
+        <CookieConsentBanner />
       </>
     );
   }

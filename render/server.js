@@ -10,6 +10,7 @@ app.use(express.json({ limit: "2mb" }));
 const PORT = process.env.PORT || 3001;
 
 // ─── API Keys ────────────────────────────────────────────────────────────────
+const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
 const googleApiKey = process.env.GOOGLE_API_KEY;
 
 const groqKeys = [
@@ -273,6 +274,34 @@ async function callOpenRouter(sysMsg, userPrompt, key, model, maxTokens, tempera
     const d = await r.json();
     const raw = d.choices?.[0]?.message?.content;
     if (!raw) throw new Error("empty response from openrouter");
+    return raw;
+  })();
+  return Promise.race([fetchPromise, timer]);
+}
+
+async function callOllama(model, sysMsg, userPrompt, maxTokens, temperature, timeoutMs) {
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("ollama timeout")), timeoutMs || 120000));
+  const fetchPromise = (async () => {
+    const r = await fetch(`${OLLAMA_URL}/api/chat`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: sysMsg },
+          { role: "user", content: userPrompt },
+        ],
+        stream: false,
+        options: {
+          num_predict: maxTokens || 4096,
+          temperature: temperature || 0.7,
+        },
+      }),
+    });
+    if (!r.ok) throw new Error(`ollama ${r.status}`);
+    const d = await r.json();
+    const raw = d.message?.content;
+    if (!raw) throw new Error("empty response from ollama");
     return raw;
   })();
   return Promise.race([fetchPromise, timer]);

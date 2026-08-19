@@ -110,7 +110,9 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
     "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
-    "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request"
+    "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request",
+    "/admin/beta-requests", "/admin",
+    "/student-context"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
     if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/")) return next();
@@ -413,7 +415,91 @@ app.post("/api/beta-request", async (req, res) => {
   return res.json({ ok: true });
 });
 
+app.get("/api/admin/beta-requests", async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.status(503).json({ error: "Supabase not configured" });
+  }
+  try {
+    const { data, error } = await supabaseAdmin
+      .from('beta_requests')
+      .select('*')
+      .order('created_at', { ascending: false });
+    if (error) throw error;
+    return res.json({ requests: data || [] });
+  } catch (err: any) {
+    console.error('[admin/beta-requests] error:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch beta requests' });
+  }
+});
 
+app.post("/api/admin/beta-requests/:id/status", async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.status(503).json({ error: "Supabase not configured" });
+  }
+  const { status } = req.body;
+  if (!['approved', 'rejected', 'pending'].includes(status)) {
+    return res.status(400).json({ error: "Status must be approved, rejected, or pending" });
+  }
+  try {
+    const { error } = await supabaseAdmin
+      .from('beta_requests')
+      .update({ status })
+      .eq('id', req.params.id);
+    if (error) throw error;
+    return res.json({ ok: true });
+  } catch (err: any) {
+    return res.status(500).json({ error: err?.message });
+  }
+});
+
+app.get("/api/student-context/:userId", async (req, res) => {
+  if (!supabaseAdmin) {
+    return res.status(503).json({ error: "Supabase not configured" });
+  }
+  const { userId } = req.params;
+  if (!userId) {
+    return res.status(400).json({ error: "userId required" });
+  }
+  try {
+    const [profileRes, wrongRes, responsesRes, essaysRes] = await Promise.all([
+      supabaseAdmin.from('profiles').select('name, state, city').eq('id', userId).maybeSingle(),
+      supabaseAdmin.from('wrong_answers').select('subject, topic, source, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(20),
+      supabaseAdmin.from('question_responses').select('subject, correct, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(50),
+      supabaseAdmin.from('essay_corrections').select('score, competencies, created_at').eq('user_id', userId).order('created_at', { ascending: false }).limit(5),
+    ]);
+
+    const profile = profileRes.data;
+    const wrongAnswers = wrongRes.data || [];
+    const responses = responsesRes.data || [];
+    const essays = essaysRes.data || [];
+
+    const subjectStats: Record<string, { correct: number; total: number }> = {};
+    responses.forEach(r => {
+      if (!subjectStats[r.subject]) subjectStats[r.subject] = { correct: 0, total: 0 };
+      subjectStats[r.subject].total++;
+      if (r.correct) subjectStats[r.subject].correct++;
+    });
+
+    const weakSubjects = Object.entries(subjectStats)
+      .map(([subject, s]) => ({ subject, accuracy: s.total > 0 ? Math.round((s.correct / s.total) * 100) : 0, total: s.total }))
+      .sort((a, b) => a.accuracy - b.accuracy)
+      .filter(s => s.accuracy < 70);
+
+    return res.json({
+      name: profile?.name || 'Estudante',
+      location: `${profile?.city || ''}/${profile?.state || ''}`.replace(/^\//, ''),
+      recentWrongAnswers: wrongAnswers.map(w => ({ subject: w.subject, topic: w.topic, source: w.source })),
+      subjectAccuracy: subjectStats,
+      weakSubjects,
+      totalQuestions: responses.length,
+      avgEssayScore: essays.length > 0 ? Math.round(essays.reduce((a, e) => a + (e.score || 0), 0) / essays.length) : null,
+      recentEssays: essays.map(e => ({ score: e.score, date: e.created_at })),
+    });
+  } catch (err: any) {
+    console.error('[student-context] error:', err?.message);
+    return res.status(500).json({ error: 'Failed to fetch student context' });
+  }
+});
 
 app.post("/api/correct", async (req, res) => {
   const { title, text, imageBase64 } = req.body;
