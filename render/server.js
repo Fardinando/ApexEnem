@@ -212,6 +212,8 @@ async function callGroq(sysMsg, userPrompt, key, maxTokens, temperature, timeout
         ],
         max_tokens: maxTokens || 8192,
         temperature: temperature || 0.85,
+        reasoning_effort: "none",
+        include_reasoning: false,
       }),
     });
     if (!r.ok) throw new Error(`groq ${r.status}`);
