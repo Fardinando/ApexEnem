@@ -326,28 +326,35 @@ async function processJob(cura, opts, attempt = 1) {
   const sysMsg = systemPrompt || defaultSysMsg;
 
   // Build a list of provider calls to try (parallel then sequential)
+  const ollamaAvailable = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
+
   function buildParallelBatch() {
     const batch = [];
-    if (groqKeys.length > 0) batch.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[0], mt, temp, 70000) });
-    if (groqKeys.length > 1) batch.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[1], mt, temp, 70000) });
+    // Ollama local models (priority)
+    if (ollamaAvailable) {
+      batch.push({ name: "ollama-2.5b", fn: () => callOllama("qwen2.5:3b", sysMsg, prompt, mt, temp, 120000) });
+      if (groqKeys.length > 0) batch.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[0], mt, temp, 70000) });
+    } else {
+      if (groqKeys.length > 0) batch.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[0], mt, temp, 70000) });
+      if (groqKeys.length > 1) batch.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[1], mt, temp, 70000) });
+    }
     if (googleApiKey) batch.push({ name: "gemini", fn: () => callGemini(sysMsg, prompt, mt, temp, 70000) });
     if (openRouterKeys.length > 0) batch.push({ name: `or-${OR_MODELS[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[0], OR_MODELS[0], mt, temp, 70000) });
-    if (openRouterKeys.length > 1) batch.push({ name: `or-${OR_MODELS[1].slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[1], OR_MODELS[1], mt, temp, 70000) });
     return batch;
   }
 
   function buildSequentialAttempts() {
     const seq = [];
+    // Ollama local first
+    if (ollamaAvailable) {
+      seq.push({ name: "ollama-2.5b", fn: () => callOllama("qwen2.5:3b", sysMsg, prompt, mt, temp, 120000) });
+      seq.push({ name: "ollama-0.5b", fn: () => callOllama("qwen2.5:0.5b", sysMsg, prompt, Math.min(mt, 2048), temp, 90000) });
+    }
     for (const k of groqKeys) seq.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(sysMsg, prompt, k, mt, temp, 60000) });
     if (googleApiKey) seq.push({ name: "gemini", fn: () => callGemini(sysMsg, prompt, mt, temp, 60000) });
     if (openRouterKeys.length > 0) {
       for (const m of OR_MODELS) {
         seq.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[0], m, mt, temp, 60000) });
-      }
-    }
-    if (openRouterKeys.length > 1) {
-      for (const m of OR_MODELS) {
-        seq.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[1].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[1], m, mt, temp, 60000) });
       }
     }
     return seq;
