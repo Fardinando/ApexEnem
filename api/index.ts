@@ -115,7 +115,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/student-context"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
-    if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/")) return next();
+    if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/") || req.path.startsWith("/admin/")) return next();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
