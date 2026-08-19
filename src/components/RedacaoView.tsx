@@ -199,8 +199,11 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       }
 
       const newId = `cor-${Date.now()}`;
+      const competencies = correctionResult.competencies || [];
+      const correctedScore = competencies.reduce((acc: number, c: any) => acc + (c.score || 0), 0);
       const finalCorrection: EssayCorrection = {
         ...correctionResult,
+        score: correctedScore || correctionResult.score || 0,
         generalFeedback: correctionResult.generalFeedback || correctionResult.general_feedback || '',
         id: newId,
         title: title || 'O Papel da Tecnologia na Educação',
