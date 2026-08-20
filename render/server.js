@@ -11,14 +11,14 @@ const PORT = process.env.PORT || 3001;
 
 // ─── Ollama Config ──────────────────────────────────────────────────────────
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
-const OLLAMA_MODEL_MAIN = process.env.OLLAMA_MODEL_MAIN || "qwen2.5:3b";
+const OLLAMA_MODEL_MAIN = process.env.OLLAMA_MODEL_MAIN || "qwen2.5:0.5b";
 const OLLAMA_MODEL_FAST = process.env.OLLAMA_MODEL_FAST || "qwen2.5:0.5b";
 
 // ─── Job Queue ───────────────────────────────────────────────────────────────
 const jobs = new Map();
 const MAX_JOBS = 250;
-const MAX_ACTIVE = 6;
-const JOB_TIMEOUT_MS = 240000;       // 4 min per job
+const MAX_ACTIVE = 1;
+const JOB_TIMEOUT_MS = 300000;       // 5 min per job
 const STALE_PROCESSING_MS = 420000;   // 7 min => mark stale
 let activeJobs = 0;
 
@@ -163,7 +163,7 @@ function validateQuestions(qs) {
 
 // ─── Ollama Caller ──────────────────────────────────────────────────────────
 async function callOllama(model, sysMsg, userPrompt, maxTokens, temperature, timeoutMs) {
-  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("ollama timeout")), timeoutMs || 180000));
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("ollama timeout")), timeoutMs || 300000));
   const fetchPromise = (async () => {
     const r = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: "POST",
@@ -208,11 +208,13 @@ async function processJob(cura, opts, attempt = 1) {
     : "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON.";
   const sysMsg = systemPrompt || defaultSysMsg;
 
-  // ── Try main model first (qwen2.5:3b), then fallback to fast model (qwen2.5:0.5b) ──
+  // ── Try main model first, then fallback to fast model ──
   const attempts = [
-    { name: OLLAMA_MODEL_MAIN, fn: () => callOllama(OLLAMA_MODEL_MAIN, sysMsg, prompt, mt, temp, 180000) },
-    { name: OLLAMA_MODEL_FAST, fn: () => callOllama(OLLAMA_MODEL_FAST, sysMsg, prompt, Math.min(mt, 2048), temp, 90000) },
+    { name: OLLAMA_MODEL_MAIN, fn: () => callOllama(OLLAMA_MODEL_MAIN, sysMsg, prompt, mt, temp, 300000) },
   ];
+  if (OLLAMA_MODEL_MAIN !== OLLAMA_MODEL_FAST) {
+    attempts.push({ name: OLLAMA_MODEL_FAST, fn: () => callOllama(OLLAMA_MODEL_FAST, sysMsg, prompt, Math.min(mt, 2048), temp, 180000) });
+  }
 
   async function tryOneOrThrow(name, fn) {
     const raw = await fn();

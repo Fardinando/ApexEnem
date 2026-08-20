@@ -626,40 +626,27 @@ app.post("/api/questions", async (req, res) => {
   ]);
 
   const url = `${renderUrl.replace(/\/+$/, "")}/api/process`;
-  console.log("[questions] Sending", numQuestions, "parallel jobs to:", url);
+  const cura = crypto.randomUUID();
+  const prompt = promptDef.buildPrompt(numQuestions, targetArea, referenceQuestions, hardSubjects) as string;
 
-  const curas: string[] = [];
-  const jobs = [];
+  console.log("[questions] Sending 1 job with", numQuestions, "questions to:", url);
 
-  for (let i = 0; i < numQuestions; i++) {
-    const cura = crypto.randomUUID();
-    curas.push(cura);
-    const prompt = promptDef.buildPrompt(1, targetArea, referenceQuestions, hardSubjects) as string;
-    const delay = i * 3000;
-    jobs.push(
-      new Promise(resolve => setTimeout(resolve, delay)).then(() =>
-        fetch(url, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 4096, temperature: 0.9 }),
-          signal: AbortSignal.timeout(5000),
-        }).catch(err => {
-          console.error("[questions] Failed job", i, ":", err?.message);
-          return null;
-        })
-      )
-    );
-  }
-
-  const results = await Promise.all(jobs);
-  const successCount = results.filter(r => r && r.ok).length;
-  console.log("[questions] Submitted", successCount, "of", numQuestions, "jobs");
-
-  if (successCount === 0) {
+  try {
+    const r = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 4096, temperature: 0.7 }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) {
+      console.log("[questions] Render returned:", r.status);
+      return res.status(502).json({ error: "Render service unavailable" });
+    }
+    return res.json({ curas: [cura] });
+  } catch (err: any) {
+    console.error("[questions] Failed:", err?.message);
     return res.status(502).json({ error: "Render service unavailable" });
   }
-
-  return res.json({ curas });
 });
 
 app.get("/api/questions/status/:cura", async (req, res) => {
