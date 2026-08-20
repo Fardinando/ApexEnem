@@ -141,7 +141,7 @@ Write-Step "Configurando auto-start do Ollama"
 
 $pm2Found = Get-Command pm2 -ErrorAction SilentlyContinue
 if ($pm2Found) {
-  & pm2 delete ollama 2>&1 | Out-Null
+  try { & pm2 delete ollama 2>&1 | Out-Null } catch {}
 
   # Encontrar caminho do ollama
   $ollamaPath = (Get-Command ollama).Source
