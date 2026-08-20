@@ -182,7 +182,7 @@ export default function ConfiguracoesView({
         <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
           Configurações da Conta
         </h1>
-        <p className="text-sm text-slate-500 dark:text-slate-405 mt-1.5">
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
           Gerencie suas preferências de perfil educacional, alterne o modo escuro ou reinicie seu progresso acadêmico.
         </p>
       </div>
@@ -195,10 +195,10 @@ export default function ConfiguracoesView({
         <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           
           <div className="flex justify-between items-center pb-3 border-b border-slate-200/60 dark:border-slate-800">
-            <h3 className="font-display font-black text-sm text-slate-850 dark:text-slate-105 flex items-center gap-2">
+            <h2 className="font-display font-black text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2">
               <User className="h-4.5 w-4.5 text-blue-600" />
               <span>{isEditing ? 'Editar Perfil Estudantil' : 'Perfil do Estudante'}</span>
-            </h3>
+            </h2>
             {!isEditing && (
               <button
                 type="button"
@@ -220,7 +220,7 @@ export default function ConfiguracoesView({
                     {newAvatar ? (
                       <img src={newAvatar} alt="Preview" className="w-full h-full object-cover" />
                     ) : (
-                      <User className="h-6 w-6 text-slate-400" />
+                      <User className="h-6 w-6 text-slate-600" />
                     )}
                   </div>
                   <div className="flex gap-2">
@@ -300,7 +300,7 @@ export default function ConfiguracoesView({
                   onChange={(e) => setNewScore(Number(e.target.value))}
                   className="w-full accent-blue-600 cursor-pointer h-2 bg-slate-100 dark:bg-slate-800 rounded-lg appearance-none"
                 />
-                <div className="flex justify-between text-[10px] text-slate-400">
+                <div className="flex justify-between text-[10px] text-slate-600">
                   <span>600 pto</span>
                   <span>Meta Ideal</span>
                   <span>1000 Apex Enem</span>
@@ -332,7 +332,7 @@ export default function ConfiguracoesView({
               </div>
 
               {/* Action buttons */}
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-850">
+              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100 dark:border-slate-800">
                 <button
                   type="button"
                   onClick={handleCancel}
@@ -357,36 +357,36 @@ export default function ConfiguracoesView({
                   {currentUser.avatar ? (
                     <img src={currentUser.avatar} alt="Avatar" className="w-full h-full object-cover" />
                   ) : (
-                    <User className="h-6 w-6 text-slate-400" />
+                    <User className="h-6 w-6 text-slate-600" />
                   )}
                 </div>
                 <div>
                   <span className="font-bold text-sm text-slate-800 dark:text-slate-100 block">{currentUser.name}</span>
-                  <span className="text-[11px] text-slate-400">{currentUser.email}</span>
+                  <span className="text-[11px] text-slate-600">{currentUser.email}</span>
                 </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
                 {/* Name */}
                 <div className="space-y-1 p-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl">
-                  <span className="text-slate-400 font-mono block">Nome Completo</span>
+                  <span className="text-slate-600 font-mono block">Nome Completo</span>
                   <span className="font-bold text-slate-800 dark:text-slate-100">{currentUser.name}</span>
                 </div>
 
                 {/* Email */}
                 <div className="space-y-1 p-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-[#0f172a] rounded-xl">
-                  <span className="text-slate-400 font-mono block">E-mail Cadastrado</span>
-                  <span className="font-bold text-slate-850 dark:text-slate-100">{currentUser.email}</span>
+                  <span className="text-slate-600 font-mono block">E-mail Cadastrado</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{currentUser.email}</span>
                 </div>
 
                 {/* Serie */}
                 <div className="space-y-1 p-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-[#0f172a] rounded-xl">
-                  <span className="text-slate-400 font-mono block">Série / Ano Escolar</span>
-                  <span className="font-bold text-slate-850 dark:text-slate-100">{formatSerie(currentUser.serie)}</span>
+                  <span className="text-slate-600 font-mono block">Série / Ano Escolar</span>
+                  <span className="font-bold text-slate-800 dark:text-slate-100">{formatSerie(currentUser.serie)}</span>
                 </div>
 
                 {/* Score Meta */}
                 <div className="space-y-1 p-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-[#0f172a] rounded-xl">
-                  <span className="text-slate-400 font-mono block">Meta de Nota ENEM</span>
+                  <span className="text-slate-600 font-mono block">Meta de Nota ENEM</span>
                   <span className="font-bold text-blue-600 dark:text-blue-400">{currentUser.targetScore || 750} pontos</span>
                 </div>
               </div>
@@ -403,7 +403,7 @@ export default function ConfiguracoesView({
                     ))}
                   </div>
                 ) : (
-                  <span className="text-xs text-slate-400 italic">Nenhuma matéria desafiadora configurada.</span>
+                  <span className="text-xs text-slate-600 italic">Nenhuma matéria desafiadora configurada.</span>
                 )}
               </div>
             </>
@@ -416,15 +416,15 @@ export default function ConfiguracoesView({
         {/* Block 2: Dark Mode Options */}
         <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-4">
           
-          <h3 className="font-display font-black text-sm text-slate-850 dark:text-slate-105 flex items-center gap-2 pb-3 border-b border-slate-200/60 dark:border-slate-800">
+          <h2 className="font-display font-black text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2 pb-3 border-b border-slate-200/60 dark:border-slate-800">
             <Sun className="h-4.5 w-4.5 text-amber-500" />
             <span>Aparência e Design</span>
-          </h3>
+          </h2>
 
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 text-xs">
             <div className="space-y-1">
               <p className="font-bold text-slate-800 dark:text-slate-100">Modo de Visualização Escuro</p>
-              <p className="text-slate-400 text-[11px]">Inverta a iluminação da interface para poupar a vista em estudos noturnos.</p>
+              <p className="text-slate-600 text-[11px]">Inverta a iluminação da interface para poupar a vista em estudos noturnos.</p>
             </div>
 
             <button
@@ -458,10 +458,10 @@ export default function ConfiguracoesView({
         {/* Block 3: Danger Zone */}
         <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-red-105 dark:border-red-950/40 shadow-sm space-y-5">
           
-          <h3 className="font-display font-black text-sm text-red-650 dark:text-red-400 flex items-center gap-2 pb-3 border-b border-red-50 dark:border-red-950/40">
+          <h2 className="font-display font-black text-sm text-red-600 dark:text-red-400 flex items-center gap-2 pb-3 border-b border-red-50 dark:border-red-950/40">
             <ShieldAlert className="h-4.5 w-4.5" />
             <span>Zona de Perigo</span>
-          </h3>
+          </h2>
 
           <p className="text-xs text-slate-450 leading-relaxed">
             As seguintes ações são destrutivas e irreversíveis. Certifique-se dos comandos antes de clicar nos botões abaixo.
@@ -518,8 +518,8 @@ export default function ConfiguracoesView({
                   <AlertTriangle className="h-5 w-5 text-amber-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Reiniciar Conta</h3>
-                  <p className="text-[10px] text-slate-400">Todos os seus dados serão apagados</p>
+                  <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">Reiniciar Conta</h2>
+                  <p className="text-[10px] text-slate-600">Todos os seus dados serão apagados</p>
                 </div>
               </div>
 
@@ -601,8 +601,8 @@ export default function ConfiguracoesView({
                   <Trash2 className="h-5 w-5 text-red-600" />
                 </div>
                 <div>
-                  <h3 className="font-bold text-sm text-slate-800 dark:text-slate-100">Excluir Conta Permanentemente</h3>
-                  <p className="text-[10px] text-slate-400">Passo {isOAuthUser && deleteStep === 3 ? 2 : deleteStep} de {isOAuthUser ? 2 : 3}</p>
+                  <h2 className="font-bold text-sm text-slate-800 dark:text-slate-100">Excluir Conta Permanentemente</h2>
+                  <p className="text-[10px] text-slate-600">Passo {isOAuthUser && deleteStep === 3 ? 2 : deleteStep} de {isOAuthUser ? 2 : 3}</p>
                 </div>
               </div>
 

@@ -135,7 +135,7 @@ export default function DashboardView({
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
             {getDayGreeting()}, {currentUser.name.split(' ')[0]}!
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5 flex items-center gap-1.5">
+          <p className="text-sm text-slate-500 dark:text-slate-600 mt-1.5 flex items-center gap-1.5">
             <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse"></span>
             Acompanhe seu avanço em rumo aos {currentUser.targetScore || 900}+ pontos no ENEM.
           </p>
@@ -161,7 +161,7 @@ export default function DashboardView({
           
           <div className="relative z-10">
             <span className="text-[10px] uppercase tracking-wider font-mono font-extrabold opacity-80 text-amber-50">Nível {levelInfo.level} — {levelTitle}</span>
-            <h3 className="font-display font-black text-xl mt-0.5 text-white">Foco Diário</h3>
+            <h2 className="font-display font-black text-xl mt-0.5 text-white">Foco Diário</h2>
           </div>
 
           {/* Centered Large 3D Glass Fire container - placed in the middle of the box */}
@@ -216,7 +216,7 @@ export default function DashboardView({
           {/* Stat Item 1: Redacoes */}
           <div className="flex flex-col justify-between p-4 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-mono text-slate-400 uppercase font-extrabold">Redações</span>
+              <span className="text-[10px] font-mono text-slate-600 uppercase font-extrabold">Redações</span>
               <FileText className="h-4.5 w-4.5 text-blue-500" />
             </div>
             <div>
@@ -230,7 +230,7 @@ export default function DashboardView({
           {/* Stat Item 2: Media Redacao */}
           <div className="flex flex-col justify-between p-4 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-mono text-slate-400 uppercase font-extrabold">Nota Média</span>
+              <span className="text-[10px] font-mono text-slate-600 uppercase font-extrabold">Nota Média</span>
               <Sparkles className="h-4.5 w-4.5 text-amber-500" />
             </div>
             <div>
@@ -244,7 +244,7 @@ export default function DashboardView({
           {/* Stat Item 3: Simulados */}
           <div className="flex flex-col justify-between p-4 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-mono text-slate-400 uppercase font-extrabold">Simulados</span>
+              <span className="text-[10px] font-mono text-slate-600 uppercase font-extrabold">Simulados</span>
               <BookOpen className="h-4.5 w-4.5 text-purple-500" />
             </div>
             <div>
@@ -258,7 +258,7 @@ export default function DashboardView({
           {/* Stat Item 4: Acertos */}
           <div className="flex flex-col justify-between p-4 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl">
             <div className="flex justify-between items-center mb-2">
-              <span className="text-[10px] font-mono text-slate-400 uppercase font-extrabold">Acertos (M)</span>
+              <span className="text-[10px] font-mono text-slate-600 uppercase font-extrabold">Acertos (M)</span>
               <BarChart2 className="h-4.5 w-4.5 text-emerald-500" />
             </div>
             <div>
@@ -277,7 +277,7 @@ export default function DashboardView({
             <div className="flex justify-between items-center mb-4">
               <div className="flex items-center gap-1.5">
                 <Target className="h-4.5 w-4.5 text-blue-500" />
-                <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">Nota TRI</h3>
+                <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">Nota TRI</h2>
               </div>
               <span className="text-[9px] px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded font-mono font-bold">Escala ENEM</span>
             </div>
@@ -290,9 +290,9 @@ export default function DashboardView({
                 const color = thetaToColor(theta);
                 return (
                   <div key={subject} className="p-3 bg-slate-50 dark:bg-[#0f172a]/60 border border-slate-200/60 dark:border-slate-800/60 rounded-xl text-center space-y-1">
-                    <span className="text-[9px] font-mono text-slate-400 uppercase font-bold block">{subject}</span>
+                    <span className="text-[9px] font-mono text-slate-600 uppercase font-bold block">{subject}</span>
                     <span className="text-xl font-display font-black block" style={{ color }}>{score}</span>
-                    <span className="text-[8px] block" style={{ color }}>{thetaToLabel(theta)}</span>
+                    <span className="text-[10px] block" style={{ color }}>{thetaToLabel(theta)}</span>
                     {!reliable && <span className="text-[7px] text-yellow-500 block">{total} resp.</span>}
                   </div>
                 );
@@ -305,11 +305,11 @@ export default function DashboardView({
         <div id="bento-chart-line" className="md:col-span-8 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card flex flex-col justify-between space-y-4">
           <div className="flex justify-between items-center">
             <div>
-              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm md:text-base flex items-center gap-1.5">
+              <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm md:text-base flex items-center gap-1.5">
                 <TrendingUp className="h-4.5 w-4.5 text-blue-600 dark:text-blue-400" />
                 Evolução Teórica em Redação
-              </h3>
-              <p className="text-slate-400 text-xs">Acompanhamento dos scores agregados das redações submetidas</p>
+              </h2>
+              <p className="text-slate-600 text-xs">Acompanhamento dos scores agregados das redações submetidas</p>
             </div>
             <button
               onClick={() => setActiveTab('redacao')}
@@ -325,7 +325,7 @@ export default function DashboardView({
             {essayCorrections.length === 0 ? (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-4 bg-slate-50/50 dark:bg-[#0f172a]/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800">
                 <FileText className="h-7 w-7 text-blue-500/65 mb-2" />
-                <p className="text-xs font-bold text-slate-700 dark:text-slate-350">Nenhuma redação enviada</p>
+                <p className="text-xs font-bold text-slate-700 dark:text-slate-300">Nenhuma redação enviada</p>
                 <p className="text-[10px] text-slate-450 max-w-sm mt-0.5 leading-relaxed">As notas das suas redações corrigidas por Inteligência Artificial aparecerão aqui de forma clara e cronológica.</p>
               </div>
             ) : (
@@ -345,10 +345,10 @@ export default function DashboardView({
                 <line x1="30" y1="135" x2="480" y2="135" stroke="currentColor" strokeOpacity="0.1" />
 
                 {/* Grid labels */}
-                <text x="5" y="34" className="text-[8px] font-mono fill-slate-400">1000</text>
-                <text x="5" y="69" className="text-[8px] font-mono fill-slate-400">750</text>
-                <text x="5" y="104" className="text-[8px] font-mono fill-slate-400">500</text>
-                <text x="5" y="139" className="text-[8px] font-mono fill-slate-400">250</text>
+                <text x="5" y="34" className="text-[10px] font-mono fill-slate-400">1000</text>
+                <text x="5" y="69" className="text-[10px] font-mono fill-slate-400">750</text>
+                <text x="5" y="104" className="text-[10px] font-mono fill-slate-400">500</text>
+                <text x="5" y="139" className="text-[10px] font-mono fill-slate-400">250</text>
 
                 {/* Spline Path Drawing */}
                 {(() => {
@@ -429,7 +429,7 @@ export default function DashboardView({
                           x={p.x}
                           y="152"
                           textAnchor="middle"
-                          className="text-[8px] font-mono fill-slate-450"
+                          className="text-[10px] font-mono fill-slate-450"
                         >
                           {essayLabels[idx]}
                         </text>
@@ -445,10 +445,10 @@ export default function DashboardView({
         {/* Bento Card 4: Radar Chart (Competências) - Small Column */}
         <div id="bento-chart-radar" className="md:col-span-4 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card flex flex-col justify-between relative">
           <div>
-            <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">
+            <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">
               Análise de Competências
-            </h3>
-            <p className="text-slate-400 text-[10px] mt-0.5">Visão espacial das 5 habilidades do ENEM</p>
+            </h2>
+            <p className="text-slate-600 text-[10px] mt-0.5">Visão espacial das 5 habilidades do ENEM</p>
           </div>
 
           {/* SVG Radar Chart Renderer */}
@@ -456,8 +456,8 @@ export default function DashboardView({
             {essayCorrections.length === 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 bg-slate-50/50 dark:bg-[#0f172a]/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 z-10">
                 <BarChart2 className="h-6 w-6 text-purple-500/65 mb-1.5" />
-                <p className="text-[11px] font-bold text-slate-705 dark:text-slate-350">Radar vazio</p>
-                <p className="text-[9px] text-slate-400 max-w-xs mt-0.5 leading-relaxed">Sua primeira correção de redação mapeará o gráfico poligonal aqui em tempo real.</p>
+                <p className="text-[11px] font-bold text-slate-705 dark:text-slate-300">Radar vazio</p>
+                <p className="text-[9px] text-slate-600 max-w-xs mt-0.5 leading-relaxed">Sua primeira correção de redação mapeará o gráfico poligonal aqui em tempo real.</p>
               </div>
             )}
             <svg width="260" height="245" overflow="visible" className="text-blue-500 dark:text-blue-400">
@@ -525,7 +525,7 @@ export default function DashboardView({
             </svg>
           </div>
 
-          <div className="text-[10px] text-slate-400 text-center border-t border-slate-200 dark:border-slate-800 pt-2 font-mono">
+          <div className="text-[10px] text-slate-600 text-center border-t border-slate-200 dark:border-slate-800 pt-2 font-mono">
             Meta: Equilibrar e expandir rumo às pontas (200 pts)
           </div>
         </div>
@@ -534,10 +534,10 @@ export default function DashboardView({
         <div id="bento-activity-feed" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
           <div className="flex justify-between items-center mb-6">
             <div>
-              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
+              <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
                 <Clock className="h-4.5 w-4.5 text-blue-500" />
                 Feed de Atividades
-              </h3>
+              </h2>
               <p className="text-slate-450 text-[10px] mt-0.5">Seu histórico de rotina de estudos</p>
             </div>
             <span className="text-[10px] px-2 py-0.5 bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-450 rounded font-mono font-bold">
@@ -549,8 +549,8 @@ export default function DashboardView({
           <div className="relative border-l border-slate-200 dark:border-slate-700 pl-4 py-1.5 space-y-5 max-h-[400px] overflow-y-auto" id="feed-list">
             {activityLogs.length === 0 ? (
               <div className="py-8 text-center" id="empty-activities-text font-sans text-xs">
-                <p className="text-xs text-slate-400 italic">Nenhuma atividade registrada ainda.</p>
-                <p className="text-[10px] text-slate-400 mt-1">Conclua redações ou responda simulados para rastrear seus avanços!</p>
+                <p className="text-xs text-slate-600 italic">Nenhuma atividade registrada ainda.</p>
+                <p className="text-[10px] text-slate-600 mt-1">Conclua redações ou responda simulados para rastrear seus avanços!</p>
               </div>
             ) : (
               activityLogs.map((log) => {
@@ -573,11 +573,11 @@ export default function DashboardView({
                         <p className="font-display font-bold text-xs text-slate-800 dark:text-slate-100">
                           {log.title}
                         </p>
-                        <span className="text-[9px] text-slate-400 font-mono flex-shrink-0">
+                        <span className="text-[9px] text-slate-600 font-mono flex-shrink-0">
                           {log.timeAgo}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-350">
+                      <p className="text-xs text-slate-500 dark:text-slate-300">
                         {log.description}
                       </p>
                     </div>
@@ -598,9 +598,9 @@ export default function DashboardView({
           <div className="space-y-4 relative z-10">
             <div className="flex items-center gap-2">
               <span className="text-xl">💡</span>
-              <h3 className="font-display font-extrabold text-sm text-white">
+              <h2 className="font-display font-extrabold text-sm text-white">
                 Dica da IA ApexEnem
-              </h3>
+              </h2>
             </div>
             
             <p className="text-xs text-slate-300 leading-relaxed">
@@ -657,10 +657,10 @@ export default function DashboardView({
         <div id="bento-achievements" className="md:col-span-6 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
           <div className="flex justify-between items-center mb-4">
             <div>
-              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
+              <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
                 <Trophy className="h-4.5 w-4.5 text-amber-500" />
                 Conquistas
-              </h3>
+              </h2>
               <p className="text-slate-450 text-[10px] mt-0.5">{achievements.filter(a => a.unlockedAt).length} de {achievements.length}</p>
             </div>
             <span className="text-[10px] px-2 py-0.5 bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 rounded font-mono font-bold">
@@ -682,7 +682,7 @@ export default function DashboardView({
                 >
                   <span className="text-xl">{unlocked ? ach.icon : '🔒'}</span>
                   <p className="text-[10px] font-bold text-slate-700 dark:text-slate-200 leading-tight">{ach.title}</p>
-                  <p className="text-[8px] text-slate-400 dark:text-slate-500 leading-tight">{ach.description}</p>
+                  <p className="text-[10px] text-slate-600 dark:text-slate-500 leading-tight">{ach.description}</p>
                 </div>
               );
             })}
@@ -690,7 +690,7 @@ export default function DashboardView({
 
           {/* Progress bar towards next achievement */}
           <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-            <div className="flex justify-between text-[10px] font-mono text-slate-400 mb-1">
+            <div className="flex justify-between text-[10px] font-mono text-slate-600 mb-1">
               <span>Progresso Geral</span>
               <span>{achievements.filter(a => a.unlockedAt).length}/{achievements.length}</span>
             </div>
@@ -708,10 +708,10 @@ export default function DashboardView({
           <div id="bento-subject-breakdown" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
+                <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
                   <BarChart2 className="h-4.5 w-4.5 text-purple-500" />
                   Desempenho por Matéria
-                </h3>
+                </h2>
                 <p className="text-slate-450 text-[10px] mt-0.5">Média de acertos nos simulados por área de conhecimento</p>
               </div>
             </div>
@@ -737,7 +737,7 @@ export default function DashboardView({
                         style={{ width: `${data.avgScore}%` }}
                       />
                     </div>
-                    <p className="text-[9px] text-slate-400">{data.count} simulado{data.count > 1 ? 's' : ''}</p>
+                    <p className="text-[9px] text-slate-600">{data.count} simulado{data.count > 1 ? 's' : ''}</p>
                   </div>
                 );
               })}
@@ -749,10 +749,10 @@ export default function DashboardView({
         <div id="bento-essays-list" className="md:col-span-12 bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 bento-card">
           <div className="flex justify-between items-center mb-5">
             <div>
-              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
+              <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm flex items-center gap-1.5">
                 <FileText className="h-4.5 w-4.5 text-blue-500" />
                 Todas as Redações
-              </h3>
+              </h2>
               <p className="text-slate-450 text-[10px] mt-0.5">{totalEssays} redação{totalEssays !== 1 ? 'ões' : ''} corrigida{totalEssays !== 1 ? 's' : ''}</p>
             </div>
             <button
@@ -767,7 +767,7 @@ export default function DashboardView({
             <div className="py-10 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
               <FileText className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
               <p className="text-xs font-bold text-slate-500">Nenhuma redação enviada ainda</p>
-              <p className="text-[10px] text-slate-400 mt-1">Envie sua primeira redação para receber notas de 10 IAs</p>
+              <p className="text-[10px] text-slate-600 mt-1">Envie sua primeira redação para receber notas de 10 IAs</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -781,10 +781,10 @@ export default function DashboardView({
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="text-xs font-bold text-slate-800 dark:text-slate-100 truncate">{essay.title}</p>
-                      <p className="text-[10px] text-slate-400 mt-0.5">{essay.date}</p>
+                      <p className="text-[10px] text-slate-600 mt-0.5">{essay.date}</p>
                       <div className="flex gap-1.5 mt-1.5 flex-wrap">
                         {essay.competencies?.map((comp) => (
-                          <span key={comp.id} className="text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded font-mono">
+                          <span key={comp.id} className="text-[9px] px-1.5 py-0.5 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-600 rounded font-mono">
                             C{comp.id}: {comp.score}
                           </span>
                         ))}

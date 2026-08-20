@@ -33,11 +33,25 @@ function ViewSpinner() {
     <div className="flex items-center justify-center py-24">
       <div className="text-center space-y-3">
         <div className="animate-spin w-6 h-6 border-2 border-blue-600 border-t-transparent rounded-full mx-auto" />
-        <p className="text-xs text-slate-400">Carregando módulo...</p>
+        <p className="text-xs text-slate-600">Carregando módulo...</p>
       </div>
     </div>
   );
 }
+
+const ROUTE_MAP: Record<string, string> = {
+  dashboard: '/',
+  redacao: '/redacao',
+  perguntas: '/questoes-ia',
+  simulados: '/simulados',
+  aprendizado: '/aprendizado',
+  configuracoes: '/configuracoes',
+  perfil: '/perfil',
+};
+
+const REVERSE_ROUTE: Record<string, string> = Object.fromEntries(
+  Object.entries(ROUTE_MAP).map(([tab, path]) => [path, tab])
+);
 
 
 
@@ -46,7 +60,6 @@ export default function App() {
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [requireOnboarding, setRequireOnboarding] = useState(false);
-  const [activeTab, setActiveTab] = useState('dashboard');
   const [isDarkMode, setIsDarkMode] = useState(() => {
     const saved = localStorage.getItem('ApexEnem_dark_theme');
     if (saved !== null) return saved === 'true';
@@ -71,6 +84,9 @@ export default function App() {
     window.history.pushState({}, '', path);
     setCurrentPath(path);
   };
+
+  const activeTab = REVERSE_ROUTE[currentPath] || 'dashboard';
+  const onNavigate = (tab: string) => navigate(ROUTE_MAP[tab] || '/');
 
   useEffect(() => {
     const onPop = () => setCurrentPath(window.location.pathname);
@@ -550,7 +566,7 @@ export default function App() {
       <Sidebar
         currentUser={currentUser as any}
         activeTab={activeTab}
-        setActiveTab={setActiveTab}
+        setActiveTab={onNavigate}
         onLogout={handleLogout}
         isDarkMode={isDarkMode}
         toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
@@ -560,7 +576,7 @@ export default function App() {
           {activeTab === 'dashboard' && (
             <DashboardView
               currentUser={currentUser as any}
-              setActiveTab={setActiveTab}
+              setActiveTab={onNavigate}
               essayCorrections={essayCorrections}
               simuladosHistory={simuladosHistory}
               activityLogs={activityLogs}
@@ -619,7 +635,7 @@ export default function App() {
               wrongAnswers={wrongAnswers}
               gamificationStats={gamificationStats}
               achievements={allAchievements}
-              setActiveTab={setActiveTab}
+              setActiveTab={onNavigate}
               triProfile={triProfile}
             />
           )}

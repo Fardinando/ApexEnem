@@ -282,7 +282,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
           <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
             Corretor de Redação por IA
           </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
+          <p className="text-sm text-slate-500 dark:text-slate-600 mt-1.5">
             Envie sua redação digitada ou uma foto legível e receba uma nota de 0 a 1000 com revisão das 5 competências do ENEM.
           </p>
         </div>
@@ -290,10 +290,10 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
         {/* Existing corrections list selector */}
         {essayCorrections.length > 0 && (
           <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-slate-400" htmlFor="correction-history-select">Histórico:</label>
+            <label className="text-xs font-semibold text-slate-600" htmlFor="correction-history-select">Histórico:</label>
             <select
               id="correction-history-select"
-              className="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-705 py-1.5 px-3 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
+              className="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-700 py-1.5 px-3 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
               value={selectedCorrectionId || ''}
               onChange={(e) => setSelectedCorrectionId(e.target.value)}
             >
@@ -316,17 +316,17 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
         <div className="lg:col-span-6 space-y-6" id="input-column">
           <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-5">
             
-            <h3 className="font-display font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
+            <h2 className="font-display font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
               <span className="p-1 bg-blue-600 text-white rounded-lg"><FileText className="h-4 w-4" /></span>
               Nova Submissão
               <span className="ml-auto text-[9px] font-mono bg-indigo-50 text-indigo-600 dark:bg-indigo-950/30 dark:text-indigo-400 px-2 py-0.5 rounded-full border border-indigo-100 dark:border-indigo-900/30">
                 10 IAs
               </span>
-            </h3>
+            </h2>
 
             {/* Essay Title */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-750 dark:text-slate-200" htmlFor="essay-title">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-200" htmlFor="essay-title">
                 Título do Tema da Redação
               </label>
               <input
@@ -341,7 +341,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
             {/* Input Select Tab Mode */}
             <div className="space-y-1.5">
-              <label className="text-xs font-bold text-slate-750 dark:text-slate-200">
+              <label className="text-xs font-bold text-slate-700 dark:text-slate-200">
                 Formato de Envio
               </label>
               
@@ -352,7 +352,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                   className={`py-2 text-center text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition cursor-pointer ${
                     activeTab === 'digitar'
                       ? 'bg-white text-blue-600 shadow-sm dark:bg-[#1e293b] dark:text-white font-bold'
-                      : 'text-slate-500 dark:text-slate-400'
+                      : 'text-slate-500 dark:text-slate-600'
                   }`}
                   onClick={() => setActiveTab('digitar')}
                 >
@@ -365,7 +365,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                   className={`py-2 text-center text-xs font-semibold rounded-lg flex items-center justify-center gap-2 transition cursor-not-allowed opacity-60 ${
                     activeTab === 'upload'
                       ? 'bg-white text-blue-600 shadow-sm dark:bg-[#1e293b] dark:text-white font-bold'
-                      : 'text-slate-500 dark:text-slate-400'
+                      : 'text-slate-500 dark:text-slate-600'
                   }`}
                   onClick={() => alert('📸 OCR para fotos estará disponível em breve! Por enquanto, digite sua redação manualmente.')}
                   title="Em breve: correção por foto"
@@ -380,7 +380,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
             {/* Interactive Areas depending on selection */}
             {activeTab === 'digitar' ? (
               <div className="space-y-1.5 animate-fade-in">
-                <div className="flex justify-between items-center text-xs text-slate-400">
+                <div className="flex justify-between items-center text-xs text-slate-600">
                   <label className="font-bold text-slate-800 dark:text-slate-200" htmlFor="essay-textarea">Conteúdo do Texto</label>
                   <span>{text.length} caracteres ({Math.round(text.length / 5.5)} palavras estimadas)</span>
                 </div>
@@ -388,7 +388,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                 {/* Word count progress bar (ENEM target: ~300 words / 1650 chars) */}
                 {text.length > 0 && (
                   <div className="space-y-1">
-                    <div className="flex justify-between text-[10px] font-mono text-slate-400">
+                    <div className="flex justify-between text-[10px] font-mono text-slate-600">
                       <span>{Math.round(text.length / 5.5)} palavras</span>
                       <span className={Math.round(text.length / 5.5) >= 250 ? 'text-green-500 font-bold' : ''}>
                         {Math.round(text.length / 5.5) >= 250 ? '✓ Tamanho ideal' : `Meta: ~300 palavras`}
@@ -411,7 +411,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                 
                 {/* Simulated ENEM lined paper effect */}
                 <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden shadow-inner">
-                  <div className="absolute left-0 top-0 bottom-0 w-8 bg-slate-50 dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 flex flex-col pt-3 items-center text-[10px] font-mono text-slate-400/80 space-y-1 select-none">
+                  <div className="absolute left-0 top-0 bottom-0 w-8 bg-slate-50 dark:bg-[#0f172a] border-r border-slate-200 dark:border-slate-800 flex flex-col pt-3 items-center text-[10px] font-mono text-slate-600/80 space-y-1 select-none">
                     {Array.from({ length: 30 }).map((_, i) => (
                       <span key={i} className="leading-5 h-5 flex items-center">{i + 1}</span>
                     ))}
@@ -456,8 +456,8 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                       <Upload className="h-6 w-6" />
                     </div>
                     <p className="text-sm font-bold text-slate-800 dark:text-slate-100">Arrastar e soltar foto legível aqui</p>
-                    <p className="text-xs text-slate-400 mt-1">Ou clique para selecionar no celular / computador</p>
-                    <p className="text-[10px] text-slate-400 mt-3 font-mono">SUPORTA PNG, JPG, JPEG ATÉ 10MB</p>
+                    <p className="text-xs text-slate-600 mt-1">Ou clique para selecionar no celular / computador</p>
+                    <p className="text-[10px] text-slate-600 mt-3 font-mono">SUPORTA PNG, JPG, JPEG ATÉ 10MB</p>
                   </div>
                 ) : (
                   <div className="relative border border-slate-200 dark:border-slate-800 rounded-xl overflow-hidden bg-slate-100" id="uploaded-preview">
@@ -517,10 +517,10 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
               </div>
 
               <div className="space-y-2">
-                <h4 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm md:text-base animate-pulse">
+                <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm md:text-base animate-pulse">
                   Consultando 10 IAs em paralelo...
-                </h4>
-                <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+                </h3>
+                <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
                   Isso pode demorar de 8 a 20 segundos. Dez modelos de IA estão analisando seu texto simultaneamente.
                 </p>
               </div>
@@ -538,10 +538,10 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
               <div className="p-3 bg-red-100 dark:bg-red-950/40 text-red-600 dark:text-red-400 rounded-full">
                 <AlertCircle className="h-8 w-8" />
               </div>
-              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-base">Erro na Correção</h3>
+              <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-base">Erro na Correção</h2>
               <p className="text-xs text-slate-600 dark:text-slate-300 max-w-sm leading-relaxed">{errorMessage}</p>
               {errorDetails && (
-                <pre className="text-[10px] text-left text-slate-500 dark:text-slate-400 bg-slate-50 dark:bg-[#0f172a] p-3 rounded-xl border border-slate-200 dark:border-slate-800 max-w-full overflow-auto max-h-24">{errorDetails}</pre>
+                <pre className="text-[10px] text-left text-slate-500 dark:text-slate-600 bg-slate-50 dark:bg-[#0f172a] p-3 rounded-xl border border-slate-200 dark:border-slate-800 max-w-full overflow-auto max-h-24">{errorDetails}</pre>
               )}
               <div className="flex gap-3">
                 <button
@@ -566,12 +566,12 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
           {/* C. IDLE EMPTY PLACEHOLDER STATE */}
           {!isLoading && !errorMessage && !activeCorrection && (
-            <div className="bg-slate-50/50 dark:bg-[#1e293b]/60 rounded-3xl border-2 border-dashed border-slate-250 dark:border-slate-800 p-12 text-center space-y-4 min-h-[440px] flex flex-col justify-center items-center" id="empty-corrections-badge">
-              <div className="p-3.5 bg-slate-100 dark:bg-[#0f172a] text-slate-450 rounded-full">
+            <div className="bg-slate-50/50 dark:bg-[#1e293b]/60 rounded-3xl border-2 border-dashed border-slate-300 dark:border-slate-800 p-12 text-center space-y-4 min-h-[440px] flex flex-col justify-center items-center" id="empty-corrections-badge">
+              <div className="p-3.5 bg-slate-100 dark:bg-[#0f172a] text-slate-500 rounded-full">
                 <HelpCircle className="h-8 w-8 text-blue-600 dark:text-blue-400" />
               </div>
-              <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-base">Aguardando Redação</h3>
-              <p className="text-xs text-slate-450 max-w-xs leading-relaxed">
+              <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-base">Aguardando Redação</h2>
+              <p className="text-xs text-slate-500 max-w-xs leading-relaxed">
                 Insira o seu título, digite ou envie uma foto do texto manuscrito no painel esquerdo para que a inteligência artificial faça a análise gramatical.
               </p>
             </div>
@@ -582,7 +582,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
             <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-6" id="correction-results-view">
               
               {/* Main Score Header Card */}
-              <div className="bg-gradient-to-r from-blue-750 via-blue-600 to-indigo-600 text-white p-6 rounded-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-4">
+              <div className="bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-600 text-white p-6 rounded-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-4">
                 
                 <div className="absolute right-[-20px] top-[-20px] opacity-10">
                   <Target className="h-32 w-32 translate-x-10 translate-y-5" />
@@ -590,7 +590,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
                 <div className="text-center md:text-left space-y-1 relative z-10">
                   <span className="text-[10px] font-mono text-blue-100 uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded">Nota Final do Professor</span>
-                  <h3 className="font-display font-extrabold text-base md:text-lg truncate">{activeCorrection.title}</h3>
+                  <h2 className="font-display font-extrabold text-base md:text-lg truncate">{activeCorrection.title}</h2>
                   <p className="text-xs text-blue-50 flex items-center justify-center md:justify-start gap-1">
                     <span>Avaliado em {activeCorrection.date}</span>
                   </p>
@@ -606,7 +606,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
               {/* General Diagnistic Feedback */}
               <div className="space-y-2">
-                <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 font-mono">Feedback Geral Diagnóstico</h4>
+                <h3 className="text-xs uppercase font-extrabold tracking-wider text-slate-600 font-mono">Feedback Geral Diagnóstico</h3>
                 <div className="p-4 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                   {activeCorrection.generalFeedback}
                 </div>
@@ -614,7 +614,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
               {/* Detailed Accordion of 5 ENEM Competencies */}
               <div className="space-y-2.5">
-                <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 font-mono">Competências do ENEM</h4>
+                <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-600 font-mono">Competências do ENEM</h4>
                 
                 <div className="space-y-2" id="competencies-accordion">
                   {(activeCorrection.competencies || []).map((comp, idx) => {
@@ -639,14 +639,14 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                             <span className="font-display font-extrabold text-blue-600 dark:text-blue-400">
                               {comp.score} / 200
                             </span>
-                            <span className="text-slate-400 font-normal">{isOpen ? '▲' : '▼'}</span>
+                            <span className="text-slate-600 font-normal">{isOpen ? '▲' : '▼'}</span>
                           </div>
                         </button>
 
                         {isOpen && (
-                          <div className="p-4 bg-white dark:bg-[#0f172a] border-t border-slate-250 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 space-y-2 animate-slide-down">
-                            <p className="font-semibold text-slate-400 italic">" {comp.description} "</p>
-                            <p className="leading-relaxed bg-slate-55 dark:bg-[#1e293b]/50 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
+                          <div className="p-4 bg-white dark:bg-[#0f172a] border-t border-slate-300 dark:border-slate-800 text-xs text-slate-600 dark:text-slate-300 space-y-2 animate-slide-down">
+                            <p className="font-semibold text-slate-600 italic">" {comp.description} "</p>
+                            <p className="leading-relaxed bg-slate-50 dark:bg-[#1e293b]/50 p-3 rounded-lg border border-slate-200 dark:border-slate-800 text-slate-700 dark:text-slate-200">
                               <b>Análise do Corretor:</b> {comp.feedback}
                             </p>
                           </div>
@@ -666,7 +666,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                     <CheckCircle className="h-4 w-4" />
                     Pontos Fortes
                   </h4>
-                  <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 pl-1">
+                  <ul className="text-xs text-slate-500 dark:text-slate-600 space-y-1.5 pl-1">
                     {(activeCorrection.strengths || []).map((s, i) => (
                       <li key={i} className="flex gap-1.5 items-start">
                         <span className="text-green-500">▶</span>
@@ -682,7 +682,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                     <AlertCircle className="h-4 w-4" />
                     Plano de Ação (Ajustes)
                   </h4>
-                  <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1.5 pl-1">
+                  <ul className="text-xs text-slate-500 dark:text-slate-600 space-y-1.5 pl-1">
                     {(activeCorrection.weaknesses || []).map((w, i) => (
                       <li key={i} className="flex gap-1.5 items-start">
                         <span className="text-amber-500">⚠</span>
@@ -697,7 +697,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
               {/* Score Evolution Mini Chart */}
               {essayCorrections.length > 1 && (
                 <div className="border-t border-slate-200 dark:border-slate-800 pt-5 space-y-3">
-                  <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-400 font-mono flex items-center gap-1.5">
+                  <h4 className="text-xs uppercase font-extrabold tracking-wider text-slate-600 font-mono flex items-center gap-1.5">
                     <TrendingUp className="h-4 w-4" />
                     Evolução de Notas
                   </h4>
@@ -707,7 +707,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                       const isCurrent = essay.id === activeCorrection.id;
                       return (
                         <div key={essay.id} className="flex-1 flex flex-col items-center gap-1">
-                          <span className={`text-[8px] font-mono ${isCurrent ? 'text-blue-600 font-bold' : 'text-slate-400'}`}>
+                          <span className={`text-[8px] font-mono ${isCurrent ? 'text-blue-600 font-bold' : 'text-slate-600'}`}>
                             {essay.score}
                           </span>
                           <div
@@ -726,7 +726,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
                       );
                     })}
                   </div>
-                  <div className="flex justify-between text-[9px] font-mono text-slate-400">
+                  <div className="flex justify-between text-[9px] font-mono text-slate-600">
                     <span> Mais antiga</span>
                     <span>Mais recente →</span>
                   </div>

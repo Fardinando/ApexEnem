@@ -846,7 +846,7 @@ export default function AprendizadoView({
               <h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">
                 {activeCategory.title}
               </h3>
-              <p className="text-[10px] text-slate-400 font-medium">
+              <p className="text-[10px] text-slate-600 font-medium">
                 {isRecomendadoArea
                   ? 'Assuntos recomendados com base nos seus erros'
                   : 'Escolha um assunto para começar'}
@@ -861,7 +861,7 @@ export default function AprendizadoView({
             <h4 className="font-display font-black text-base text-slate-700 dark:text-slate-200">
               Ainda não temos recomendações
             </h4>
-            <p className="text-xs text-slate-400 max-w-xs mx-auto leading-relaxed">
+            <p className="text-xs text-slate-600 max-w-xs mx-auto leading-relaxed">
               Resolva questões e simulados para o Cabrito identificar seus pontos fracos e sugerir os melhores assuntos.
             </p>
           </div>
@@ -1020,7 +1020,7 @@ export default function AprendizadoView({
           </div>
           <div className="text-center space-y-2">
             <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Preparando sua prática...</h3>
-            <p className="text-xs text-slate-400 max-w-xs">
+            <p className="text-xs text-slate-600 max-w-xs">
               O Cabrito está preparando exercícios de <strong>{activeTopic?.title || activeCategory?.title}</strong> para você resolver na prática!
             </p>
           </div>
@@ -1042,7 +1042,7 @@ export default function AprendizadoView({
           </div>
           <div className="text-center space-y-2">
             <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">A IA não conseguiu gerar a prática</h3>
-            <p className="text-xs text-slate-400 max-w-xs">O serviço de IA pode estar sobrecarregado. Tente novamente em alguns segundos.</p>
+            <p className="text-xs text-slate-600 max-w-xs">O serviço de IA pode estar sobrecarregado. Tente novamente em alguns segundos.</p>
           </div>
           <div className="flex flex-col gap-2 w-full max-w-xs">
             <button
@@ -1115,7 +1115,7 @@ export default function AprendizadoView({
             <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
               <div className="h-full bg-green-600 rounded-full transition-all duration-500" style={{ width: `${((practiceStep + 1) / Math.max(practiceList.length, 1)) * 100}%` }} />
             </div>
-            <span className="text-[10px] font-mono text-slate-400">{practiceStep + 1}/{practiceList.length}</span>
+            <span className="text-[10px] font-mono text-slate-600">{practiceStep + 1}/{practiceList.length}</span>
           </div>
         </div>
 
@@ -1135,7 +1135,7 @@ export default function AprendizadoView({
             <h3 className="font-display font-black text-base text-slate-800 dark:text-slate-100">
               {item.title}
             </h3>
-            <p className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">
+            <p className="text-[10px] text-slate-600 font-bold uppercase tracking-wider">
               Tente resolver antes de ver a solução
             </p>
           </div>
@@ -1210,7 +1210,7 @@ export default function AprendizadoView({
             <h2 className="font-display font-black text-base text-slate-800 dark:text-slate-100">{curriculumSubject.name}</h2>
             <div className="w-16" />
           </div>
-          <p className="text-xs text-slate-400 text-center">Escolha um módulo para começar</p>
+          <p className="text-xs text-slate-600 text-center">Escolha um módulo para começar</p>
           <div className="grid gap-4">
             {curriculumSubject.modules.map((mod, idx) => (
               <div key={mod.id} className="bg-white dark:bg-[#1e293b] rounded-2xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm hover:shadow-md transition cursor-pointer" onClick={() => handleSelectModule(mod)}>
@@ -1220,7 +1220,7 @@ export default function AprendizadoView({
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="font-display font-bold text-sm text-slate-800 dark:text-slate-100">{mod.title}</h3>
-                    <p className="text-xs text-slate-400 mt-1 line-clamp-2">{mod.description}</p>
+                    <p className="text-xs text-slate-600 mt-1 line-clamp-2">{mod.description}</p>
                     <p className="text-[10px] text-slate-300 dark:text-slate-600 mt-2">{mod.chapters.length} capítulos</p>
                   </div>
                   <span className="text-slate-300 dark:text-slate-600 text-lg shrink-0">→</span>
@@ -1238,7 +1238,7 @@ export default function AprendizadoView({
           <div className="flex items-center justify-between">
             <button type="button" onClick={() => { setSelectedModule(null); setViewMode('modules'); }} className="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 rounded-lg text-xs font-bold cursor-pointer transition">← Voltar</button>
             <div className="text-center">
-              <p className="text-[10px] text-slate-400">{curriculumSubject?.name}</p>
+              <p className="text-[10px] text-slate-600">{curriculumSubject?.name}</p>
               <h2 className="font-display font-black text-base text-slate-800 dark:text-slate-100">{selectedModule.title}</h2>
             </div>
             <div className="w-16" />
@@ -1255,7 +1255,7 @@ export default function AprendizadoView({
                     </div>
                     <div className="flex-1 min-w-0">
                       <h3 className="font-display font-bold text-xs text-slate-800 dark:text-slate-100">{ch.title}</h3>
-                      <p className="text-[10px] text-slate-400 mt-0.5 line-clamp-1">{ch.description}</p>
+                      <p className="text-[10px] text-slate-600 mt-0.5 line-clamp-1">{ch.description}</p>
                     </div>
                     <div className="text-right shrink-0">
                       <span className={`text-[9px] font-bold px-2 py-0.5 rounded-full ${ch.difficulty === 1 ? 'bg-green-100 text-green-600' : ch.difficulty === 2 ? 'bg-yellow-100 text-yellow-600' : 'bg-red-100 text-red-600'}`}>
@@ -1287,11 +1287,11 @@ export default function AprendizadoView({
               <div className="w-32 h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                 <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${((chapterStep + 1) / totalSections) * 100}%` }} />
               </div>
-              <span className="text-[10px] font-mono text-slate-400">{chapterStep + 1}/{totalSections}</span>
+              <span className="text-[10px] font-mono text-slate-600">{chapterStep + 1}/{totalSections}</span>
             </div>
           </div>
           <div className="text-center">
-            <p className="text-[10px] text-slate-400">{chapterLesson.moduleTitle}</p>
+            <p className="text-[10px] text-slate-600">{chapterLesson.moduleTitle}</p>
             <h2 className="font-display font-black text-sm text-slate-800 dark:text-slate-100">{chapterLesson.chapterTitle}</h2>
           </div>
           <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-4">
@@ -1315,7 +1315,7 @@ export default function AprendizadoView({
                   if (chRevealed) {
                     optClass = i === (section as any).correctIndex
                       ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 font-bold'
-                      : isSelected ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-700 text-red-600' : 'border-slate-200 dark:border-slate-800 text-slate-400';
+                      : isSelected ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-700 text-red-600' : 'border-slate-200 dark:border-slate-800 text-slate-600';
                   } else if (isSelected) {
                     optClass = 'bg-blue-50 dark:bg-blue-950/20 border-blue-400 dark:border-blue-600 text-blue-700 dark:text-blue-300';
                   }
@@ -1361,7 +1361,7 @@ export default function AprendizadoView({
                       if (quizRevealed) {
                         optCls = isOptCorrect
                           ? 'bg-green-50 dark:bg-green-950/20 border-green-300 dark:border-green-700 text-green-700 dark:text-green-400 font-bold'
-                          : isOptSelected ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-700 text-red-600' : 'border-slate-200 dark:border-slate-800 text-slate-400';
+                          : isOptSelected ? 'bg-red-50 dark:bg-red-950/20 border-red-300 dark:border-red-700 text-red-600' : 'border-slate-200 dark:border-slate-800 text-slate-600';
                       }
                       return (
                         <button key={oi} type="button" disabled={quizRevealed}
@@ -1378,7 +1378,7 @@ export default function AprendizadoView({
                         Verificar
                       </button>
                     ) : (
-                      <p className="text-[10px] text-slate-400 italic"><MathRenderer text={q.explanation} /></p>
+                      <p className="text-[10px] text-slate-600 italic"><MathRenderer text={q.explanation} /></p>
                     )}
                   </div>
                   );
@@ -1414,7 +1414,7 @@ export default function AprendizadoView({
           </div>
           <div className="text-center space-y-2">
             <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Preparando sua aula...</h3>
-            <p className="text-xs text-slate-400 max-w-xs">O Cabrito está preparando o conteúdo completo de <strong>{selectedChapter?.title}</strong>!</p>
+            <p className="text-xs text-slate-600 max-w-xs">O Cabrito está preparando o conteúdo completo de <strong>{selectedChapter?.title}</strong>!</p>
           </div>
           <div className="flex gap-1.5">
             {[0, 1, 2].map(i => (
@@ -1434,7 +1434,7 @@ export default function AprendizadoView({
           </div>
           <div className="text-center space-y-2">
             <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Não consegui gerar a aula</h3>
-            <p className="text-xs text-slate-400 max-w-xs">O serviço pode estar sobrecarregado. Tente novamente.</p>
+            <p className="text-xs text-slate-600 max-w-xs">O serviço pode estar sobrecarregado. Tente novamente.</p>
           </div>
           <div className="flex flex-col gap-2 w-full max-w-xs">
             <button type="button" onClick={() => selectedChapter && handleSelectChapter(selectedChapter)} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-bold transition shadow-md cursor-pointer flex items-center justify-center gap-1.5">
@@ -1465,7 +1465,7 @@ export default function AprendizadoView({
             <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
               Preparando sua aula...
             </h3>
-            <p className="text-xs text-slate-400 max-w-xs">
+            <p className="text-xs text-slate-600 max-w-xs">
               O Cabrito está pesquisando o melhor conteúdo de{' '}
               <strong>{activeCategory.title}</strong> para você!
             </p>
@@ -1496,7 +1496,7 @@ export default function AprendizadoView({
             <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
               A IA não conseguiu gerar a aula
             </h3>
-            <p className="text-xs text-slate-400 max-w-xs">
+            <p className="text-xs text-slate-600 max-w-xs">
               O serviço de IA pode estar sobrecarregado. Tente novamente em alguns segundos.
             </p>
           </div>
@@ -1544,7 +1544,7 @@ export default function AprendizadoView({
                 <div className="w-40 h-2 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
                   <div className="h-full bg-blue-600 rounded-full transition-all duration-500" style={{ width: `${((lessonStep + 1) / totalLessonSteps) * 100}%` }} />
                 </div>
-                <span className="text-[10px] font-mono text-slate-400">{lessonStep + 1}/{totalLessonSteps}</span>
+                <span className="text-[10px] font-mono text-slate-600">{lessonStep + 1}/{totalLessonSteps}</span>
               </div>
             </div>
 
@@ -1592,7 +1592,7 @@ export default function AprendizadoView({
                     })}
                   </div>
                   {!interactiveChecked ? (
-                    <button type="button" disabled={interactiveAnswer === null} onClick={() => { setInteractiveChecked(true); if (interactiveAnswer === block.correctIndex) { setLessonCorrectCount(prev => prev + 1); setLessonXpEarned(prev => prev + 10); } else { if (onWrongAnswer && activeCategory) onWrongAnswer(activeCategory.area, 'aula', { statement: typeof block.content === 'string' ? block.content : '', topic: activeTopic?.title }); } }} className={`px-5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${interactiveAnswer !== null ? 'bg-blue-600 hover:bg-blue-700 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'}`}>Verificar Resposta</button>
+                    <button type="button" disabled={interactiveAnswer === null} onClick={() => { setInteractiveChecked(true); if (interactiveAnswer === block.correctIndex) { setLessonCorrectCount(prev => prev + 1); setLessonXpEarned(prev => prev + 10); } else { if (onWrongAnswer && activeCategory) onWrongAnswer(activeCategory.area, 'aula', { statement: typeof block.content === 'string' ? block.content : '', topic: activeTopic?.title }); } }} className={`px-5 py-2 rounded-xl text-xs font-bold transition cursor-pointer ${interactiveAnswer !== null ? 'bg-blue-600 hover:bg-blue-700 text-white shadow' : 'bg-slate-200 dark:bg-slate-700 text-slate-600 cursor-not-allowed'}`}>Verificar Resposta</button>
                   ) : (
                     <div className="space-y-3">
                       <div className={`p-3 rounded-xl text-xs font-semibold ${interactiveAnswer === block.correctIndex ? 'bg-green-50 dark:bg-green-950/30 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-800' : 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'}`}>
@@ -1655,7 +1655,7 @@ export default function AprendizadoView({
 
               <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 dark:bg-[#0f172a]/70 rounded-2xl border border-slate-200 dark:border-slate-800/60 text-center">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                  <span className="text-[10px] text-slate-600 font-bold block uppercase tracking-wider font-mono">
                     Precisão
                   </span>
                   <span className={`text-xl font-black font-mono block ${passed ? 'text-green-600' : 'text-amber-500'}`}>
@@ -1663,7 +1663,7 @@ export default function AprendizadoView({
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                  <span className="text-[10px] text-slate-600 font-bold block uppercase tracking-wider font-mono">
                     XP Ganho
                   </span>
                   <span className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono block">
@@ -1671,7 +1671,7 @@ export default function AprendizadoView({
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                  <span className="text-[10px] text-slate-600 font-bold block uppercase tracking-wider font-mono">
                     Blocos
                   </span>
                   <span className="text-xl font-black text-purple-600 dark:text-purple-400 font-mono block">
@@ -1806,7 +1806,7 @@ export default function AprendizadoView({
             </div>
             <div className="text-center space-y-2">
               <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Preparando suas questões...</h3>
-              <p className="text-xs text-slate-400 max-w-xs">O Cabrito está preparando questões personalizadas para você!</p>
+              <p className="text-xs text-slate-600 max-w-xs">O Cabrito está preparando questões personalizadas para você!</p>
             </div>
             <div className="flex gap-1.5">
               {[0, 1, 2].map(i => (
@@ -1826,7 +1826,7 @@ export default function AprendizadoView({
             </div>
             <div className="text-center space-y-2">
               <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">A IA não conseguiu gerar questões</h3>
-              <p className="text-xs text-slate-400 max-w-xs">O serviço de IA pode estar sobrecarregado. Tente novamente em alguns segundos.</p>
+              <p className="text-xs text-slate-600 max-w-xs">O serviço de IA pode estar sobrecarregado. Tente novamente em alguns segundos.</p>
             </div>
             <div className="flex flex-col gap-2 w-full max-w-xs">
               <button
@@ -1898,7 +1898,7 @@ export default function AprendizadoView({
 
               <div className="grid grid-cols-3 gap-3 p-4 bg-slate-50 dark:bg-[#0f172a]/70 rounded-2xl border border-slate-200 dark:border-slate-800/60 text-center">
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                  <span className="text-[10px] text-slate-600 font-bold block uppercase tracking-wider font-mono">
                     Precisão
                   </span>
                   <span
@@ -1913,7 +1913,7 @@ export default function AprendizadoView({
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                  <span className="text-[10px] text-slate-600 font-bold block uppercase tracking-wider font-mono">
                     XP Ganho
                   </span>
                   <span className="text-xl font-black text-blue-600 dark:text-blue-400 font-mono block">
@@ -1921,7 +1921,7 @@ export default function AprendizadoView({
                   </span>
                 </div>
                 <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold block uppercase tracking-wider font-mono">
+                  <span className="text-[10px] text-slate-600 font-bold block uppercase tracking-wider font-mono">
                     Vidas
                   </span>
                   <span className="text-xl font-black text-amber-500 font-mono block">
@@ -2052,7 +2052,7 @@ export default function AprendizadoView({
                         'bg-red-50 dark:bg-red-950/20 border-red-500 text-red-800 dark:text-red-300';
                     } else {
                       optStyle =
-                        'bg-white dark:bg-[#1e293b]/45 border-slate-200 dark:border-slate-800 text-slate-400';
+                        'bg-white dark:bg-[#1e293b]/45 border-slate-200 dark:border-slate-800 text-slate-600';
                     }
                   } else if (isSelected) {
                     optStyle =
@@ -2135,10 +2135,10 @@ export default function AprendizadoView({
                 <div className="text-center py-6 space-y-4">
                   <span className="text-4xl">🐐</span>
                   <div className="space-y-2">
-                    <h4 className="font-display font-black text-lg text-red-600 dark:text-red-400">
+                    <h3 className="font-display font-black text-lg text-red-600 dark:text-red-400">
                       As energias do Cabrito acabaram!
-                    </h4>
-                    <p className="text-xs text-slate-400 leading-relaxed max-w-sm mx-auto">
+                    </h3>
+                    <p className="text-xs text-slate-600 leading-relaxed max-w-sm mx-auto">
                       Suas vidas se esgotaram. Tente novamente!
                     </p>
                   </div>
@@ -2348,12 +2348,12 @@ export default function AprendizadoView({
           <div className="lg:col-span-8 space-y-6">
             <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 space-y-8 shadow-sm">
               <div className="text-center pb-4 border-b border-slate-200 dark:border-slate-800">
-                <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
+                <h2 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
                   {mainTab === 'cursinho'
                     ? 'Aprendizado de Cursinho'
                     : 'Resolvendo na Prática'}
-                </h3>
-                <p className="text-xs text-slate-400 max-w-sm mx-auto">
+                </h2>
+                <p className="text-xs text-slate-600 max-w-sm mx-auto">
                   {mainTab === 'cursinho'
                     ? 'Escolha a matéria e o assunto para assistir a uma aula guiada pelo Cabrito.'
                     : 'Escolha a matéria e o assunto para resolver exercícios na prática e testar seu aprendizado com questões no final.'}
@@ -2379,10 +2379,10 @@ export default function AprendizadoView({
                     IA
                   </div>
                 </div>
-                <h4 className="font-display font-black text-sm text-slate-800 dark:text-slate-100 mt-3">
+                <h3 className="font-display font-black text-sm text-slate-800 dark:text-slate-100 mt-3">
                   Cabrito do Mil
-                </h4>
-                <span className="text-[9px] font-mono text-slate-400 uppercase tracking-widest font-bold">
+                </h3>
+                <span className="text-[9px] font-mono text-slate-600 uppercase tracking-widest font-bold">
                   {mainTab === 'cursinho'
                     ? 'Tutor de Bolso'
                     : 'Treino na Prática'}

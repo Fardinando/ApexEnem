@@ -197,7 +197,7 @@ export default function PerfilView({
           <h2 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">
             {currentUser.name}
           </h2>
-          <p className="text-[11px] text-slate-400 mt-0.5 flex items-center gap-1">
+          <p className="text-[11px] text-slate-600 mt-0.5 flex items-center gap-1">
             <Mail className="h-3 w-3" />
             {currentUser.email}
           </p>
@@ -216,7 +216,7 @@ export default function PerfilView({
             )}
           </div>
           <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800 w-full">
-            <div className="flex justify-between text-[9px] font-mono text-slate-400 mb-1">
+            <div className="flex justify-between text-[9px] font-mono text-slate-600 mb-1">
               <span>{levelInfo.currentXp} XP</span>
               <span>{levelInfo.nextThreshold} XP</span>
             </div>
@@ -226,7 +226,7 @@ export default function PerfilView({
                 style={{ width: `${levelInfo.progress}%` }}
               />
             </div>
-            <p className="text-[9px] text-slate-400 mt-1 font-mono">Progresso para próximo nível</p>
+            <p className="text-[9px] text-slate-600 mt-1 font-mono">Progresso para próximo nível</p>
           </div>
           <div className="absolute -top-6 -right-6 w-20 h-20 bg-blue-500/10 blur-2xl rounded-full"></div>
         </div>
@@ -237,15 +237,15 @@ export default function PerfilView({
             <h3 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm">
               Análise de Competências
             </h3>
-            <p className="text-slate-400 text-[10px] mt-0.5">Habilidades do ENEM por competência</p>
+            <p className="text-slate-600 text-[10px] mt-0.5">Habilidades do ENEM por competência</p>
           </div>
 
           <div className="flex justify-center py-2 relative" id="perfil-radar-stage">
             {totalEssays === 0 && (
               <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-3 bg-slate-50/50 dark:bg-[#0f172a]/30 rounded-2xl border border-dashed border-slate-200 dark:border-slate-800 z-10">
                 <BarChart2 className="h-6 w-6 text-purple-500/65 mb-1.5" />
-                <p className="text-[11px] font-bold text-slate-700 dark:text-slate-350">Radar vazio</p>
-                <p className="text-[9px] text-slate-400 max-w-xs mt-0.5 leading-relaxed">Envie uma redação para mapear seu gráfico de competências.</p>
+                <p className="text-[11px] font-bold text-slate-700 dark:text-slate-300">Radar vazio</p>
+                <p className="text-[9px] text-slate-600 max-w-xs mt-0.5 leading-relaxed">Envie uma redação para mapear seu gráfico de competências.</p>
               </div>
             )}
             <svg width="260" height="245" overflow="visible" className="text-blue-500 dark:text-blue-400">
@@ -308,7 +308,7 @@ export default function PerfilView({
             </svg>
           </div>
 
-          <div className="text-[10px] text-slate-400 text-center border-t border-slate-200 dark:border-slate-800 pt-2 font-mono">
+          <div className="text-[10px] text-slate-600 text-center border-t border-slate-200 dark:border-slate-800 pt-2 font-mono">
             Meta: Equilibrar e expandir rumo a 200 pts
           </div>
         </div>
@@ -351,7 +351,7 @@ export default function PerfilView({
             <div className="py-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
               <BarChart2 className="h-8 w-8 text-slate-300 dark:text-slate-600 mx-auto mb-2" />
               <p className="text-xs font-bold text-slate-500">Sem dados suficientes</p>
-              <p className="text-[10px] text-slate-400 mt-1">Complete mais simulados para ver seus pontos fortes e fracos.</p>
+              <p className="text-[10px] text-slate-600 mt-1">Complete mais simulados para ver seus pontos fortes e fracos.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -361,7 +361,7 @@ export default function PerfilView({
                   <span className="text-[10px] font-mono text-emerald-600 dark:text-emerald-400 uppercase font-extrabold">Pontos Fortes (&gt; 70%)</span>
                 </div>
                 {strengths.length === 0 ? (
-                  <p className="text-[10px] text-slate-400 italic pl-5">Nenhuma matéria acima de 70% ainda.</p>
+                  <p className="text-[10px] text-slate-600 italic pl-5">Nenhuma matéria acima de 70% ainda.</p>
                 ) : (
                   <div className="space-y-2">
                     {strengths.map(([subject, data]) => (
@@ -389,7 +389,7 @@ export default function PerfilView({
                   <span className="text-[10px] font-mono text-red-600 dark:text-red-400 uppercase font-extrabold">Melhorias (&lt; 50%)</span>
                 </div>
                 {weaknesses.length === 0 ? (
-                  <p className="text-[10px] text-slate-400 italic pl-5">Nenhuma matéria abaixo de 50%. Continue assim!</p>
+                  <p className="text-[10px] text-slate-600 italic pl-5">Nenhuma matéria abaixo de 50%. Continue assim!</p>
                 ) : (
                   <div className="space-y-2">
                     {weaknesses.map(([subject, data]) => (
@@ -432,8 +432,8 @@ export default function PerfilView({
           <div className="relative border-l border-slate-200 dark:border-slate-700 pl-4 py-1.5 space-y-5">
             {recentActivity.length === 0 ? (
               <div className="py-8 text-center">
-                <p className="text-xs text-slate-400 italic">Nenhuma atividade registrada ainda.</p>
-                <p className="text-[10px] text-slate-400 mt-1">Complete simulados ou envie redações para ver seu histórico.</p>
+                <p className="text-xs text-slate-600 italic">Nenhuma atividade registrada ainda.</p>
+                <p className="text-[10px] text-slate-600 mt-1">Complete simulados ou envie redações para ver seu histórico.</p>
               </div>
             ) : (
               recentActivity.map((log) => {
@@ -453,11 +453,11 @@ export default function PerfilView({
                         <p className="font-display font-bold text-xs text-slate-800 dark:text-slate-100">
                           {log.title}
                         </p>
-                        <span className="text-[9px] text-slate-400 font-mono flex-shrink-0">
+                        <span className="text-[9px] text-slate-600 font-mono flex-shrink-0">
                           {log.timeAgo}
                         </span>
                       </div>
-                      <p className="text-xs text-slate-500 dark:text-slate-350">
+                      <p className="text-xs text-slate-500 dark:text-slate-300">
                         {log.description}
                       </p>
                     </div>
@@ -484,7 +484,7 @@ export default function PerfilView({
             <div className="py-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
               <Target className="h-8 w-8 text-blue-300 mx-auto mb-2" />
               <p className="text-xs font-bold text-slate-500">Nenhum dado TRI ainda</p>
-              <p className="text-[10px] text-slate-400 mt-1">Responda questões para calcular sua nota TRI.</p>
+              <p className="text-[10px] text-slate-600 mt-1">Responda questões para calcular sua nota TRI.</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -501,7 +501,7 @@ export default function PerfilView({
                     <div className="flex justify-between items-center">
                       <span className="text-[10px] font-mono text-slate-500 uppercase font-bold">{subject}</span>
                       <div className="flex items-center gap-2">
-                        <span className="text-[9px] text-slate-400">{total} resp.</span>
+                        <span className="text-[9px] text-slate-600">{total} resp.</span>
                         {!reliable && <span className="text-[8px] px-1.5 py-0.5 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-600 dark:text-yellow-400 rounded font-bold">Em progresso</span>}
                       </div>
                     </div>
@@ -537,7 +537,7 @@ export default function PerfilView({
             <div className="py-8 text-center border border-dashed border-slate-200 dark:border-slate-800 rounded-2xl">
               <CheckCircle className="h-8 w-8 text-emerald-400 mx-auto mb-2" />
               <p className="text-xs font-bold text-slate-500">Nenhum erro registrado!</p>
-              <p className="text-[10px] text-slate-400 mt-1">Continue praticando para manter esse desempenho.</p>
+              <p className="text-[10px] text-slate-600 mt-1">Continue praticando para manter esse desempenho.</p>
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

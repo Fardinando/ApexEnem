@@ -175,7 +175,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
             <div className="mx-auto p-3 bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 rounded-full w-fit">
               <Mail className="h-8 w-8" />
             </div>
-            <h2 className="font-display font-extrabold text-lg">Verifique seu e-mail</h2>
+            <h1 className="font-display font-extrabold text-lg">Verifique seu e-mail</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">
               Enviamos um link de confirmação para <strong>{email.toLowerCase()}</strong>.
               Clique no link para ativar sua conta.
@@ -184,7 +184,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
               Não recebeu? Verifique sua caixa de spam ou <button type="button" onClick={() => { setStep('form'); }} className="text-blue-600 hover:underline font-semibold cursor-pointer">tente novamente</button>.
             </div>
           </div>
-          <p className="text-center text-[10px] font-mono text-slate-400 mt-4">Informações de região/estado/cidade são apenas para métricas internas da plataforma.</p>
+          <p className="text-center text-[10px] font-mono text-slate-500 mt-4">Informações de região/estado/cidade são apenas para métricas internas da plataforma.</p>
         </div>
       ) : (
         <>
@@ -232,6 +232,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
 
           <div className="col-span-1 lg:col-span-7 flex flex-col justify-center items-center px-4 sm:px-6 py-8 md:px-16 lg:px-24">
             <div className="w-full max-w-md space-y-6">
+              <h1 className="sr-only">Entrar ou criar conta na ApexEnem</h1>
               <div className="text-center space-y-2">
                 <div className="flex justify-center items-center mb-2">
                   <Logo variant="horizontal" className="h-10 w-auto" />
@@ -260,7 +261,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-200" htmlFor="reg-name">Nome Completo</label>
                         <div className="relative">
-                          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400"><User className="h-4.5 w-4.5" /></span>
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-600"><User className="h-4.5 w-4.5" /></span>
                           <input id="reg-name" type="text" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-800 dark:text-white" placeholder="Seu nome completo" value={name} onChange={(e) => setName(e.target.value)} />
                         </div>
                       </div>
@@ -286,7 +287,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                       <div className="space-y-1.5">
                         <label className="text-xs font-semibold text-slate-700 dark:text-slate-200" htmlFor="reg-city">Cidade</label>
                         <div className="relative">
-                          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400"><Globe className="h-4.5 w-4.5" /></span>
+                          <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-600"><Globe className="h-4.5 w-4.5" /></span>
                           <select
                             id="reg-city"
                             className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-800 dark:text-white cursor-pointer"
@@ -332,7 +333,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                   <div className="space-y-1.5">
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-200" htmlFor="email-input">E-mail</label>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400"><Mail className="h-4.5 w-4.5" /></span>
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-600"><Mail className="h-4.5 w-4.5" /></span>
                       <input id="email-input" type="email" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-800 dark:text-white" placeholder="nome@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
                     </div>
                   </div>
@@ -345,9 +346,9 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                       )}
                     </div>
                     <div className="relative">
-                      <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400"><Lock className="h-4.5 w-4.5" /></span>
+                      <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-600"><Lock className="h-4.5 w-4.5" /></span>
                       <input id="password-input" type={showPassword ? 'text' : 'password'} className="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-800 dark:text-white" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
-                      <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-blue-600 cursor-pointer" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}</button>
+                      <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-600 hover:text-blue-600 cursor-pointer" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}</button>
                     </div>
                   </div>
 
@@ -360,13 +361,13 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                   </button>
                 </form>
 
-                <p className="text-center text-xs mt-4 text-slate-400">
+                <p className="text-center text-xs mt-4 text-slate-600">
                   {isLoginTab ? 'Não tem uma conta?' : 'Já possui conta?'} &nbsp;
                   <button type="button" className="font-bold text-blue-600 hover:underline dark:text-blue-400 cursor-pointer" onClick={() => { setIsLoginTab(!isLoginTab); setErrorMessage(''); }}>{isLoginTab ? 'Cadastrar-se' : 'Entrar na conta'}</button>
                 </p>
               </div>
 
-              <div className="text-center font-mono text-[10px] text-slate-400">
+              <div className="text-center font-mono text-[10px] text-slate-600">
                 Estude com IAs de ponta para a Apex Enem.
               </div>
             </div>
@@ -377,8 +378,8 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setShowBetaRequest(false)}>
           <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl p-8 max-w-md w-full space-y-5 animate-fade-in" onClick={e => e.stopPropagation()}>
             <div className="flex items-center justify-between">
-              <h3 className="font-display font-extrabold text-lg text-slate-800 dark:text-slate-100">Solicitar Acesso Beta</h3>
-              <button type="button" onClick={() => { setShowBetaRequest(false); setBetaRequestSent(false); }} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4 text-slate-400" /></button>
+              <h2 className="font-display font-extrabold text-lg text-slate-800 dark:text-slate-100">Solicitar Acesso Beta</h2>
+              <button type="button" onClick={() => { setShowBetaRequest(false); setBetaRequestSent(false); }} className="p-1 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"><X className="h-4 w-4 text-slate-500" /></button>
             </div>
             {betaRequestSent ? (
               <div className="text-center space-y-4 py-6">

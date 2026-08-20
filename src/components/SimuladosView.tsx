@@ -630,7 +630,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
           <div className="bg-white dark:bg-[#1e293b] p-6 md:p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm max-w-xl mx-auto space-y-6 animate-fade-in" id="setup-view">
 
             <div className="text-center space-y-1.5 pb-4 border-b border-slate-200 dark:border-slate-800">
-              <h3 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Configurar Novo Simulado</h3>
+              <h2 className="font-display font-black text-lg text-slate-800 dark:text-slate-100">Configurar Novo Simulado</h2>
               <p className="text-xs text-slate-450">Escolha a área e a quantidade de questões para iniciar o cronômetro</p>
             </div>
 
@@ -656,7 +656,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                       <option key={opt} value={opt}>{SUBJECT_LABELS[opt]}</option>
                     ))}
                   </select>
-                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
+                  <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-600 pointer-events-none" />
                 </div>
                 {selectedSubject === 'Recomendado' && (
                   <p className="text-[11px] text-blue-500 dark:text-blue-400 mt-1">
@@ -681,14 +681,14 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                   onChange={(e) => setQuestionCount(Number(e.target.value))}
                   className="w-full h-2 bg-slate-200 dark:bg-slate-700 rounded-lg appearance-none cursor-pointer accent-blue-600 dark:accent-blue-500"
                 />
-                <div className="flex justify-between text-[10px] text-slate-400 dark:text-slate-500 font-mono px-0.5">
+                <div className="flex justify-between text-[10px] text-slate-600 dark:text-slate-500 font-mono px-0.5">
                   <span>{MIN_QUESTIONS} questões</span>
                   <span>{Math.round(questionCount * SECONDS_PER_QUESTION / 60)} min de prova</span>
                   <span>{MAX_QUESTIONS} questões</span>
                 </div>
               </div>
 
-              <div className="p-4 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-850 rounded-xl flex items-start gap-3 text-xs text-slate-600 dark:text-slate-300">
+              <div className="p-4 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl flex items-start gap-3 text-xs text-slate-600 dark:text-slate-300">
                 <Clock className="h-5 w-5 text-blue-600 flex-shrink-0" />
                 <div className="space-y-1">
                   <p className="font-semibold">Regras do Simulado ApexEnem:</p>
@@ -758,7 +758,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
             <div className="lg:col-span-8 bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 md:p-8 space-y-5 shadow-sm">
 
               <div className="space-y-2">
-                <div className="flex justify-between items-center text-[10px] font-mono text-slate-400 uppercase font-bold">
+                <div className="flex justify-between items-center text-[10px] font-mono text-slate-600 uppercase font-bold">
                   <span>QUESTÃO {simulado.currentQuestionIndex + 1} DE {simulado.questions.length}</span>
                   <span>{SUBJECT_LABELS[simulado.config.subject] || simulado.config.subject}</span>
                 </div>
@@ -767,7 +767,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                   {simulado.questions.map((q, idx) => {
                     const isCurrent = idx === simulado.currentQuestionIndex;
                     const isAnswered = !!q.userAnswer;
-                    let dotBg = 'bg-slate-100 text-slate-400 dark:bg-[#0f172a] dark:text-slate-650';
+                    let dotBg = 'bg-slate-100 text-slate-600 dark:bg-[#0f172a] dark:text-slate-600';
                     if (isCurrent) dotBg = 'bg-blue-600 text-white ring-2 ring-blue-500/20 scale-110';
                     else if (isAnswered) dotBg = 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400';
                     return (
@@ -790,7 +790,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                       style={{ width: `${(answeredCount / simulado.questions.length) * 100}%` }}
                     />
                   </div>
-                  <span className="text-[10px] font-mono text-slate-400">{answeredCount}/{simulado.questions.length}</span>
+                  <span className="text-[10px] font-mono text-slate-600">{answeredCount}/{simulado.questions.length}</span>
                 </div>
               </div>
 
@@ -865,7 +865,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                     <button
                       type="button"
                       onClick={handleNextQuestion}
-                      className="px-4 py-2 bg-blue-50 hover:bg-blue-105 dark:bg-[#0f172a] dark:text-blue-400 text-blue-600 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                      className="px-4 py-2 bg-blue-50 hover:bg-blue-100 dark:bg-[#0f172a] dark:text-blue-400 text-blue-600 rounded-xl text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
                     >
                       <span>Próxima</span>
                       <ArrowRight className="h-4 w-4" />
@@ -886,7 +886,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
 
             <div className="lg:col-span-4 space-y-4" id="timer-column">
               <div className="bg-white dark:bg-[#1e293b] p-6 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm text-center space-y-4">
-                <div className="flex justify-center items-center gap-2 text-slate-400">
+                <div className="flex justify-center items-center gap-2 text-slate-600">
                   <Clock className="h-5 w-5 animate-pulse text-blue-600" />
                   <span className="text-[10px] uppercase tracking-wider font-mono font-extrabold font-bold">Cronômetro</span>
                 </div>
@@ -905,7 +905,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                   <p className="text-xs text-slate-450 px-2 leading-relaxed">
                     Gerencie sua velocidade para concluir todas as {simulado.questions.length} questões!
                   </p>
-                  <p className="text-[10px] text-slate-400 font-mono">
+                  <p className="text-[10px] text-slate-600 font-mono">
                     {Math.floor(simulado.timeLeft / 60)}min restantes · {answeredCount}/{simulado.questions.length} respondidas
                   </p>
                 </div>
@@ -930,7 +930,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
               </div>
 
               <div className="bg-white dark:bg-[#1e293b] p-4 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-sm space-y-3">
-                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-400 uppercase font-bold">
+                <div className="flex items-center gap-2 text-[10px] font-mono text-slate-600 uppercase font-bold">
                   <Target className="h-3.5 w-3.5" />
                   <span>Navegação Rápida</span>
                 </div>
@@ -948,7 +948,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                             ? 'bg-blue-600 text-white'
                             : isAnswered
                               ? 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400'
-                              : 'bg-slate-100 text-slate-400 dark:bg-[#0f172a] dark:text-slate-600'
+                              : 'bg-slate-100 text-slate-600 dark:bg-[#0f172a] dark:text-slate-600'
                         }`}
                       >
                         {idx + 1}
@@ -1089,12 +1089,12 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                           {aiExplanations[q.id] ? (
                             <p className="text-slate-600 dark:text-slate-300 whitespace-pre-line">{aiExplanations[q.id]}</p>
                           ) : loadingExplanations ? (
-                            <p className="text-slate-400 dark:text-slate-500 italic flex items-center gap-1.5">
+                            <p className="text-slate-600 dark:text-slate-500 italic flex items-center gap-1.5">
                               <span className="inline-block w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin" />
                               Gerando explicação com IA...
                             </p>
                           ) : (
-                            <p className="text-slate-400 dark:text-slate-500 italic">Explicação não disponível.</p>
+                            <p className="text-slate-600 dark:text-slate-500 italic">Explicação não disponível.</p>
                           )}
                         </div>
                       </div>
@@ -1121,7 +1121,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
               <button
                 type="button"
                 onClick={() => { setSimulado(null); questionDisciplinesRef.current.clear(); }}
-                className="px-6 py-3 border border-slate-200 dark:border-slate-850 hover:bg-slate-50 text-slate-500 hover:text-slate-800 dark:hover:text-white dark:border-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
+                className="px-6 py-3 border border-slate-200 dark:border-slate-800 hover:bg-slate-50 text-slate-500 hover:text-slate-800 dark:hover:text-white dark:border-slate-800 rounded-xl text-xs font-bold transition flex items-center gap-1.5 cursor-pointer"
               >
                 <RotateCcw className="h-4 w-4" />
                 <span>Fazer Outro Simulado</span>
@@ -1151,7 +1151,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                 <button
                   type="button"
                   onClick={() => setShowFinishModal(false)}
-                  className="py-2.5 px-4 text-xs font-bold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-455 rounded-xl transition cursor-pointer"
+                  className="py-2.5 px-4 text-xs font-bold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl transition cursor-pointer"
                 >
                   Voltar à Prova
                 </button>
@@ -1186,7 +1186,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                 <button
                   type="button"
                   onClick={() => setShowCancelModal(false)}
-                  className="py-2.5 px-4 text-xs font-bold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-455 rounded-xl transition cursor-pointer"
+                  className="py-2.5 px-4 text-xs font-bold border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-xl transition cursor-pointer"
                 >
                   Continuar Prova
                 </button>
@@ -1228,7 +1228,7 @@ export default function SimuladosView({ onSaveSimuladoResult, onWrongAnswer, acc
                 </ul>
               </div>
 
-              <p className="text-[11px] text-slate-400 text-center leading-relaxed">
+              <p className="text-[11px] text-slate-600 text-center leading-relaxed">
                 Para garantir a integridade do simulado, esta sessão foi encerrada automaticamente.<br />
                 Tente novamente e mantenha esta aba em foco durante toda a prova.
               </p>

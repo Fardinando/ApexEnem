@@ -219,7 +219,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
       </div>
 
       <div className="space-y-3">
-        <label className="text-xs font-bold text-slate-400 uppercase font-mono tracking-wider block">Selecione a Área de Conhecimento</label>
+        <label className="text-xs font-bold text-slate-600 uppercase font-mono tracking-wider block">Selecione a Área de Conhecimento</label>
 
         <div className="flex gap-2 pb-1.5 overflow-x-auto w-full" id="area-chips-scroll">
           {areas.map((a) => {
@@ -272,7 +272,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
         {!isLoading && error && (
           <div className="bg-red-50/80 dark:bg-red-950/20 rounded-3xl border-2 border-red-300 dark:border-red-800 py-10 px-6 text-center space-y-3 flex flex-col items-center">
             <X className="h-8 w-8 text-red-500" />
-            <h3 className="font-display font-extrabold text-red-700 dark:text-red-400 text-sm md:text-base">Erro ao gerar questões</h3>
+            <h2 className="font-display font-extrabold text-red-700 dark:text-red-400 text-sm md:text-base">Erro ao gerar questões</h2>
             <p className="text-xs text-red-600 dark:text-red-300 max-w-md leading-relaxed">{error}</p>
           </div>
         )}
@@ -282,7 +282,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
             <div className="p-3.5 bg-slate-100 dark:bg-[#0f172a] text-[#777587] rounded-full">
               <HelpCircle className="h-8 w-8 text-blue-600 dark:text-blue-400" />
             </div>
-            <h3 className="font-display font-extrabold text-slate-850 dark:text-slate-100 text-sm md:text-base">Nenhum treino iniciado</h3>
+            <h2 className="font-display font-extrabold text-slate-800 dark:text-slate-100 text-sm md:text-base">Nenhum treino iniciado</h2>
             <p className="text-xs text-slate-450 max-w-xs leading-relaxed">
               Escolha a área acima e clique em <b>Gerar Questões Mágicas</b> para que o motor de correlação da IA estruture um conjunto de perguntas ENEM personalizadas para você.
             </p>
@@ -335,7 +335,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
                     } else if (isSelected) {
                       optionStyles = 'bg-red-100/10 border-red-500 text-red-700 font-medium scale-[1.01]';
                     } else {
-                      optionStyles = 'bg-[#fcf8ff]/30 border-slate-100 text-slate-400 opacity-60 pointer-events-none dark:bg-transparent dark:border-slate-800/20';
+                      optionStyles = 'bg-slate-50/30 border-slate-100 text-slate-500 pointer-events-none dark:bg-transparent dark:border-slate-800/20';
                     }
                   }
 
@@ -401,7 +401,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
                       <button
                         type="button"
                         onClick={() => setReportState({ questionId: q.id, feedback: '', sent: false })}
-                        className="flex items-center gap-1.5 text-[10px] text-slate-400 hover:text-amber-500 transition cursor-pointer"
+                        className="flex items-center gap-1.5 text-[10px] text-slate-500 hover:text-amber-500 transition cursor-pointer"
                       >
                         <Bug className="h-3 w-3" />
                         Reportar erro na questão
@@ -410,7 +410,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
                   )}
                   {APEX_GUARDIAN_URL && reportState?.questionId === q.id && !reportState.sent && (
                     <div className="pt-2 space-y-2 border-t border-slate-200 dark:border-slate-700">
-                      <p className="text-[10px] text-slate-400">Descreva o erro encontrado:</p>
+                      <p className="text-[10px] text-slate-500">Descreva o erro encontrado:</p>
                       <textarea
                         value={reportState.feedback}
                         onChange={(e) => setReportState({ ...reportState, feedback: e.target.value })}
@@ -429,7 +429,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
                         <button
                           type="button"
                           onClick={() => setReportState(null)}
-                          className="text-[10px] text-slate-400 hover:text-slate-600 transition cursor-pointer px-2"
+                          className="text-[10px] text-slate-500 hover:text-slate-700 transition cursor-pointer px-2"
                         >
                           Cancelar
                         </button>
