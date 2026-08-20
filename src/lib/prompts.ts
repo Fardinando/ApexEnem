@@ -1,5 +1,5 @@
 export interface ModelConfig {
-  provider: 'gemini' | 'openrouter'
+  provider: 'ollama'
   modelId: string
   temperature?: number
   maxTokens?: number
@@ -15,47 +15,19 @@ export interface PromptDefinition {
 }
 
 const MODELS = {
-  geminiFlash: (): ModelConfig => ({
-    provider: 'gemini',
-    modelId: 'gemini-2.5-flash',
-    temperature: 0.9,
-    maxTokens: 8192,
-    timeout: 7000,
-  }),
-  geminiFlashV2: (): ModelConfig => ({
-    provider: 'gemini',
-    modelId: 'gemini-2.0-flash',
-    temperature: 0.9,
-    maxTokens: 8192,
-    timeout: 7000,
-  }),
-  openRouterFree: (): ModelConfig => ({
-    provider: 'openrouter',
-    modelId: 'openrouter/free',
-    temperature: 0.9,
-    maxTokens: 2048,
-    timeout: 9900,
-  }),
-  openRouterLlama: (): ModelConfig => ({
-    provider: 'openrouter',
-    modelId: 'meta-llama/llama-3.2-3b-instruct:free',
-    temperature: 0.9,
-    maxTokens: 2048,
-    timeout: 9900,
-  }),
-  openRouterChat: (): ModelConfig => ({
-    provider: 'openrouter',
-    modelId: 'openrouter/free',
+  ollamaMain: (): ModelConfig => ({
+    provider: 'ollama',
+    modelId: 'qwen2.5:3b',
     temperature: 0.7,
-    maxTokens: 512,
-    timeout: 9900,
-  }),
-  openRouterCorrection: (): ModelConfig => ({
-    provider: 'openrouter',
-    modelId: 'openrouter/free',
-    temperature: 0.3,
     maxTokens: 4096,
-    timeout: 9000,
+    timeout: 180000,
+  }),
+  ollamaFast: (): ModelConfig => ({
+    provider: 'ollama',
+    modelId: 'qwen2.5:0.5b',
+    temperature: 0.7,
+    maxTokens: 2048,
+    timeout: 90000,
   }),
 }
 
@@ -80,10 +52,7 @@ Formato JSON obrigatório:
 
 Retorne APENAS o JSON, sem texto adicional, sem markdown.`,
     models: [
-      MODELS.geminiFlash(),
-      MODELS.openRouterFree(),
-      MODELS.openRouterLlama(),
-      MODELS.geminiFlashV2(),
+      MODELS.ollamaMain(),
     ],
   },
 
@@ -101,8 +70,7 @@ Se o usuário tem pontos fracos (${weakAreas?.join(', ') || 'nenhum'}), foque ne
       return JSON.stringify({ system: systemMsg, user: userMsg })
     },
     models: [
-      MODELS.openRouterFree(),
-      MODELS.openRouterLlama(),
+      MODELS.ollamaMain(),
     ],
   },
 
@@ -117,7 +85,7 @@ Gabarito Oficial: "${correctAnswer}"
 
 Retorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.`,
     models: [
-      MODELS.openRouterChat(),
+      MODELS.ollamaFast(),
     ],
   },
 
@@ -143,7 +111,7 @@ Aplique rigorosamente as travas abaixo ANTES de definir a nota final de cada com
       return JSON.stringify({ system: systemPrompt, user: userPrompt })
     },
     models: [
-      MODELS.openRouterCorrection(),
+      MODELS.ollamaMain(),
     ],
   },
 }

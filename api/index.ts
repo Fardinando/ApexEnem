@@ -81,7 +81,7 @@ app.use((req, res, next) => {
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pl30323980.effectivecpmnetwork.com https://pl30323978.effectivecpmnetwork.com https://www.highperformanceformat.com https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline'; frame-src https://*.hcaptcha.com https://*.effectivecpmnetwork.com https://www.highperformanceformat.com https://br.wps.com https://www.effectivecpmnetwork.com; connect-src 'self' https://*.supabase.co https://openrouter.ai https://enem.dev https://api.enem.dev; img-src 'self' data: https://storage.googleapis.com;");
+  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pl30323980.effectivecpmnetwork.com https://pl30323978.effectivecpmnetwork.com https://www.highperformanceformat.com https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline'; frame-src https://*.hcaptcha.com https://*.effectivecpmnetwork.com https://www.highperformanceformat.com https://br.wps.com https://www.effectivecpmnetwork.com; connect-src 'self' https://*.supabase.co https://enem.dev https://api.enem.dev; img-src 'self' data: https://storage.googleapis.com;");
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   next();
 });
@@ -227,8 +227,6 @@ function extractJsonFromText(rawText: string): any {
   throw new Error("Could not parse JSON from LLM response");
 }
 
-const googleApiKey = process.env.GOOGLE_API_KEY;
-
 function cleanText(s: string): string {
   if (typeof s !== "string") return s;
   let t = s.replace(/\r\n?/g, "\n");
@@ -361,36 +359,6 @@ async function callAISync(opts: { systemPrompt?: string; userPrompt: string; max
   }
   throw new Error("Tempo esgotado ao processar na IA.");
 }
-
-const FREE_MODELS = [
-  "openrouter/free"
-];
-
-let cachedModels: any[] | null = null;
-let modelsCacheTime = 0;
-const MODELS_CACHE_TTL = 300_000;
-
-async function assertModelIsFree(modelName: string): Promise<void> {
-  if (Date.now() - modelsCacheTime > MODELS_CACHE_TTL) {
-    try {
-      const resp = await fetch("https://openrouter.ai/api/v1/models", { signal: AbortSignal.timeout(5000) });
-      if (resp.ok) {
-        const data = await resp.json();
-        cachedModels = data.data || data;
-        modelsCacheTime = Date.now();
-      }
-    } catch {}
-  }
-  if (!cachedModels) return;
-  const model = cachedModels.find((m: any) => m.id === modelName);
-  if (!model) return;
-  const promptPrice = parseFloat(model.pricing?.prompt);
-  const completionPrice = parseFloat(model.pricing?.completion);
-  if (promptPrice > 0 || completionPrice > 0) {
-    throw new Error(`Modelo pago bloqueado: ${modelName} (R$ ${promptPrice}/R$ ${completionPrice} por token). Use apenas modelos gratuitos.`);
-  }
-}
-
 
 
 app.post("/api/beta-request", async (req, res) => {
@@ -1710,10 +1678,9 @@ app.post("/api/delete-account", async (req, res) => {
 
 app.get("/api/credentials-status", (req, res) => {
   res.json({
-    openRouter: !!process.env.RENDER_PROCESS_URL,
+    ollama: !!process.env.RENDER_PROCESS_URL,
     supabase: !!(process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY),
     supabaseAdmin: !!(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY),
-    gemini: false
   });
 });
 
