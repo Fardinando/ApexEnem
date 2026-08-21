@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 3001;
 
 // ─── Ollama Config ──────────────────────────────────────────────────────────
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
-const OLLAMA_MODEL_MAIN = process.env.OLLAMA_MODEL_MAIN || "qwen2.5:3b";
+const OLLAMA_MODEL_MAIN = process.env.OLLAMA_MODEL_MAIN || "qwen2.5:1.5b";
 const OLLAMA_MODEL_FAST = process.env.OLLAMA_MODEL_FAST || "qwen2.5:0.5b";
 
 // ─── Job Queue ───────────────────────────────────────────────────────────────
