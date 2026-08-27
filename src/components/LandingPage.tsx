@@ -123,7 +123,7 @@ function CascataMap({ onRegionSelect }: { onRegionSelect?: (r: string, s: string
                   ? `${selectedStateObj?.name} — Escolha uma cidade`
                   : `${selectedCity}, ${selectedStateObj?.name}`}
             {stats && stats.totalUsers > 0 && (
-              <span className="ml-2 text-[10px] font-normal text-slate-400">({stats.totalUsers} {stats.totalUsers === 1 ? 'aluno' : 'alunos'})</span>
+              <span className="ml-2 text-[10px] font-normal text-slate-600 dark:text-slate-400">({stats.totalUsers} {stats.totalUsers === 1 ? 'aluno' : 'alunos'})</span>
             )}
           </span>
         </div>
@@ -474,6 +474,7 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
         </div>
       </header>
 
+      <main>
       <section className="relative pt-32 pb-20 md:pt-40 md:pb-28 overflow-hidden">
         <div className="absolute inset-0 bg-gradient-to-br from-blue-50 via-white to-purple-50 dark:from-[#0a0814] dark:via-[#0f0a1e] dark:to-[#0a0814]" />
         <div className="absolute top-1/4 -left-32 w-80 h-80 bg-blue-400/20 rounded-full blur-[100px]" />
@@ -519,7 +520,7 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
                 <div className="mx-auto mb-3 p-2 w-fit bg-blue-100 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 rounded-xl">
                   <item.icon className="h-5 w-5" />
                 </div>
-                <h3 className="text-sm font-bold mb-1">{item.label}</h3>
+                <h2 className="text-sm font-bold mb-1">{item.label}</h2>
                 <p className="text-[10px] text-slate-500 dark:text-slate-400">{item.desc}</p>
               </motion.div>
             ))}
@@ -597,6 +598,7 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </motion.div>
         </div>
       </section>
+      </main>
 
       <footer className="py-12 border-t border-slate-200 dark:border-slate-800">
         <div className="max-w-6xl mx-auto px-4">
@@ -605,15 +607,15 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
               <Logo variant="favicon-a" className="h-4 w-auto opacity-60" />
               ApexEnem © 2026 — Plataforma Educacional Adaptativa
             </div>
-            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
-              <a href="/termos" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/termos'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Termos de Uso</a>
-              <a href="/privacidade" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/privacidade'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Privacidade</a>
-              <a href="/cookies" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/cookies'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Cookies</a>
-              <a href="/assinatura" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/assinatura'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Termos de Assinatura</a>
-              <a href="/reembolso" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/reembolso'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Reembolso</a>
+            <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-600">
+              <a href="/termos" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/termos'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-700 dark:hover:text-blue-400 transition cursor-pointer">Termos de Uso</a>
+              <a href="/privacidade" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/privacidade'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-700 dark:hover:text-blue-400 transition cursor-pointer">Política de Privacidade</a>
+              <a href="/cookies" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/cookies'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-700 dark:hover:text-blue-400 transition cursor-pointer">Política de Cookies</a>
+              <a href="/assinatura" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/assinatura'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-700 dark:hover:text-blue-400 transition cursor-pointer">Termos de Assinatura</a>
+              <a href="/reembolso" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/reembolso'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-700 dark:hover:text-blue-400 transition cursor-pointer">Política de Reembolso</a>
             </nav>
           </div>
-          <div className="text-center text-xs text-slate-400">
+          <div className="text-center text-xs text-slate-600">
             <span>Feito com 💙 para estudantes brasileiros</span>
           </div>
         </div>
