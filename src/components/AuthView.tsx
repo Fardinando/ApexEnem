@@ -144,7 +144,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
       return;
     }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -159,6 +159,14 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
       } else {
         setErrorMessage(error.message);
       }
+      if (hcaptcha) hcaptcha.reset();
+      setCaptchaToken('');
+      return;
+    }
+    // Supabase: se o e-mail já existe, signUp retorna sucesso mas com identities vazio
+    // (usuário existente em vez de novo usuário). Bloquear a criação duplicada.
+    if (data?.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) {
+      setErrorMessage('Este e-mail já está cadastrado. Faça login.');
       if (hcaptcha) hcaptcha.reset();
       setCaptchaToken('');
       return;

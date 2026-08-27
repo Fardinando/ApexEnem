@@ -9,16 +9,44 @@ app.use(express.json({ limit: "2mb" }));
 
 const PORT = process.env.PORT || 3001;
 
-// ─── Ollama Config ──────────────────────────────────────────────────────────
+// ─── API Keys ────────────────────────────────────────────────────────────────
 const OLLAMA_URL = process.env.OLLAMA_URL || "http://127.0.0.1:11434";
-const OLLAMA_MODEL_MAIN = process.env.OLLAMA_MODEL_MAIN || "qwen2.5:1.5b";
-const OLLAMA_MODEL_FAST = process.env.OLLAMA_MODEL_FAST || "qwen2.5:0.5b";
+const googleApiKey = process.env.GOOGLE_API_KEY;
+
+const groqKeys = [
+  process.env.GROQ_API_KEY_V1, process.env.GROQ_API_KEY_V2, process.env.GROQ_API_KEY_V3,
+  process.env.GROQ_API_KEY_V4, process.env.GROQ_API_KEY_V5, process.env.GROQ_API_KEY_V6,
+  process.env.GROQ_API_KEY_V7, process.env.GROQ_API_KEY_V8, process.env.GROQ_API_KEY_V9,
+  process.env.GROQ_API_KEY_V10,
+].filter(Boolean);
+
+const openRouterKeys = [
+  process.env.OPENROUTER_API_KEY_V1, process.env.OPENROUTER_API_KEY_V2, process.env.OPENROUTER_API_KEY_V3,
+  process.env.OPENROUTER_API_KEY_V4, process.env.OPENROUTER_API_KEY_V5, process.env.OPENROUTER_API_KEY_V6,
+  process.env.OPENROUTER_API_KEY_V7, process.env.OPENROUTER_API_KEY_V8, process.env.OPENROUTER_API_KEY_V9,
+  process.env.OPENROUTER_API_KEY_V10,
+].filter(Boolean);
+
+let groqIdx = 0;
+let orIdx = 0;
+function nextGroqKey() {
+  if (groqKeys.length === 0) return null;
+  const k = groqKeys[groqIdx % groqKeys.length];
+  groqIdx++;
+  return k;
+}
+function nextOrKey() {
+  if (openRouterKeys.length === 0) return null;
+  const k = openRouterKeys[orIdx % openRouterKeys.length];
+  orIdx++;
+  return k;
+}
 
 // ─── Job Queue ───────────────────────────────────────────────────────────────
 const jobs = new Map();
 const MAX_JOBS = 250;
-const MAX_ACTIVE = 1;
-const JOB_TIMEOUT_MS = 300000;       // 5 min per job
+const MAX_ACTIVE = 6;
+const JOB_TIMEOUT_MS = 240000;       // 4 min per job
 const STALE_PROCESSING_MS = 420000;   // 7 min => mark stale
 let activeJobs = 0;
 
@@ -161,9 +189,98 @@ function validateQuestions(qs) {
   );
 }
 
-// ─── Ollama Caller ──────────────────────────────────────────────────────────
+// ─── Provider Callers ────────────────────────────────────────────────────────
+const OR_MODELS = [
+  "nvidia/nemotron-3-nano-30b-a3b:free",
+  "nvidia/nemotron-nano-9b-v2:free",
+  "google/gemma-4-31b-it:free",
+  "nvidia/nemotron-3-ultra-550b-a55b:free",
+  "openai/gpt-oss-20b:free",
+];
+
+async function callGroq(sysMsg, userPrompt, key, maxTokens, temperature, timeoutMs) {
+  if (!key) throw new Error("no groq key");
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("groq timeout")), timeoutMs || 60000));
+  const fetchPromise = (async () => {
+    const r = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
+      body: JSON.stringify({
+        model: "qwen/qwen3.6-27b",
+        messages: [
+          { role: "system", content: sysMsg },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: maxTokens || 8192,
+        temperature: temperature || 0.85,
+        reasoning_effort: "none",
+        include_reasoning: false,
+      }),
+    });
+    if (!r.ok) throw new Error(`groq ${r.status}`);
+    const d = await r.json();
+    const raw = d.choices?.[0]?.message?.content;
+    if (!raw) throw new Error("empty response from groq");
+    return raw;
+  })();
+  return Promise.race([fetchPromise, timer]);
+}
+
+async function callGemini(sysMsg, userPrompt, maxTokens, temperature, timeoutMs) {
+  if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), timeoutMs || 60000));
+  const fetchPromise = (async () => {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        contents: [{ role: "user", parts: [{ text: userPrompt }] }],
+        systemInstruction: { parts: [{ text: sysMsg }] },
+        generationConfig: { temperature: temperature || 0.85, maxOutputTokens: maxTokens || 8192 },
+      }),
+    });
+    if (!r.ok) throw new Error(`gemini ${r.status}`);
+    const d = await r.json();
+    const raw = d?.candidates?.[0]?.content?.parts?.[0]?.text;
+    if (!raw) throw new Error("empty response from gemini");
+    return raw;
+  })();
+  return Promise.race([fetchPromise, timer]);
+}
+
+async function callOpenRouter(sysMsg, userPrompt, key, model, maxTokens, temperature, timeoutMs) {
+  if (!key) throw new Error("no openrouter key");
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("openrouter timeout")), timeoutMs || 60000));
+  const fetchPromise = (async () => {
+    const r = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${key}`,
+        "HTTP-Referer": "https://apexenem.app",
+        "X-Title": "ApexAI",
+      },
+      body: JSON.stringify({
+        model,
+        messages: [
+          { role: "system", content: sysMsg },
+          { role: "user", content: userPrompt },
+        ],
+        max_tokens: maxTokens || 8192,
+        temperature: temperature || 0.85,
+      }),
+    });
+    if (!r.ok) throw new Error(`openrouter ${r.status}`);
+    const d = await r.json();
+    const raw = d.choices?.[0]?.message?.content;
+    if (!raw) throw new Error("empty response from openrouter");
+    return raw;
+  })();
+  return Promise.race([fetchPromise, timer]);
+}
+
 async function callOllama(model, sysMsg, userPrompt, maxTokens, temperature, timeoutMs) {
-  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("ollama timeout")), timeoutMs || 300000));
+  const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("ollama timeout")), timeoutMs || 120000));
   const fetchPromise = (async () => {
     const r = await fetch(`${OLLAMA_URL}/api/chat`, {
       method: "POST",
@@ -200,20 +317,43 @@ async function processJob(cura, opts, attempt = 1) {
 
   const { prompt, type, systemPrompt, maxTokens, temperature } = opts;
   const isQuestions = type === "questions";
-  const mt = maxTokens || 4096;
-  const temp = temperature || 0.7;
+  const mt = maxTokens || 8192;
+  const temp = temperature || 0.85;
 
   const defaultSysMsg = isQuestions
     ? "Voce e um professor especialista em elaboracao de itens para o ENEM. Retorne APENAS o JSON valido. REGRA CRITICA: NUNCA coloque quebras de linha entre caracteres. O texto deve ser continuo e fluido como paragrafos normais. Nunca escreva letra por linha. Tabelas devem usar formato markdown com | e ---. Use espacos normais entre palavras. NUNCA inclua referencias a provas do ENEM como Questao XX - ENEM XXXX. As questoes sao INEDITAS. NUNCA repita a letra da alternativa no campo text. Seus textos serao lidos por estudantes, entao devem estar perfeitamente formatados."
     : "Voce e um professor brasileiro especialista. Responda em portugues do Brasil. NAO inclua explicacoes extras apos o JSON.";
   const sysMsg = systemPrompt || defaultSysMsg;
 
-  // ── Try main model first, then fallback to fast model ──
-  const attempts = [
-    { name: OLLAMA_MODEL_MAIN, fn: () => callOllama(OLLAMA_MODEL_MAIN, sysMsg, prompt, mt, temp, 300000) },
-  ];
-  if (OLLAMA_MODEL_MAIN !== OLLAMA_MODEL_FAST) {
-    attempts.push({ name: OLLAMA_MODEL_FAST, fn: () => callOllama(OLLAMA_MODEL_FAST, sysMsg, prompt, Math.min(mt, 2048), temp, 180000) });
+  // Build a list of provider calls to try (parallel then sequential)
+  const ollamaLogOnly = process.env.OLLAMA_ASYNC_ONLY === "true";
+
+  function buildParallelBatch() {
+    const batch = [];
+    // Cloud APIs first (fast, no local hardware needed)
+    if (groqKeys.length > 0) batch.push({ name: `groq-${groqKeys[0].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[0], mt, temp, 70000) });
+    if (groqKeys.length > 1) batch.push({ name: `groq-${groqKeys[1].slice(-4)}`, fn: () => callGroq(sysMsg, prompt, groqKeys[1], mt, temp, 70000) });
+    if (googleApiKey) batch.push({ name: "gemini", fn: () => callGemini(sysMsg, prompt, mt, temp, 70000) });
+    if (openRouterKeys.length > 0) batch.push({ name: `or-${OR_MODELS[0].slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[0], OR_MODELS[0], mt, temp, 70000) });
+    return batch;
+  }
+
+  function buildSequentialAttempts() {
+    const seq = [];
+    // Cloud APIs first
+    for (const k of groqKeys) seq.push({ name: `groq-${k.slice(-4)}`, fn: () => callGroq(sysMsg, prompt, k, mt, temp, 60000) });
+    if (googleApiKey) seq.push({ name: "gemini", fn: () => callGemini(sysMsg, prompt, mt, temp, 60000) });
+    if (openRouterKeys.length > 0) {
+      for (const m of OR_MODELS) {
+        seq.push({ name: `or-${m.slice(0,15)}-${openRouterKeys[0].slice(-4)}`, fn: () => callOpenRouter(sysMsg, prompt, openRouterKeys[0], m, mt, temp, 60000) });
+      }
+    }
+    // Ollama only as a last-resort fallback (and only after trying all cloud APIs)
+    if (!ollamaLogOnly) {
+      seq.push({ name: "ollama-1.5b", fn: () => callOllama("qwen2.5:1.5b", sysMsg, prompt, mt, temp, 90000) });
+      seq.push({ name: "ollama-0.5b", fn: () => callOllama("qwen2.5:0.5b", sysMsg, prompt, Math.min(mt, 2048), temp, 60000) });
+    }
+    return seq;
   }
 
   async function tryOneOrThrow(name, fn) {
@@ -231,33 +371,48 @@ async function processJob(cura, opts, attempt = 1) {
     return { name, value: text };
   }
 
-  for (const a of attempts) {
+  // ── Parallel batch ──
+  console.log(`[${cura}] Attempt ${attempt}: trying parallel batch`);
+  const parallel = buildParallelBatch();
+  try {
+    const winner = await Promise.any(parallel.map(a => tryOneOrThrow(a.name, a.fn)));
+    job.status = "done";
+    job.result = winner.value;
+    job.completedAt = Date.now();
+    console.log(`[${cura}] OK via ${winner.name} (parallel)`);
+    return;
+  } catch (e) {
+    console.log(`[${cura}] Parallel batch failed (${e.errors?.length || 0} providers), trying sequential fallback`);
+  }
+
+  // ── Sequential fallback ──
+  const seqAttempts = buildSequentialAttempts();
+  for (const a of seqAttempts.slice(0, 12)) {
     if (Date.now() > deadline) break;
     try {
-      console.log(`[${cura}] Attempt ${attempt}: trying ${a.name}`);
       const result = await tryOneOrThrow(a.name, a.fn);
       job.status = "done";
       job.result = result.value;
       job.completedAt = Date.now();
-      console.log(`[${cura}] OK via ${a.name}`);
+      console.log(`[${cura}] OK via ${a.name} (sequential)`);
       return;
     } catch (err) {
-      console.log(`[${cura}] ${a.name} failed: ${err.message?.slice(0, 60)}`);
+      console.log(`[${cura}] seq ${a.name} failed: ${err.message?.slice(0, 60)}`);
       if (Date.now() > deadline) break;
-      await new Promise(r => setTimeout(r, 1000));
+      await new Promise(r => setTimeout(r, err.message.includes("429") ? 2000 : 500));
     }
   }
 
   // ── Retry once ──
   if (attempt < 2 && Date.now() < deadline) {
     const delay = Math.min(15000, deadline - Date.now());
-    console.log(`[${cura}] All models failed. Retry in ${delay / 1000}s...`);
+    console.log(`[${cura}] All combos failed. Retry in ${delay / 1000}s...`);
     await new Promise(r => setTimeout(r, delay));
     return processJob(cura, opts, attempt + 1);
   }
 
   job.status = "error";
-  job.error = "Todos os modelos Ollama falharam apos tentativas";
+  job.error = "Todos os modelos falharam apos tentativas";
   job.completedAt = Date.now();
   console.log(`[${cura}] FAILED after ${attempt} attempts`);
 }
@@ -272,7 +427,7 @@ app.get("/api/health", (req, res) => {
   }
   res.json({
     ok: true,
-    ollama: { url: OLLAMA_URL, modelMain: OLLAMA_MODEL_MAIN, modelFast: OLLAMA_MODEL_FAST },
+    keys: { groq: groqKeys.length, gemini: !!googleApiKey, openrouter: openRouterKeys.length },
     jobs: counts,
     activeJobs,
   });
@@ -481,5 +636,5 @@ refresh();setInterval(refresh,5000);
 
 app.listen(PORT, () => {
   console.log("ApexAI v2 running on port " + PORT);
-  console.log("Ollama: " + OLLAMA_URL + " | Main=" + OLLAMA_MODEL_MAIN + " Fast=" + OLLAMA_MODEL_FAST);
+  console.log("Keys: Groq=" + groqKeys.length + " Gemini=" + (googleApiKey ? "yes" : "no") + " OR=" + openRouterKeys.length);
 });

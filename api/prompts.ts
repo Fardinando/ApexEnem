@@ -1,5 +1,5 @@
 export interface ModelConfig {
-  provider: 'ollama'
+  provider: 'gemini' | 'openrouter' | 'groq'
   modelId: string
   temperature?: number
   maxTokens?: number
@@ -15,19 +15,54 @@ export interface PromptDefinition {
 }
 
 const MODELS = {
-  ollamaMain: (): ModelConfig => ({
-    provider: 'ollama',
-    modelId: 'qwen2.5:3b',
-    temperature: 0.7,
-    maxTokens: 4096,
-    timeout: 180000,
+  geminiFlash: (): ModelConfig => ({
+    provider: 'gemini',
+    modelId: 'gemini-2.0-flash',
+    temperature: 0.9,
+    maxTokens: 8192,
+    timeout: 9000,
   }),
-  ollamaFast: (): ModelConfig => ({
-    provider: 'ollama',
-    modelId: 'qwen2.5:0.5b',
+  groqLlama33: (): ModelConfig => ({
+    provider: 'groq',
+    modelId: 'llama-3.3-70b-versatile',
+    temperature: 0.85,
+    maxTokens: 8192,
+    timeout: 9000,
+  }),
+  geminiFlashV2: (): ModelConfig => ({
+    provider: 'gemini',
+    modelId: 'gemini-2.0-flash',
+    temperature: 0.9,
+    maxTokens: 4096,
+    timeout: 7000,
+  }),
+  openRouterFree: (): ModelConfig => ({
+    provider: 'openrouter',
+    modelId: 'openrouter/free',
+    temperature: 0.9,
+    maxTokens: 4096,
+    timeout: 7000,
+  }),
+  openRouterLlama: (): ModelConfig => ({
+    provider: 'openrouter',
+    modelId: 'google/gemma-4-31b-it:free',
+    temperature: 0.9,
+    maxTokens: 8192,
+    timeout: 25000,
+  }),
+  openRouterChat: (): ModelConfig => ({
+    provider: 'openrouter',
+    modelId: 'openrouter/free',
     temperature: 0.7,
-    maxTokens: 2048,
-    timeout: 90000,
+    maxTokens: 512,
+    timeout: 9900,
+  }),
+  openRouterCorrection: (): ModelConfig => ({
+    provider: 'openrouter',
+    modelId: 'openrouter/free',
+    temperature: 0.3,
+    maxTokens: 4096,
+    timeout: 9000,
   }),
 }
 
@@ -60,7 +95,9 @@ export const PROMPTS: Record<string, PromptDefinition> = {
       return basePrompt;
     },
     models: [
-      MODELS.ollamaMain(),
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
     ],
   },
 
@@ -215,7 +252,8 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
       return { system, user }
     },
     models: [
-      MODELS.ollamaMain(),
+      MODELS.openRouterFree(),
+      MODELS.openRouterLlama(),
     ],
   },
 
@@ -230,7 +268,7 @@ Gabarito: "${correctAnswer}"
 
 Retorne 2-3 parágrafos curtos, lúdicos e didáticos com emojis de cabrito 🐐.`,
     models: [
-      MODELS.ollamaFast(),
+      MODELS.openRouterChat(),
     ],
   },
 
@@ -401,7 +439,7 @@ A saída deve ser parseável diretamente por um parser JSON padrão.`
       return { system, user }
     },
     models: [
-      MODELS.ollamaMain(),
+      MODELS.openRouterCorrection(),
     ],
   },
 
@@ -474,7 +512,9 @@ Importante: correctIndex deve variar entre 0,1,2,3 nos 9 blocos com questões. O
       }
     },
     models: [
-      MODELS.ollamaMain(),
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
     ],
   },
 
@@ -520,7 +560,9 @@ Retorne APENAS o JSON.`,
       }
     },
     models: [
-      MODELS.ollamaMain(),
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
     ],
   },
 
@@ -569,7 +611,9 @@ Retorne APENAS o JSON válido.`,
       }
     },
     models: [
-      MODELS.ollamaMain(),
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
     ],
   },
 
@@ -595,7 +639,9 @@ Se não conseguir identificar um campo, retorne string vazia nesse campo.`,
       }
     },
     models: [
-      MODELS.ollamaFast(),
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
     ],
   },
 
@@ -673,7 +719,9 @@ IMPORTANTE:
       }
     },
     models: [
-      MODELS.ollamaMain(),
+      MODELS.groqLlama33(),
+      MODELS.geminiFlash(),
+      MODELS.openRouterFree(),
     ],
   },
 }
