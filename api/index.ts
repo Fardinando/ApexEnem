@@ -60,6 +60,13 @@ function getBaseUrl(): string {
   return `http://localhost:${PORT}`;
 }
 
+function renderHeaders(): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  const token = process.env.RENDER_TOKEN;
+  if (token) h["Authorization"] = `Bearer ${token}`;
+  return h;
+}
+
 function signToken(email: string, code: string): string {
   if (!HMAC_SECRET) throw new Error("HMAC_SECRET não configurado");
   if (typeof email !== "string" || typeof code !== "string") throw new Error("Email e código devem ser strings");
@@ -111,11 +118,10 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/openrouter-chat", "/generate-learning-exercises",
     "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
     "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request",
-    "/admin/beta-requests", "/admin",
     "/student-context"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
-    if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/") || req.path.startsWith("/admin/")) return next();
+    if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/")) return next();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -139,6 +145,25 @@ const requireAuth = async (req: any, res: any, next: any) => {
 };
 
 app.use("/api/", requireAuth);
+
+const ADMIN_EMAILS = (process.env.ADMIN_EMAILS || "")
+  .split(",")
+  .map(e => e.trim().toLowerCase())
+  .filter(Boolean);
+
+const requireAdmin = (req: any, res: any, next: any) => {
+  const email = req.userEmail;
+  if (!email) {
+    return res.status(401).json({ error: "Autenticação necessária para acessar o painel admin." });
+  }
+  if (ADMIN_EMAILS.length === 0) {
+    return res.status(403).json({ error: "Painel admin não configurado. Defina ADMIN_EMAILS." });
+  }
+  if (!ADMIN_EMAILS.includes(email)) {
+    return res.status(403).json({ error: "Acesso negado. Você não é um administrador." });
+  }
+  next();
+};
 
 function tryParse(text: string): any | null {
   try { return JSON.parse(text); } catch { return null; }
@@ -296,7 +321,7 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
   try {
     const r = await fetch(`${base}/api/process`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: renderHeaders(),
       body: JSON.stringify({
         cura,
         prompt: opts.userPrompt,
@@ -327,7 +352,7 @@ async function callAISync(opts: { systemPrompt?: string; userPrompt: string; max
 
   const r = await fetch(`${base}/api/process`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: renderHeaders(),
     body: JSON.stringify({
       cura,
       prompt: opts.userPrompt,
@@ -344,7 +369,7 @@ async function callAISync(opts: { systemPrompt?: string; userPrompt: string; max
   while (Date.now() < deadline) {
     await sleep(2500);
     try {
-      const s = await fetch(`${base}/api/status/${cura}`, { signal: AbortSignal.timeout(4000) });
+      const s = await fetch(`${base}/api/status/${cura}`, { headers: renderHeaders(), signal: AbortSignal.timeout(4000) });
       if (!s.ok) continue;
       const data = await s.json();
       if (data?.status === "done" && typeof data?.result === "string" && data.result.length > 0) {
@@ -383,7 +408,7 @@ app.post("/api/beta-request", async (req, res) => {
   return res.json({ ok: true });
 });
 
-app.get("/api/admin/beta-requests", async (req, res) => {
+app.get("/api/admin/beta-requests", requireAdmin, async (req, res) => {
   if (!supabaseAdmin) {
     return res.status(503).json({ error: "Supabase not configured" });
   }
@@ -400,7 +425,7 @@ app.get("/api/admin/beta-requests", async (req, res) => {
   }
 });
 
-app.post("/api/admin/beta-requests/:id/status", async (req, res) => {
+app.post("/api/admin/beta-requests/:id/status", requireAdmin, async (req, res) => {
   if (!supabaseAdmin) {
     return res.status(503).json({ error: "Supabase not configured" });
   }
@@ -634,7 +659,7 @@ app.post("/api/questions", async (req, res) => {
   try {
     const r = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: renderHeaders(),
       body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 4096, temperature: 0.7 }),
       signal: AbortSignal.timeout(10000),
     });
@@ -716,7 +741,7 @@ app.get("/api/questions/status-batch", async (req, res) => {
       const url = `${renderUrl.replace(/\/+$/, "")}/api/status/${cura}`;
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), 10000);
-      const r = await fetch(url, { signal: ctrl.signal });
+      const r = await fetch(url, { headers: renderHeaders(), signal: ctrl.signal });
       clearTimeout(tid);
       if (!r.ok) return { cura, status: "error", result: null };
       const data = await r.json();
@@ -736,7 +761,7 @@ app.get("/api/ai-task/:cura", async (req, res) => {
   const renderUrl = process.env.RENDER_PROCESS_URL;
   if (!renderUrl) return res.status(503).json({ error: "Serviço indisponível." });
   try {
-    const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`, { signal: AbortSignal.timeout(8000) });
+    const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`, { headers: renderHeaders(), signal: AbortSignal.timeout(8000) });
     if (!r.ok) return res.status(502).json({ error: "Render returned " + r.status });
     const data = await r.json();
     return res.json(data);
@@ -1105,7 +1130,7 @@ Retorne APENAS um JSON no formato: {"explanations": {"id_da_questao": "explicaç
     try {
       await fetch(`${base}/api/process`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: renderHeaders(),
         body: JSON.stringify({ cura, prompt: batchPrompt, type: "general", systemPrompt }),
         signal: AbortSignal.timeout(5000),
       });

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { Shield, CheckCircle, XCircle, Clock, RefreshCw, X, Maximize2 } from 'lucide-react';
+import { supabase } from '../lib/supabase';
 
 interface BetaRequest {
   id: string;
@@ -9,6 +10,12 @@ interface BetaRequest {
   status: string;
   created_at: string;
 }
+
+const authHeaders = async () => {
+  const { data } = await supabase.auth.getSession();
+  const token = data?.session?.access_token;
+  return token ? { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` } : { 'Content-Type': 'application/json' };
+};
 
 export default function AdminBetaRequests() {
   const [requests, setRequests] = useState<BetaRequest[]>([]);
@@ -20,7 +27,7 @@ export default function AdminBetaRequests() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch('/api/admin/beta-requests');
+      const res = await fetch('/api/admin/beta-requests', { headers: await authHeaders() });
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
       setRequests(data.requests || []);
@@ -39,7 +46,7 @@ export default function AdminBetaRequests() {
     try {
       const res = await fetch(`/api/admin/beta-requests/${id}/status`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: await authHeaders(),
         body: JSON.stringify({ status }),
       });
       if (!res.ok) throw new Error('Failed to update');

@@ -4,8 +4,60 @@ const cors = require("cors");
 const crypto = require("crypto");
 
 const app = express();
-app.use(cors());
+
+const AI_SERVER_TOKEN = process.env.AI_SERVER_TOKEN || "";
+
+// Restrict cross-origin access instead of allowing any origin (OWASP A05 - Security Misconfiguration)
+const CORS_ORIGINS = (process.env.CORS_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+app.use(
+  cors({
+    origin(origin, callback) {
+      if (!origin || CORS_ORIGINS.length === 0) return callback(null, true);
+      if (CORS_ORIGINS.includes(origin)) return callback(null, true);
+      callback(new Error("Not allowed by CORS"));
+    },
+  })
+);
 app.use(express.json({ limit: "2mb" }));
+
+// Shared-secret authentication for the AI worker (OWASP A01 - Broken Access Control).
+// When AI_SERVER_TOKEN is set, requests must present it via `Authorization: Bearer <token>`.
+// If not set, the server runs in open/dev mode and accepts any request.
+function requireToken(req, res, next) {
+  if (!AI_SERVER_TOKEN) return next();
+  const authHeader = req.headers.authorization || "";
+  const provided = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+  if (!provided) return res.status(401).json({ error: "autenticacao necessaria" });
+  const a = Buffer.from(String(provided));
+  const b = Buffer.from(String(AI_SERVER_TOKEN));
+  if (a.length !== b.length || !crypto.timingSafeEqual(a, b)) {
+    return res.status(401).json({ error: "token invalido" });
+  }
+  return next();
+}
+
+// Lightweight in-process rate limiter for the job submission endpoint (OWASP A05 - DoS / cost abuse)
+const PROCESS_WINDOW_MS = 60 * 1000;
+const PROCESS_MAX = 20;
+const processHits = new Map();
+function processRateLimit(req, res, next) {
+  const key = (req.headers["x-forwarded-for"] || req.socket.remoteAddress || "unknown").toString();
+  const now = Date.now();
+  const rec = processHits.get(key);
+  const count = rec && now - rec.t < PROCESS_WINDOW_MS ? rec.c + 1 : 1;
+  processHits.set(key, { t: now, c: count });
+  if (processHits.size > 5000) {
+    for (const [k, v] of processHits) if (now - v.t > PROCESS_WINDOW_MS) processHits.delete(k);
+  }
+  if (count > PROCESS_MAX) {
+    return res.status(429).json({ error: "limite de requisicoes atingido. Tente novamente em 1 minuto." });
+  }
+  return next();
+}
+
 
 const PORT = process.env.PORT || 3001;
 
@@ -434,7 +486,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // Submit a job (async)
-app.post("/api/process", (req, res) => {
+app.post("/api/process", requireToken, processRateLimit, (req, res) => {
   const { cura, prompt, type, systemPrompt, maxTokens, temperature } = req.body;
   if (!cura || !prompt) {
     return res.status(400).json({ error: "cura and prompt required" });
@@ -484,7 +536,7 @@ app.post("/api/process", (req, res) => {
 });
 
 // Poll job status
-app.get("/api/status/:cura", (req, res) => {
+app.get("/api/status/:cura", requireToken, (req, res) => {
   const job = jobs.get(req.params.cura);
   if (!job) {
     return res.status(404).json({ error: "CURA not found or expired" });
@@ -502,7 +554,7 @@ app.get("/api/status/:cura", (req, res) => {
 });
 
 // All jobs (for dashboard)
-app.get("/api/all", (req, res) => {
+app.get("/api/all", requireToken, (req, res) => {
   const all = [];
   for (const [cura, job] of jobs) {
     all.push({
