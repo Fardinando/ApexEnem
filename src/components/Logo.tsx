@@ -34,8 +34,8 @@ export default function Logo({ variant = 'favicon-a', className = 'h-8 w-auto' }
   if (srcLight) {
     return (
       <>
-        <img src={src} alt={alt} className={`${className} dark:hidden`} draggable={false} />
-        <img src={srcLight} alt={alt} className={`${className} hidden dark:block`} draggable={false} />
+        <img src={srcLight} alt={alt} className={`${className} dark:hidden`} draggable={false} />
+        <img src={src} alt={alt} className={`${className} hidden dark:block`} draggable={false} />
       </>
     );
   }

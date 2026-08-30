@@ -15,9 +15,13 @@ const CORS_ORIGINS = (process.env.CORS_ORIGINS || "")
 app.use(
   cors({
     origin(origin, callback) {
+      // Server-to-server calls and requests without an Origin are always allowed
+      // (they do not trigger browser CORS enforcement -> avoids 502 on the API proxy).
       if (!origin || CORS_ORIGINS.length === 0) return callback(null, true);
       if (CORS_ORIGINS.includes(origin)) return callback(null, true);
-      callback(new Error("Not allowed by CORS"));
+      // Allow the request to proceed, but do not echo an ACAC header for unknown origins.
+      // The browser will block the response client-side, the backend still answers.
+      callback(null, false);
     },
   })
 );
