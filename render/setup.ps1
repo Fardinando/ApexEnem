@@ -138,6 +138,19 @@ OPENROUTER_API_KEY_V7=
 OPENROUTER_API_KEY_V8=
 OPENROUTER_API_KEY_V9=
 OPENROUTER_API_KEY_V10=
+
+# ── Seguranca (OWASP) ─────────────────────────────
+# AI_SERVER_TOKEN: token compartilhado. Se definido, o servidor EXIGE
+# `Authorization: Bearer <token>` em /api/process, /api/status/:cura e /api/all.
+# Deve ter o MESMO valor do RENDER_TOKEN configurado no Vercel.
+AI_SERVER_TOKEN=
+
+# CORS_ORIGINS: origens permitidas no CORS (separadas por virgula).
+# Inclua a URL do Tailscale Funnel e o dominio de producao.
+CORS_ORIGINS=
+
+# OLLAMA_ASYNC_ONLY: se "true", desativa completamente o Ollama (usa so nuvem).
+# OLLAMA_ASYNC_ONLY=true
 "@
   Set-Content -Path $envFile -Value $template -Encoding UTF8
   Write-Warn "Arquivo .env criado em $envFile"
