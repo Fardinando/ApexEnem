@@ -33,7 +33,7 @@ export default function AuthorsView({ slug }: { slug?: string }) {
           name: author.name,
           jobTitle: author.role,
           description: author.bio,
-          url: `https://apexenem.app/autor/${author.slug}`,
+          url: `https://apexenem.vercel.app/autor/${author.slug}`,
           worksFor: { '@type': 'Organization', name: 'ApexEnem' },
         },
       });

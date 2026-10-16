@@ -3,6 +3,9 @@
 Guia **passo a passo, do zero**, para colocar o ApexEnem no ar. Feito para quem
 nunca publicou este projeto (ou nunca usou Vercel/Render/Supabase). Siga na ordem.
 
+> **Domínio atual do site:** `https://apexenem.vercel.app` (domínio grátis da Vercel).
+> Ter um domínio próprio é **opcional** e pode ser feito depois (Passo 4).
+
 > Legenda: 🔴 obrigatório · 🟡 recomendado · ⚪ opcional
 
 ---
@@ -16,7 +19,6 @@ nunca publicou este projeto (ou nunca usou Vercel/Render/Supabase). Siga na orde
 | **Serviço de IA** | `render/server.js` — 20 chaves de IA em fila | **Render** | Grátis (com cold start) |
 | **Rate limit distribuído** | Rate limiting por IP | **Upstash Redis** | Grátis |
 | **E-mails** | Confirmação de conta / contato | **Resend** | Grátis |
-| **Domínio** | `apexenem.app` | Registrador (ex: Registro.br) | ~R$40/ano |
 | **Anúncios** | Google AdSense | Google | — |
 | **Analytics** | Google Analytics 4 | Google | — |
 
@@ -66,11 +68,9 @@ npm run build     # gera a pasta dist/
 ### 1.3 Configurar Auth
 
 1. **Authentication → URL Configuration**:
-   - **Site URL:** `https://apexenem.app`
+   - **Site URL:** `https://apexenem.vercel.app`
    - **Redirect URLs** (adicione todas):
      ```
-     https://apexenem.app
-     https://apexenem.app/**
      https://apexenem.vercel.app
      https://apexenem.vercel.app/**
      http://localhost:5173
@@ -102,7 +102,7 @@ a fila/rotação. O backend da Vercel conversa com ele por `RENDER_PROCESS_URL`.
    | Variável | Valor |
    |----------|-------|
    | `INTERNAL_API_KEY` | 🔴 o **mesmo** valor que você vai usar na Vercel |
-   | `ALLOWED_ORIGINS` | 🔴 `https://apexenem.app,https://apexenem.vercel.app` |
+   | `ALLOWED_ORIGINS` | 🔴 `https://apexenem.vercel.app` |
    | `GROQ_API_KEY_V1` … `GROQ_API_KEY_V10` | 🟡 uma chave Groq em cada (só as que tiver) |
    | `OPENROUTER_API_KEY_V1` … `OPENROUTER_API_KEY_V10` | 🟡 uma chave OpenRouter em cada |
    | `GOOGLE_API_KEY` | ⚪ chave do Google AI Studio (Gemini) |
@@ -146,8 +146,8 @@ a fila/rotação. O backend da Vercel conversa com ele por `RENDER_PROCESS_URL`.
    | `INTERNAL_API_KEY` | o **mesmo** valor do Render |
    | `RENDER_PROCESS_URL` | URL do serviço de IA no Render |
    | `HMAC_SECRET` | string aleatória forte (`openssl rand -hex 32`) |
-   | `ALLOWED_ORIGINS` | `https://apexenem.app,https://apexenem.vercel.app` |
-   | `VITE_SITE_URL` | `https://apexenem.app` |
+   | `ALLOWED_ORIGINS` | `https://apexenem.vercel.app` |
+   | `VITE_SITE_URL` | `https://apexenem.vercel.app` |
 
    **🟡 Recomendadas**
    | Variável | Valor |
@@ -156,8 +156,8 @@ a fila/rotação. O backend da Vercel conversa com ele por `RENDER_PROCESS_URL`.
    | `UPSTASH_REDIS_REST_URL` | ver Passo 5 |
    | `UPSTASH_REDIS_REST_TOKEN` | ver Passo 5 |
    | `RESEND_API_KEY` | ver Passo 6 |
-   | `EMAIL_FROM` | `ApexEnem <nao-responda@apexenem.app>` |
-   | `CONTACT_EMAIL` | `contato@apexenem.app` |
+   | `EMAIL_FROM` | `ApexEnem <onboarding@resend.dev>` (teste) ou do seu domínio verificado |
+   | `CONTACT_EMAIL` | e-mail que **você lê** para receber o formulário de contato |
    | `VITE_ADSENSE_CLIENT` | `ca-pub-3858534603619694` (ver Passo 7) |
    | `VITE_GA_ID` | `G-XXXXXXXXXX` (ver Passo 8) |
 
@@ -172,20 +172,34 @@ a fila/rotação. O backend da Vercel conversa com ele por `RENDER_PROCESS_URL`.
    | `VITE_APEXGUARDIAN_URL` | `https://apexguardian.onrender.com` |
 
 5. Clique **Deploy**. Aguarde o build (~1–2 min).
-6. Abra a URL `*.vercel.app` e teste login + uma correção de redação.
+6. Abra a URL `https://apexenem.vercel.app` e teste login + uma correção de redação.
+
+> A URL `*.vercel.app` é atribuída automaticamente e já tem HTTPS. Não precisa
+> configurar DNS para ela.
 
 ---
 
-## 4. 🔴 Domínio `apexenem.app`
+## 4. ⚪ Domínio próprio (opcional — pode fazer depois)
 
-1. Registre/possua o domínio `apexenem.app`.
-2. Na Vercel: **Project → Settings → Domains → Add** → digite `apexenem.app`.
-3. A Vercel mostrará os registros DNS. No painel do seu registrador, crie:
+O site já funciona em `https://apexenem.vercel.app` **sem** domínio próprio.
+Quando quiser um domínio (ex.: `apexenem.com.br`), faça:
+
+1. Registre/possua o domínio (ex.: no Registro.br).
+2. Na Vercel: **Project → Settings → Domains → Add** → digite o domínio.
+3. A Vercel mostrará os registros DNS. No painel do registrador, crie:
    - **A** `@` → `76.76.21.21`
    - **CNAME** `www` → `cname.vercel-dns.com`
 4. Aguarde a propagação (minutos a algumas horas). A Vercel emite HTTPS automático.
-5. **Volte ao Supabase** (Passo 1.3) e confirme que `https://apexenem.app/**`
-   está nas *Redirect URLs*.
+5. Depois, atualize para refletir o domínio novo:
+   - `VITE_SITE_URL` (Vercel) → `https://seudominio.com`
+   - `ALLOWED_ORIGINS` (Vercel e Render) → `https://seudominio.com,https://apexenem.vercel.app`
+   - `public/sitemap.xml` e `public/robots.txt` (troque a URL base)
+   - **Supabase → Authentication → URL Configuration** (Site URL + Redirect URLs)
+
+> ⚠️ **E-mail e AdSense precisam de domínio próprio.** Não é possível enviar
+> e-mail "de `@apexenem.vercel.app`" nem (na prática) ser aprovado no AdSense
+> apenas com o subdomínio da Vercel. Para isso, use um domínio seu.
+> Sem domínio, para **testar** o envio, use `onboarding@resend.dev` no `EMAIL_FROM`.
 
 ---
 
@@ -207,10 +221,12 @@ instâncias da Vercel). Em escala, configure:
 Sem isso, os e-mails ficam apenas simulados no log.
 
 1. <https://resend.com> → crie conta.
-2. **Domains → Add Domain** → `apexenem.app` e siga os registros DNS
-   (SPF/DKIM) indicados.
+2. Para **produção**, adicione um domínio próprio em **Domains → Add Domain** e
+   siga os registros DNS (SPF/DKIM). Sem domínio, você pode testar com o remetente
+   `onboarding@resend.dev`.
 3. **API Keys → Create** → copie → `RESEND_API_KEY`.
-4. Defina `EMAIL_FROM` como `ApexEnem <nao-responda@apexenem.app>`.
+4. Defina `EMAIL_FROM` (ex.: `ApexEnem <no-reply@seudominio.com>`) e `CONTACT_EMAIL`
+   (o e-mail que você lê).
 5. Adicione na Vercel e faça **Redeploy**.
 
 ---
@@ -220,7 +236,8 @@ Sem isso, os e-mails ficam apenas simulados no log.
 O arquivo `public/ads.txt` já está presente com o publisher `pub-3858534603619694`.
 
 1. <https://adsense.google.com> → crie/entre na conta.
-2. **Sites → Add site** → `apexenem.app` e conclua a verificação.
+2. **Sites → Add site** → `apexenem.vercel.app` e conclua a verificação.
+   (A aprovação costuma exigir um **domínio próprio**.)
 3. Crie uma **unidade de anúncio** (display) e copie o ID `ca-pub-...`.
 4. Coloque em `VITE_ADSENSE_CLIENT` (na Vercel) e faça **Redeploy**.
    Os anúncios só carregam **após o usuário aceitar cookies** (LGPD) — isso é
@@ -239,7 +256,7 @@ O arquivo `public/ads.txt` já está presente com o publisher `pub-3858534603619
 
 ## 8. 🟡 Google Analytics 4
 
-1. <https://analytics.google.com> → crie uma propriedade para `apexenem.app`.
+1. <https://analytics.google.com> → crie uma propriedade para o seu site.
 2. Copie o **Measurement ID** (formato `G-XXXXXXXXXX`).
 3. Coloque em `VITE_GA_ID` (na Vercel) e faça **Redeploy**.
    O GA só é carregado após consentimento de *analytics* (LGPD).
@@ -260,15 +277,17 @@ Em **GitHub → Settings → Secrets and variables → Actions**, crie:
 | `VITE_SUPABASE_ANON_KEY` | anon key |
 | `SUPABASE_URL` | URL do Supabase |
 | `SUPABASE_ANON_KEY` | anon key |
-| `APP_URL` | `https://apexenem.app` |
+| `APP_URL` | `https://apexenem.vercel.app` |
 
 ---
 
 ## 10. 🟡 Google Search Console
 
-1. <https://search.google.com/search-console> → **Add property** → `https://apexenem.app`.
+1. <https://search.google.com/search-console> → **Add property** → `https://apexenem.vercel.app`.
 2. Verifique por DNS (recomendado) ou meta tag.
-3. **Sitemaps → Add** → `https://apexenem.app/sitemap.xml`.
+   - Para `vercel.app` (subdomínio de terceiro) a verificação por **meta tag HTML**
+     funciona melhor: copie a tag e coloque no `<head>` do `index.html`.
+3. **Sitemaps → Add** → `https://apexenem.vercel.app/sitemap.xml`.
 4. O `robots.txt` já aponta para o sitemap.
 
 ---
@@ -277,7 +296,7 @@ Em **GitHub → Settings → Secrets and variables → Actions**, crie:
 
 Após tudo configurado, teste:
 
-- [ ] `https://apexenem.app` abre a landing e o HTTPS funciona.
+- [ ] `https://apexenem.vercel.app` abre a landing e o HTTPS funciona.
 - [ ] Criar conta e confirmar e-mail (se confirmação ativada).
 - [ ] Login e chegada ao dashboard.
 - [ ] Correção de redação retorna nota (consome moedas).
@@ -289,7 +308,7 @@ Após tudo configurado, teste:
 - [ ] Banner de cookies aparece; "Recusar" **não** carrega GA/AdSense;
       "Aceitar todos" carrega.
 - [ ] `/privacidade` e `/cookies` (políticas) abrem.
-- [ ] `https://apexenem.app/robots.txt` e `/sitemap.xml` respondem.
+- [ ] `https://apexenem.vercel.app/robots.txt` e `/sitemap.xml` respondem.
 - [ ] `/api/stats` responde JSON.
 - [ ] No painel Vercel, sem erros nos logs; no Render, serviço "live".
 
@@ -324,9 +343,9 @@ Após tudo configurado, teste:
 Estes itens **só o dono da conta** pode fazer (não são automatizáveis pelo código):
 
 1. Criar as contas (Supabase, Render, Vercel, Upstash, Resend, Google) e preencher as chaves.
-2. Registrar/possuir o domínio e apontar o DNS.
-3. Rodar o `supabase-setup.sql` no SQL Editor.
-4. Verificar o domínio no Resend e no AdSense.
+2. Rodar o `supabase-setup.sql` no SQL Editor.
+3. (Opcional) Registrar um domínio próprio e apontar o DNS.
+4. Verificar o domínio no Resend e no AdSense (Recomendado domínio próprio).
 5. (Futuro) Integrar o **Google Ad Manager** para o anúncio recompensado real de moedas.
 6. (Futuro) Colocar Stripe/Mercado Pago para cobrança real dos planos PRO/Apex —
    hoje `src/lib/coins.ts` é **client-side** (localStorage) e serve para testar a

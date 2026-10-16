@@ -4,7 +4,7 @@ Plataforma brasileira de estudos para o **ENEM**: correção de redação por IA
 simulados cronometrados, questões inéditas, plano de estudo adaptativo,
 pesquisa de repertório sociocultural e uma **IA Professora** (planos de aula).
 
-Site: <https://apexenem.app>
+Site: <https://apexenem.vercel.app>
 
 ## Stack
 

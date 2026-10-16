@@ -22,7 +22,7 @@ export default function ContactPage() {
         '@context': 'https://schema.org',
         '@type': 'ContactPage',
         name: 'Contato — ApexEnem',
-        url: 'https://apexenem.app/contato',
+        url: 'https://apexenem.vercel.app/contato',
       },
     });
   }, []);

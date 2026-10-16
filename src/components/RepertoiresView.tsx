@@ -58,7 +58,7 @@ export default function RepertoiresView() {
         name: 'Pesquisa de Repertórios — ApexEnem',
         applicationCategory: 'EducationalApplication',
         operatingSystem: 'Web',
-        url: 'https://apexenem.app/repertorios',
+        url: 'https://apexenem.vercel.app/repertorios',
       },
     });
   }, []);
