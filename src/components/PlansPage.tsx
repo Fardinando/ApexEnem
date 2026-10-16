@@ -100,7 +100,7 @@ export default function PlansPage({ onSignup, onLogin }: { onSignup?: () => void
                   </button>
                 ) : (
                   <button type="button" onClick={() => navigate('/contato')} className="w-full py-3 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold transition cursor-pointer">
-                    Assinar {plan.name}
+                    Assinar {plan.name} · {formatBRL(plan.priceBRL)}/mês
                   </button>
                 )}
               </div>

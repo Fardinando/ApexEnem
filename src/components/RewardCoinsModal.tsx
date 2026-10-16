@@ -1,8 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { Coins, Play, Check, X, Loader2 } from 'lucide-react';
-import { grantRewarded, getCoins, getRewardedRemaining, REWARDED_COINS, REWARDED_DAILY_LIMIT } from '../lib/coins';
+import { grantRewarded, getCoins, REWARDED_COINS } from '../lib/coins';
 
-type Phase = 'idle' | 'watching' | 'done' | 'exhausted';
+type Phase = 'idle' | 'watching' | 'done';
 
 export default function RewardCoinsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
   const [phase, setPhase] = useState<Phase>('idle');
@@ -12,7 +12,7 @@ export default function RewardCoinsModal({ open, onClose }: { open: boolean; onC
 
   useEffect(() => {
     if (open) {
-      setPhase(getRewardedRemaining() > 0 ? 'idle' : 'exhausted');
+      setPhase('idle');
       setSeconds(5);
     }
   }, [open]);
@@ -26,9 +26,9 @@ export default function RewardCoinsModal({ open, onClose }: { open: boolean; onC
 
   useEffect(() => {
     if (phase === 'watching' && seconds === 0) {
-      const result = grantRewarded();
+      grantRewarded();
       setCoins(getCoins());
-      setPhase(result.ok ? 'done' : 'exhausted');
+      setPhase('done');
     }
   }, [phase, seconds]);
 
@@ -48,7 +48,7 @@ export default function RewardCoinsModal({ open, onClose }: { open: boolean; onC
 
         <h2 className="text-lg font-extrabold mb-1">Ganhar moedas</h2>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-5">
-          Saldo atual: <strong className="text-amber-600 dark:text-amber-400">{coins}</strong> moedas · Restantes hoje: {getRewardedRemaining()}/{REWARDED_DAILY_LIMIT}
+          Saldo atual: <strong className="text-amber-600 dark:text-amber-400">{coins}</strong> moedas
         </p>
 
         {phase === 'idle' && (
@@ -83,13 +83,6 @@ export default function RewardCoinsModal({ open, onClose }: { open: boolean; onC
             <p className="text-sm font-bold text-emerald-600 dark:text-emerald-400 mb-1">+{REWARDED_COINS} moedas creditadas!</p>
             <p className="text-xs text-slate-400 mb-5">Novo saldo: {coins} moedas.</p>
             <button type="button" onClick={onClose} className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white text-sm font-bold rounded-xl transition cursor-pointer">Continuar</button>
-          </>
-        )}
-
-        {phase === 'exhausted' && (
-          <>
-            <p className="text-sm text-slate-600 dark:text-slate-300 mb-5">Você atingiu o limite de anúncios recompensados de hoje. Volte amanhã ou faça upgrade para um plano com mais moedas.</p>
-            <button type="button" onClick={onClose} className="w-full py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-sm font-bold rounded-xl transition cursor-pointer">Fechar</button>
           </>
         )}
       </div>

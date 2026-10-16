@@ -44,9 +44,6 @@ export type CoinFeature = keyof typeof COIN_COSTS;
 /** Moedas ganhas por assistir a um anúncio recompensado. */
 export const REWARDED_COINS = 20;
 
-/** Limite diário de anúncios recompensados por usuário. */
-export const REWARDED_DAILY_LIMIT = 10;
-
 /** No plano Free, o saldo de moedas pode ser recarregado assistindo anúncios. */
 export const ADS_TO_COINS_PLANS: PlanId[] = ['free'];
 
@@ -73,7 +70,7 @@ export const PLANS: PlanDef[] = [
       { label: 'Plano de estudos adaptativo', included: true },
       { label: 'Pesquisa de repertórios', included: true },
       { label: `${WEEKLY_RESET_COINS} moedas por semana (renovadas toda semana)`, included: true },
-      { label: `Recarga via anúncios (+${REWARDED_COINS} moedas, até ${REWARDED_DAILY_LIMIT}/dia)`, included: true },
+      { label: `Recarga ilimitada via anúncios (+${REWARDED_COINS} moedas por anúncio)`, included: true },
       { label: 'Sem anúncios', included: false },
       { label: 'IA Professora (planos de aula)', included: false },
       { label: 'Vídeos sem limite', included: true },

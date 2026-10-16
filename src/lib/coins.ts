@@ -1,5 +1,5 @@
 import type { PlanId } from '../types';
-import { MONTHLY_COINS, WEEKLY_RESET_COINS, COIN_COSTS, REWARDED_COINS, REWARDED_DAILY_LIMIT, type CoinFeature } from '../config/plans';
+import { MONTHLY_COINS, WEEKLY_RESET_COINS, COIN_COSTS, REWARDED_COINS, type CoinFeature } from '../config/plans';
 
 export type { CoinFeature };
 
@@ -16,12 +16,7 @@ export interface WalletState {
   coins: number;
   refreshedAt: string;
   weeklyResetAt: string;
-  dailyRewarded: { date: string; count: number };
   history: CoinHistoryEntry[];
-}
-
-function todayStr(): string {
-  return new Date().toISOString().slice(0, 10);
 }
 
 /** Chave da semana ISO no formato "2026-W03". */
@@ -42,7 +37,6 @@ function defaultWallet(): WalletState {
     coins: WEEKLY_RESET_COINS,
     refreshedAt: new Date().toISOString(),
     weeklyResetAt: isoWeekKey(new Date()),
-    dailyRewarded: { date: todayStr(), count: 0 },
     history: [],
   };
 }
@@ -165,24 +159,12 @@ export function chargeFeature(feature: CoinFeature, reason?: string): boolean {
   return true;
 }
 
-export function getRewardedRemaining(): number {
-  if (state.dailyRewarded.date !== todayStr()) return REWARDED_DAILY_LIMIT;
-  return Math.max(0, REWARDED_DAILY_LIMIT - state.dailyRewarded.count);
-}
-
-/** Registra um anúncio recompensado assistido e credita as moedas. */
-export function grantRewarded(reason = 'Anúncio recompensado'): { ok: boolean; coins?: number; remaining: number } {
-  if (state.dailyRewarded.date !== todayStr()) {
-    state.dailyRewarded = { date: todayStr(), count: 0 };
-  }
-  if (state.dailyRewarded.count >= REWARDED_DAILY_LIMIT) {
-    return { ok: false, remaining: 0 };
-  }
-  state.dailyRewarded.count += 1;
+/** Registra um anúncio recompensado assistido e credita as moedas (sem limite). */
+export function grantRewarded(reason = 'Anúncio recompensado'): { ok: boolean; coins: number } {
   state.coins += REWARDED_COINS;
   pushHistory(REWARDED_COINS, reason);
   persist();
-  return { ok: true, coins: REWARDED_COINS, remaining: getRewardedRemaining() };
+  return { ok: true, coins: REWARDED_COINS };
 }
 
-export { REWARDED_COINS, REWARDED_DAILY_LIMIT, COIN_COSTS };
+export { REWARDED_COINS, COIN_COSTS };
