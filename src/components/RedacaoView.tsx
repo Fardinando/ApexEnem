@@ -22,8 +22,10 @@ import {
 import { EssayCorrection, ActivityLog } from '../types';
 import { supabase } from '../lib/supabase';
 import AdPlaceholder from './AdPlaceholder';
-import RewardAdOverlay, { shouldShowRewardAd } from './RewardAdOverlay';
 import LoadingOverlay from './LoadingOverlay';
+import CoinGateModal from './CoinGateModal';
+import { useCoinGate } from '../lib/useCoinGate';
+import { addCoins, getFeatureCost } from '../lib/coins';
 
 const APEX_GUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
 
@@ -47,8 +49,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
   );
 
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [showRewardAd, setShowRewardAd] = useState(false);
-  const [pendingCorrection, setPendingCorrection] = useState(false);
+  const coinGate = useCoinGate();
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [errorDetails, setErrorDetails] = useState<string | null>(null);
   const [reporting, setReporting] = useState(false);
@@ -109,9 +110,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       return;
     }
 
-    if (shouldShowRewardAd('correction', 2)) {
-      setPendingCorrection(true);
-      setShowRewardAd(true);
+    if (!coinGate.trySpend('essayCorrection')) {
       return;
     }
 
@@ -234,6 +233,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       const details = err?.details || null;
       setErrorMessage(msg);
       setErrorDetails(details);
+      addCoins(getFeatureCost('essayCorrection'), 'Reembolso: falha na correção');
       console.error('Correction error:', err);
     } finally {
       clearInterval(timer);
@@ -745,20 +745,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
         <AdPlaceholder slot="redacao-rodape" format="banner" />
       </div>
 
-      {showRewardAd && (
-        <RewardAdOverlay
-          action="correction"
-          onContinue={() => {
-            setShowRewardAd(false);
-            setPendingCorrection(false);
-            doCorrection();
-          }}
-          onClose={() => {
-            setShowRewardAd(false);
-            setPendingCorrection(false);
-          }}
-        />
-      )}
+      <CoinGateModal open={!!coinGate.gate} cost={coinGate.gate?.cost ?? 0} feature="correção de redação" onClose={coinGate.closeGate} />
 
     </div>
   );

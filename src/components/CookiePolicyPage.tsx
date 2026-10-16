@@ -113,6 +113,14 @@ const COOKIE_SECTIONS: Section[] = [
           'Embora normalmente não utilize cookies para interação direta com os usuários finais, dados enviados às funcionalidades de IA poderão ser processados por sua infraestrutura para gerar as respostas solicitadas.',
         ],
       },
+      {
+        title: 'Google (Analytics e AdSense)',
+        paragraphs: [
+          'O Google Analytics é utilizado para gerar estatísticas agregadas de uso. O Google AdSense é utilizado para exibir anúncios que mantêm a plataforma gratuita.',
+          'O Google e seus parceiros podem usar cookies para veicular anúncios com base em visitas anteriores a este e a outros sites. Esses cookies só são carregados após o seu consentimento.',
+          'Você pode desativar a personalização de anúncios em adssettings.google.com e obter mais informações em youronlinechoices.com.br.',
+        ],
+      },
     ],
     note: 'Esta lista poderá ser atualizada sempre que novos serviços forem incorporados à plataforma.',
   },
@@ -132,11 +140,12 @@ const COOKIE_SECTIONS: Section[] = [
     ],
   },
   {
-    title: '5. Gerenciamento de cookies',
+    title: '5. Gerenciamento de cookies e consentimento',
     paragraphs: [
-      'O usuário poderá controlar ou excluir cookies diretamente nas configurações de seu navegador.',
-      'Também poderá configurar seu navegador para bloquear parcialmente ou totalmente os cookies.',
-      'Entretanto, a desativação de determinados cookies poderá afetar o funcionamento da plataforma e limitar algumas funcionalidades.',
+      'Ao acessar o ApexEnem pela primeira vez, é exibido um aviso de cookies no qual você pode aceitar todos, recusar os cookies opcionais ou personalizar suas escolhas por categoria (análise e publicidade).',
+      'Você pode alterar ou revogar seu consentimento a qualquer momento limpando os dados do site no navegador; o aviso será exibido novamente na próxima visita.',
+      'Além disso, o usuário poderá controlar ou excluir cookies diretamente nas configurações de seu navegador, podendo bloquear parcial ou totalmente os cookies.',
+      'A desativação de determinados cookies poderá afetar o funcionamento da plataforma e limitar algumas funcionalidades.',
     ],
   },
   {
@@ -168,7 +177,8 @@ const COOKIE_SECTIONS: Section[] = [
   {
     title: '9. Contato',
     paragraphs: [
-      'Caso tenha dúvidas sobre esta Política de Cookies ou sobre o tratamento de dados relacionados ao uso de cookies, entre em contato pelos canais oficiais disponibilizados pelo ApexEnem.',
+      'Caso tenha dúvidas sobre esta Política de Cookies ou sobre o tratamento de dados relacionados ao uso de cookies, entre em contato pelos canais oficiais do ApexEnem.',
+      'Atendimento geral: contato@apexenem.app · Privacidade e LGPD (DPO): privacidade@apexenem.app',
     ],
   },
 ];

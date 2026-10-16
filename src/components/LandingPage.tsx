@@ -441,10 +441,13 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
     document.getElementById(id)?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  const goToAbout = () => {
-    window.history.pushState({}, '', '/sobre');
+  const goTo = (path: string) => {
+    window.history.pushState({}, '', path);
     window.dispatchEvent(new Event('popstate'));
+    window.scrollTo({ top: 0, behavior: 'auto' });
   };
+
+  const goToAbout = () => goTo('/sobre');
 
   const features = [
     { icon: Zap, title: 'Correção de Redação', desc: 'Envie sua redação e receba correção detalhada seguindo as 5 competências do ENEM, com nota de 0 a 1000.', color: 'from-blue-500 to-blue-600' },
@@ -464,8 +467,11 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
             <button type="button" onClick={() => scrollTo('features')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Recursos</button>
-            <button type="button" onClick={() => scrollTo('map-section')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Mapa</button>
+            <button type="button" onClick={() => goTo('/repertorios')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Repertórios</button>
+            <button type="button" onClick={() => goTo('/blog')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Blog</button>
+            <button type="button" onClick={() => goTo('/planos')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Planos</button>
             <button type="button" onClick={goToAbout} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Sobre</button>
+            <button type="button" onClick={() => goTo('/contato')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Contato</button>
           </nav>
           <div className="flex items-center gap-3">
             <button type="button" onClick={onStart} className="px-4 py-2 text-sm font-semibold text-slate-600 dark:text-slate-300 hover:text-blue-600 transition cursor-pointer">Entrar</button>
@@ -606,6 +612,10 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
               ApexEnem © 2026 — Plataforma Educacional Adaptativa
             </div>
             <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
+              <a href="/blog" onClick={(e) => { e.preventDefault(); goTo('/blog'); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Blog</a>
+              <a href="/repertorios" onClick={(e) => { e.preventDefault(); goTo('/repertorios'); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Repertórios</a>
+              <a href="/autores" onClick={(e) => { e.preventDefault(); goTo('/autores'); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Autores</a>
+              <a href="/contato" onClick={(e) => { e.preventDefault(); goTo('/contato'); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Contato</a>
               <a href="/termos" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/termos'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Termos de Uso</a>
               <a href="/privacidade" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/privacidade'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Privacidade</a>
               <a href="/cookies" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/cookies'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Cookies</a>

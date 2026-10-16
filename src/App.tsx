@@ -18,6 +18,11 @@ import CookieConsentBanner from './components/CookieConsentBanner';
 import SubscriptionTermsPage from './components/SubscriptionTermsPage';
 import RefundPolicyPage from './components/RefundPolicyPage';
 import DevNoticeBanner from './components/DevNoticeBanner';
+import BlogView from './components/BlogView';
+import AuthorsView from './components/AuthorsView';
+import ContactPage from './components/ContactPage';
+import RepertoiresView from './components/RepertoiresView';
+import PlansPage from './components/PlansPage';
 
 const DashboardView = lazy(() => import('./components/DashboardView'));
 const RedacaoView = lazy(() => import('./components/RedacaoView'));
@@ -26,6 +31,7 @@ const SimuladosView = lazy(() => import('./components/SimuladosView'));
 const ConfiguracoesView = lazy(() => import('./components/ConfiguracoesView'));
 const AprendizadoView = lazy(() => import('./components/AprendizadoView'));
 const PerfilView = lazy(() => import('./components/PerfilView'));
+const TeacherPlanView = lazy(() => import('./components/TeacherPlanView'));
 
 function ViewSpinner() {
   return (
@@ -496,6 +502,58 @@ export default function App() {
     );
   }
 
+  if (currentPath === '/blog' || currentPath.startsWith('/blog/')) {
+    const slug = currentPath.startsWith('/blog/') ? decodeURIComponent(currentPath.slice('/blog/'.length)) : undefined;
+    return (
+      <>
+        <BlogView slug={slug} />
+        <CookieConsentBanner />
+        <DevNoticeBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/autores' || currentPath.startsWith('/autor/')) {
+    const slug = currentPath.startsWith('/autor/') ? decodeURIComponent(currentPath.slice('/autor/'.length)) : undefined;
+    return (
+      <>
+        <AuthorsView slug={slug} />
+        <CookieConsentBanner />
+        <DevNoticeBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/contato') {
+    return (
+      <>
+        <ContactPage />
+        <CookieConsentBanner />
+        <DevNoticeBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/repertorios') {
+    return (
+      <>
+        <RepertoiresView />
+        <CookieConsentBanner />
+        <DevNoticeBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/planos') {
+    return (
+      <>
+        <PlansPage onSignup={() => navigate('/signup')} onLogin={() => navigate('/login')} />
+        <CookieConsentBanner />
+        <DevNoticeBanner />
+      </>
+    );
+  }
+
   if (!session?.user) {
     if (currentPath === '/login' || currentPath === '/signup') {
       return (
@@ -611,6 +669,12 @@ export default function App() {
               achievements={allAchievements}
               setActiveTab={setActiveTab}
               triProfile={triProfile}
+            />
+          )}
+          {activeTab === 'teacher' && (
+            <TeacherPlanView
+              accessToken={session.access_token}
+              onUpgrade={() => { window.history.pushState({}, '', '/planos'); setCurrentPath('/planos'); }}
             />
           )}
         </Suspense>

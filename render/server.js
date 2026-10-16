@@ -4,8 +4,41 @@ const cors = require("cors");
 const crypto = require("crypto");
 
 const app = express();
-app.use(cors());
+app.set("trust proxy", 1);
+
+// ─── CORS restrito (allowlist) ────────────────────────────────────────────────
+const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || "")
+  .split(",")
+  .map((o) => o.trim())
+  .filter(Boolean);
+
+app.use(
+  cors({
+    origin(origin, cb) {
+      if (!origin) return cb(null, true);
+      if (ALLOWED_ORIGINS.length === 0) return cb(null, false);
+      return cb(null, ALLOWED_ORIGINS.includes(origin));
+    },
+    methods: ["GET", "POST", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "x-internal-key"],
+  })
+);
 app.use(express.json({ limit: "2mb" }));
+
+// ─── Autenticação interna (segredo compartilhado) ─────────────────────────────
+// Este serviço guarda ~20 chaves de IA. Ele NÃO deve ser exposto publicamente:
+// apenas o backend (Vercel) fala com ele, enviando o header x-internal-key.
+const INTERNAL_API_KEY = process.env.INTERNAL_API_KEY;
+function requireInternalKey(req, res, next) {
+  if (!INTERNAL_API_KEY) {
+    return res.status(503).json({ error: "Serviço de IA não configurado (INTERNAL_API_KEY ausente)." });
+  }
+  const provided = req.headers["x-internal-key"];
+  if (!provided || provided !== INTERNAL_API_KEY) {
+    return res.status(401).json({ error: "Não autorizado." });
+  }
+  next();
+}
 
 const PORT = process.env.PORT || 3001;
 
@@ -402,7 +435,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // Submit a job (async)
-app.post("/api/process", (req, res) => {
+app.post("/api/process", requireInternalKey, (req, res) => {
   const { cura, prompt, type, systemPrompt, maxTokens, temperature } = req.body;
   if (!cura || !prompt) {
     return res.status(400).json({ error: "cura and prompt required" });
@@ -452,7 +485,7 @@ app.post("/api/process", (req, res) => {
 });
 
 // Poll job status
-app.get("/api/status/:cura", (req, res) => {
+app.get("/api/status/:cura", requireInternalKey, (req, res) => {
   const job = jobs.get(req.params.cura);
   if (!job) {
     return res.status(404).json({ error: "CURA not found or expired" });
@@ -470,7 +503,7 @@ app.get("/api/status/:cura", (req, res) => {
 });
 
 // All jobs (for dashboard)
-app.get("/api/all", (req, res) => {
+app.get("/api/all", requireInternalKey, (req, res) => {
   const all = [];
   for (const [cura, job] of jobs) {
     all.push({
@@ -490,8 +523,8 @@ app.get("/api/all", (req, res) => {
   res.json(all);
 });
 
-// Dashboard
-app.get("/", (req, res) => {
+// Dashboard (restrito — não expor publicamente)
+app.get("/", requireInternalKey, (req, res) => {
   res.send(dashboardHtml);
 });
 

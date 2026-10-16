@@ -4,6 +4,9 @@ import type { Question, QuestionMeta, TriProfile, QuestionResponse } from '../ty
 import AdPlaceholder from './AdPlaceholder';
 import MathRenderer from './MathRenderer';
 import LoadingOverlay from './LoadingOverlay';
+import CoinGateModal from './CoinGateModal';
+import { useCoinGate } from '../lib/useCoinGate';
+import { addCoins, getFeatureCost } from '../lib/coins';
 import { getParamsForQuestion, generateQuestionId } from '../lib/tri-params';
 
 function cleanText(s: string): string {
@@ -39,6 +42,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
   const keySwitchTimeoutRef = React.useRef<ReturnType<typeof setTimeout> | null>(null);
   const [reportState, setReportState] = useState<{ questionId: string; feedback: string; sent: boolean } | null>(null);
   const [revealedQuestions, setRevealedQuestions] = useState(1);
+  const coinGate = useCoinGate();
 
   const APEX_GUARDIAN_URL = import.meta.env.VITE_APEXGUARDIAN_URL || 'https://apexguardian.onrender.com';
 
@@ -69,6 +73,8 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
   ];
 
   const handleGenerateQuestions = async () => {
+    if (!coinGate.trySpend('aiQuestion')) return;
+
     setIsLoading(true);
     setError(null);
     setSelectedAnswers({});
@@ -96,6 +102,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
       if (!res.ok || !data?.curas) {
         const errMsg = data?.error || `Erro ${res.status}: não foi possível iniciar geração.`;
         setError(errMsg);
+        addCoins(getFeatureCost('aiQuestion'), 'Reembolso: falha ao gerar questões');
         setIsLoading(false);
         return;
       }
@@ -172,6 +179,7 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
       if (keySwitchTimeoutRef.current) clearTimeout(keySwitchTimeoutRef.current);
       keySwitchTimeoutRef.current = setTimeout(() => setKeySwitchMessage(null), 5000);
       setError(err?.message || 'Erro de conexão com o servidor.');
+      addCoins(getFeatureCost('aiQuestion'), 'Reembolso: falha de conexão');
       setIsLoading(false);
     }
   };
@@ -451,6 +459,8 @@ export default function PerguntasView({ onWrongAnswer, hardSubjects = [], triPro
       </div>
 
       <AdPlaceholder slot="perguntas-rodape" format="banner" className="mt-6" />
+
+      <CoinGateModal open={!!coinGate.gate} cost={coinGate.gate?.cost ?? 0} feature="questões com IA" onClose={coinGate.closeGate} />
 
     </div>
   );

@@ -1,12 +1,16 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, HelpCircle, BookOpen,
-  Settings, Flame, LogOut, Target, Sun, Moon, Trophy, X, Plus, User, Zap
+  Settings, Flame, LogOut, Target, Sun, Moon, Trophy, X, Plus, User, Zap,
+  GraduationCap, Coins, Crown
 } from 'lucide-react';
-import { UserProfile } from '../types';
+import { UserProfile, PlanId } from '../types';
 import { getLevelFromXp, getLevelTitle, type GamificationStats } from '../lib/gamification';
+import { subscribeWallet, getCoins, getPlanId } from '../lib/coins';
+import { planHasTeacherAI } from '../config/plans';
 import Logo from './Logo';
 import AdPlaceholder from './AdPlaceholder';
+import RewardCoinsModal from './RewardCoinsModal';
 
 interface SidebarProps {
   currentUser: UserProfile;
@@ -34,8 +38,18 @@ const getInitials = (nameStr: string) => {
 
 export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout, isDarkMode, toggleDarkMode }: SidebarProps) {
   const [showMoreSheet, setShowMoreSheet] = useState(false);
+  const [showReward, setShowReward] = useState(false);
+  const [coins, setCoins] = useState(getCoins());
+  const [plan, setPlan] = useState<PlanId>(getPlanId());
   const levelInfo = getLevelFromXp((currentUser as any).totalXp || 0);
   const levelTitle = getLevelTitle(levelInfo.level);
+
+  useEffect(() => subscribeWallet((w) => { setCoins(w.coins); setPlan(w.plan); }), []);
+
+  const hasTeacher = planHasTeacherAI(plan);
+  const navTabs = hasTeacher
+    ? [...MAIN_TABS, { id: 'teacher', label: 'Professor IA', icon: GraduationCap }]
+    : MAIN_TABS;
 
   return (
     <>
@@ -101,9 +115,20 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
               <div className="flex items-center gap-1 bg-blue-50 dark:bg-blue-950/30 px-2.5 py-1.5 rounded-full font-bold text-blue-600 dark:text-blue-400">
                 <Target className="h-3.5 w-3.5" />Meta: {currentUser.targetScore || 750}
               </div>
+              <button type="button" onClick={() => setShowReward(true)} className="flex items-center gap-1 bg-amber-50 dark:bg-amber-950/50 px-2.5 py-1.5 rounded-full font-bold text-amber-700 dark:text-amber-400 cursor-pointer">
+                <Coins className="h-3.5 w-3.5" />{coins}
+              </button>
             </div>
 
             <div className="space-y-1 border-t border-slate-200 dark:border-slate-800 pt-4">
+              {hasTeacher && (
+                <button type="button" onClick={() => { setActiveTab('teacher'); setShowMoreSheet(false); }} className="w-full py-3 px-4 rounded-xl text-left text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#0f172a] flex items-center gap-3 transition cursor-pointer">
+                  <GraduationCap className="h-4.5 w-4.5" /> Professor IA
+                </button>
+              )}
+              <button type="button" onClick={() => { setShowMoreSheet(false); window.history.pushState({}, '', '/planos'); window.dispatchEvent(new Event('popstate')); }} className="w-full py-3 px-4 rounded-xl text-left text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#0f172a] flex items-center gap-3 transition cursor-pointer">
+                <Crown className="h-4.5 w-4.5 text-amber-500" /> Planos & Moedas
+              </button>
               <button type="button" onClick={() => { setActiveTab('perfil'); setShowMoreSheet(false); }} className="w-full py-3 px-4 rounded-xl text-left text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#0f172a] flex items-center gap-3 transition cursor-pointer">
                 <User className="h-4.5 w-4.5" /> Meu Perfil
               </button>
@@ -162,11 +187,23 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
               </div>
             </div>
           </div>
+          <div className="flex items-center gap-2 pt-2 border-t border-slate-200/60 dark:border-slate-800/60">
+            <button type="button" onClick={() => setShowReward(true)} className="flex-1 flex items-center justify-center gap-1.5 px-2 py-1.5 rounded-lg bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-400 text-xs font-bold hover:bg-amber-100 dark:hover:bg-amber-950/60 transition cursor-pointer" title="Ganhar moedas assistindo a um anúncio">
+              <Coins className="h-3.5 w-3.5" />{coins}
+            </button>
+            <span className={`px-2 py-1.5 rounded-lg text-[10px] font-bold uppercase tracking-wide ${
+              plan === 'apex' ? 'bg-purple-100 dark:bg-purple-950/40 text-purple-700 dark:text-purple-400'
+                : plan === 'pro' ? 'bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-400'
+                : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400'
+            }`}>
+              {plan}
+            </span>
+          </div>
         </div>
 
         {/* Desktop navigation */}
         <nav className="flex-1 space-y-1" id="nav-group-desktop">
-          {[...MAIN_TABS, { id: 'perfil', label: 'Perfil', icon: User }, { id: 'configuracoes', label: 'Configurações', icon: Settings }].map((item) => {
+          {[...navTabs, { id: 'perfil', label: 'Perfil', icon: User }, { id: 'configuracoes', label: 'Configurações', icon: Settings }].map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.id;
             return (
@@ -184,6 +221,10 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
         {/* Desktop bottom */}
         <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
           <AdPlaceholder slot="sidebar-desktop" format="rectangle" user={currentUser} />
+          <button type="button" onClick={() => { window.history.pushState({}, '', '/planos'); window.dispatchEvent(new Event('popstate')); }}
+            className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[11px] font-bold flex items-center justify-center gap-2 transition hover:opacity-95 cursor-pointer">
+            <Crown className="h-4 w-4" /> Planos & Moedas
+          </button>
           <button type="button" onClick={toggleDarkMode}
             className="w-full py-2.5 px-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800 text-[11px] font-semibold text-slate-500 dark:text-slate-400 flex items-center justify-between transition cursor-pointer">
             <div className="flex items-center gap-2.5">{isDarkMode ? <Sun className="h-4.5 w-4.5 text-amber-500" /> : <Moon className="h-4.5 w-4.5 text-blue-600" />}<span>{isDarkMode ? 'Modo Claro' : 'Modo Escuro'}</span></div>
@@ -195,6 +236,8 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
           </button>
         </div>
       </aside>
+
+      <RewardCoinsModal open={showReward} onClose={() => setShowReward(false)} />
     </>
   );
 }

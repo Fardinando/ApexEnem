@@ -5,6 +5,8 @@
 
 export type StudySerie = '9_fundamental' | '1_medio' | '2_medio' | '3_medio' | 'cursinho' | 'outro';
 
+export type PlanId = 'free' | 'pro' | 'apex';
+
 export type RegionBR = 'Norte' | 'Nordeste' | 'Centro-Oeste' | 'Sudeste' | 'Sul';
 
 export interface UserProfile {
@@ -23,6 +25,9 @@ export interface UserProfile {
   avatar?: string;
   totalXp?: number;
   longestStreak?: number;
+  plan?: PlanId;
+  coins?: number;
+  coinsRefreshedAt?: string;
 }
 
 export interface PendingUser {

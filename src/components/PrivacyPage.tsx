@@ -125,6 +125,14 @@ const PRIVACY_SECTIONS: Section[] = [
           'Dependendo do recurso utilizado, informações enviadas pelo usuário poderão ser transmitidas ao OpenRouter exclusivamente para processamento da solicitação realizada.',
         ],
       },
+      {
+        title: 'Google (Analytics e AdSense)',
+        paragraphs: [
+          'Utilizamos o Google Analytics para medir estatísticas de uso de forma agregada e o Google AdSense para exibir anúncios que mantêm a plataforma gratuita.',
+          'O Google e seus parceiros podem utilizar cookies e identificadores para personalizar anúncios com base em visitas anteriores a este e a outros sites. Você pode desativar a personalização de anúncios acessando as Configurações de Anúncios do Google (adssettings.google.com) ou o portal Your Online Choices (youronlinechoices.com.br).',
+          'O carregamento de cookies de análise e de publicidade depende do seu consentimento e pode ser revogado a qualquer momento pelo botão de preferências de cookies da plataforma.',
+        ],
+      },
     ],
     tail: {
       paragraphs: ['Além desses fornecedores, dados poderão ser compartilhados:'],
@@ -134,6 +142,17 @@ const PRIVACY_SECTIONS: Section[] = [
         'para exercício regular de direitos em processos judiciais, administrativos ou arbitrais.',
       ],
     },
+  },
+  {
+    title: '5.1. Bases legais do tratamento',
+    paragraphs: ['Tratamos dados pessoais com fundamento nas seguintes bases legais previstas na LGPD (art. 7º e art. 11):'],
+    items: [
+      'execução de contrato: para criar e manter sua conta e fornecer as funcionalidades solicitadas;',
+      'consentimento: para cookies de análise e de publicidade, e para o envio de comunicações opcionais;',
+      'legítimo interesse: para segurança da plataforma, prevenção a fraudes e melhoria dos serviços;',
+      'cumprimento de obrigação legal ou regulatória: para atender exigências legais e ordens de autoridades competentes.',
+    ],
+    note: 'O consentimento pode ser revogado a qualquer momento, sem afetar a legalidade do tratamento realizado anteriormente.',
   },
   {
     title: '6. Cookies',
@@ -189,7 +208,18 @@ const PRIVACY_SECTIONS: Section[] = [
       'informação sobre o compartilhamento de dados;',
       'revogação do consentimento, quando esta for a base legal do tratamento.',
     ],
-    note: 'As solicitações serão analisadas dentro dos prazos previstos na legislação.',
+    note: 'As solicitações serão analisadas dentro dos prazos previstos na legislação e poderão ser enviadas ao nosso Encarregado de Proteção de Dados (DPO) pelo e-mail privacidade@apexenem.app.',
+  },
+  {
+    title: '9.1. Encarregado de Proteção de Dados (DPO)',
+    paragraphs: [
+      'Para exercer seus direitos, esclarecer dúvidas sobre o tratamento de dados pessoais ou reportar incidentes de segurança, entre em contato com nosso Encarregado de Proteção de Dados (DPO).',
+    ],
+    items: [
+      'Encarregado (DPO): Equipe de Privacidade ApexEnem',
+      'E-mail: privacidade@apexenem.app',
+      'Assunto sugerido: [LGPD] — descrição da sua solicitação',
+    ],
   },
   {
     title: '10. Crianças e adolescentes',
@@ -217,7 +247,8 @@ const PRIVACY_SECTIONS: Section[] = [
   {
     title: '13. Contato',
     paragraphs: [
-      'Caso tenha dúvidas, queira exercer seus direitos previstos na LGPD ou solicitar informações sobre o tratamento de seus dados pessoais, entre em contato pelos canais oficiais disponibilizados pelo ApexEnem.',
+      'Caso tenha dúvidas, queira exercer seus direitos previstos na LGPD ou solicitar informações sobre o tratamento de seus dados pessoais, entre em contato pelos canais oficiais do ApexEnem.',
+      'Atendimento geral: contato@apexenem.app · Privacidade e LGPD (DPO): privacidade@apexenem.app',
     ],
   },
 ];

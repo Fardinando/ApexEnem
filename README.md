@@ -1,20 +1,66 @@
-<div align="center">
-<img width="1200" height="475" alt="GHBanner" src="https://ai.google.dev/static/site-assets/images/share-ais-513315318.png" />
-</div>
+# ApexEnem
 
-# Run and deploy your AI Studio app
+Plataforma brasileira de estudos para o **ENEM**: correção de redação por IA,
+simulados cronometrados, questões inéditas, plano de estudo adaptativo,
+pesquisa de repertório sociocultural e uma **IA Professora** (planos de aula).
 
-This contains everything you need to run your app locally.
+Site: <https://apexenem.app>
 
-View your app in AI Studio: https://ai.studio/apps/f0e36051-cdd2-40e9-b1e7-e4755d32cf8d
+## Stack
 
-## Run Locally
+- **Frontend:** React 19 + Vite 6 + Tailwind CSS 4 + motion + lucide-react
+- **Backend:** Express em função serverless (`api/index.ts`) na Vercel
+- **Banco/Auth/Storage:** Supabase
+- **Serviço de IA:** `render/server.js` no Render (fila em memória + rotação de ~20 chaves Groq/OpenRouter)
+- **Rate limit:** Upstash Redis (com fallback em memória)
+- **E-mails:** Resend
+- **Anúncios/Analytics:** Google AdSense + Analytics 4 (gated por consentimento LGPD)
 
-**Prerequisites:**  Node.js
+## Rodando localmente
 
+**Pré-requisitos:** Node.js 20+, npm.
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. Run the app:
-   `npm run dev`
+```bash
+npm install
+cp .env.example .env      # preencha as variáveis (ver DEPLOY.md)
+npm run dev               # sobe a API + Vite em modo dev
+```
+
+Outros comandos:
+
+```bash
+npm run lint              # checagem de tipos (tsc --noEmit)
+npm run build             # build de produção (gera dist/)
+```
+
+## Configuração
+
+Todas as variáveis de ambiente estão documentadas em **`.env.example`**.
+O guia de deploy passo a passo (Supabase, Render, Vercel, DNS, AdSense,
+Analytics, Upstash, Resend) está em **[`DEPLOY.md`](./DEPLOY.md)**.
+
+## Estrutura
+
+```
+api/            Backend Express (serverless na Vercel)
+render/         Serviço de IA (Render)
+src/
+  components/   Telas e componentes React
+  config/       Configurações (planos/moedas, ads)
+  data/         Conteúdo do blog e autores
+  lib/          Libs (consent, seo, nav, coins, gamification...)
+  types.ts      Tipos compartilhados
+public/         Estáticos (robots, sitemap, ads.txt, logos, media)
+supabase-setup.sql   Schema inicial do banco
+vercel.json     Build, rewrites e cron
+```
+
+## Contribuição
+
+1. Crie uma branch a partir de `main`.
+2. Rode `npm run lint` e `npm run build` antes de abrir o PR.
+3. O CI (`.github/workflows/ci.yml`) roda lint + build automaticamente.
+
+## Licença
+
+Projeto privado. Todos os direitos reservados.

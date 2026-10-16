@@ -6,6 +6,7 @@ import { createClient } from "@supabase/supabase-js";
 import rateLimit from "express-rate-limit";
 import { PROMPTS, ModelConfig } from "./prompts.js";
 import { jsonrepair } from "jsonrepair";
+import { z, ZodTypeAny } from "zod";
 
 declare global {
   namespace Express {
@@ -22,6 +23,17 @@ const app = express();
 app.set("trust proxy", 1);
 const PORT = 3000;
 
+const RENDER_INTERNAL_KEY = process.env.INTERNAL_API_KEY || "";
+if (!RENDER_INTERNAL_KEY) {
+  console.warn("WARNING: INTERNAL_API_KEY not set — chamadas ao serviço de IA no Render não serão autenticadas.");
+}
+
+function renderHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const h: Record<string, string> = { "Content-Type": "application/json" };
+  if (RENDER_INTERNAL_KEY) h["x-internal-key"] = RENDER_INTERNAL_KEY;
+  return { ...h, ...extra };
+}
+
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
   max: 30,
@@ -29,6 +41,90 @@ const apiLimiter = rateLimit({
   legacyHeaders: false,
   message: { error: "Muitas requisições. Tente novamente em 1 minuto." }
 });
+
+// ─── Rate limit "distribuído" (Upstash Redis REST opcional) ───────────────────
+// Em serverless, o contador em memória é por instância. Se UPSTASH_REDIS_REST_URL
+// e UPSTASH_REDIS_REST_TOKEN existirem, usamos um contador distribuído.
+const UPSTASH_URL = process.env.UPSTASH_REDIS_REST_URL;
+const UPSTASH_TOKEN = process.env.UPSTASH_REDIS_REST_TOKEN;
+const memoryCounters = new Map<string, { count: number; resetAt: number }>();
+
+async function hitUpstash(key: string, windowSec: number): Promise<number | null> {
+  if (!UPSTASH_URL || !UPSTASH_TOKEN) return null;
+  try {
+    const r = await fetch(`${UPSTASH_URL}/pipeline`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${UPSTASH_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify([
+        ["INCR", key],
+        ["EXPIRE", key, String(windowSec), "NX"],
+      ]),
+      signal: AbortSignal.timeout(2000),
+    });
+    if (!r.ok) return null;
+    const data = await r.json();
+    const count = Number(data?.[0]?.result);
+    return Number.isFinite(count) ? count : null;
+  } catch {
+    return null;
+  }
+}
+
+function distributedRateLimit(opts: { name: string; max: number; windowSec: number }) {
+  return async (req: any, res: any, next: any) => {
+    const identity = req.user?.id || req.userEmail || req.ip || "anon";
+    const bucket = Math.floor(Date.now() / (opts.windowSec * 1000));
+    const key = `rl:${opts.name}:${identity}:${bucket}`;
+
+    let count = await hitUpstash(key, opts.windowSec);
+    if (count === null) {
+      const now = Date.now();
+      const entry = memoryCounters.get(key);
+      if (!entry || entry.resetAt < now) {
+        memoryCounters.set(key, { count: 1, resetAt: now + opts.windowSec * 1000 });
+        count = 1;
+      } else {
+        entry.count++;
+        count = entry.count;
+      }
+      if (memoryCounters.size > 10000) memoryCounters.clear();
+    }
+
+    if (count > opts.max) {
+      return res.status(429).json({ error: "Muitas requisições. Aguarde um instante e tente novamente." });
+    }
+    next();
+  };
+}
+
+// ─── Validação de schema (Zod) ────────────────────────────────────────────────
+function validateBody(schema: ZodTypeAny) {
+  return (req: any, res: any, next: any) => {
+    const parsed = schema.safeParse(req.body || {});
+    if (!parsed.success) {
+      const first = parsed.error.issues[0];
+      return res.status(400).json({ error: `Dados inválidos: ${first?.path?.join(".") || "corpo"} — ${first?.message || "inválido"}` });
+    }
+    req.body = parsed.data;
+    next();
+  };
+}
+
+// ─── Triagem de IA (modelo leve antes do modelo caro) ─────────────────────────
+// Decide se uma requisição merece o modelo principal. Bloqueia pedidos vazios,
+// abusivos ou triviais antes de gastar tokens com o modelo caro.
+const TRIAGE_BLOCKLIST = /(ignore (all|previous)|ignore as instruções|desconsidere (as )?instru|system prompt|reveal your|mostre (o|seu) prompt|jailbreak|DAN mode)/i;
+function aiTriage(prompt: string): { ok: boolean; reason?: string } {
+  const text = (prompt || "").trim();
+  if (text.length < 3) return { ok: false, reason: "conteúdo vazio" };
+  if (text.length > 20000) return { ok: false, reason: "conteúdo grande demais" };
+  if (TRIAGE_BLOCKLIST.test(text)) return { ok: false, reason: "conteúdo bloqueado" };
+  const letters = text.replace(/[^a-zA-ZÀ-ÿ]/g, "").length;
+  if (letters / Math.max(1, text.length) < 0.15 && text.length > 40) {
+    return { ok: false, reason: "conteúdo sem texto válido" };
+  }
+  return { ok: true };
+}
 
 let supabase: any = null;
 if (process.env.SUPABASE_URL && process.env.SUPABASE_ANON_KEY) {
@@ -81,7 +177,18 @@ app.use((req, res, next) => {
   res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
   res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
-  res.setHeader("Content-Security-Policy", "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval' https://pl30323980.effectivecpmnetwork.com https://pl30323978.effectivecpmnetwork.com https://www.highperformanceformat.com https://js.hcaptcha.com https://*.hcaptcha.com; style-src 'self' 'unsafe-inline'; frame-src https://*.hcaptcha.com https://*.effectivecpmnetwork.com https://www.highperformanceformat.com https://br.wps.com https://www.effectivecpmnetwork.com; connect-src 'self' https://*.supabase.co https://openrouter.ai https://enem.dev https://api.enem.dev; img-src 'self' data: https://storage.googleapis.com;");
+  res.setHeader("Content-Security-Policy", [
+    "default-src 'self'",
+    "script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://securepubads.g.doubleclick.net https://www.googletagmanager.com https://www.google-analytics.com https://js.hcaptcha.com https://*.hcaptcha.com",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "frame-src https://*.hcaptcha.com https://googleads.g.doubleclick.net https://tpc.googlesyndication.com https://www.google.com https://br.wps.com",
+    "connect-src 'self' https://*.supabase.co https://openrouter.ai https://enem.dev https://api.enem.dev https://www.google-analytics.com https://region1.google-analytics.com https://pagead2.googlesyndication.com https://securepubads.g.doubleclick.net",
+    "img-src 'self' data: https://storage.googleapis.com https://pagead2.googlesyndication.com https://*.gstatic.com https://*.googleusercontent.com https://www.google-analytics.com",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "frame-ancestors 'none'",
+  ].join("; "));
   res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
   next();
 });
@@ -106,11 +213,12 @@ app.use((req, res, next) => {
 const requireAuth = async (req: any, res: any, next: any) => {
   const publicRoutes = [
     "/confirm-email", "/send-confirmation", "/credentials-status",
-    "/supabase/keep-alive",
+    "/supabase/keep-alive", "/auth-access", "/repertoires",
     "/enem-questions", "/questions", "/correct",
     "/openrouter-chat", "/generate-learning-exercises",
     "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
-    "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request"
+    "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request",
+    "/contact"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
     if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/")) return next();
@@ -293,10 +401,13 @@ async function callAI(opts: { systemPrompt?: string; userPrompt: string; maxToke
   const jobType = opts.type || "general";
   const cura = crypto.randomUUID();
 
+  const triage = aiTriage(opts.userPrompt);
+  if (!triage.ok) throw new Error(`TRIAGEM:${triage.reason}`);
+
   try {
     const r = await fetch(`${base}/api/process`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: renderHeaders(),
       body: JSON.stringify({
         cura,
         prompt: opts.userPrompt,
@@ -325,9 +436,12 @@ async function callAISync(opts: { systemPrompt?: string; userPrompt: string; max
   const jobType = opts.type || "general";
   const cura = crypto.randomUUID();
 
+  const triage = aiTriage(opts.userPrompt);
+  if (!triage.ok) throw new Error(`TRIAGEM:${triage.reason}`);
+
   const r = await fetch(`${base}/api/process`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: renderHeaders(),
     body: JSON.stringify({
       cura,
       prompt: opts.userPrompt,
@@ -344,7 +458,7 @@ async function callAISync(opts: { systemPrompt?: string; userPrompt: string; max
   while (Date.now() < deadline) {
     await sleep(2500);
     try {
-      const s = await fetch(`${base}/api/status/${cura}`, { signal: AbortSignal.timeout(4000) });
+      const s = await fetch(`${base}/api/status/${cura}`, { headers: renderHeaders(), signal: AbortSignal.timeout(4000) });
       if (!s.ok) continue;
       const data = await s.json();
       if (data?.status === "done" && typeof data?.result === "string" && data.result.length > 0) {
@@ -391,7 +505,13 @@ async function assertModelIsFree(modelName: string): Promise<void> {
 
 
 
-app.post("/api/beta-request", async (req, res) => {
+app.post("/api/beta-request",
+  validateBody(z.object({
+    name: z.string().trim().min(1).max(200),
+    email: z.string().email(),
+    reason: z.string().max(2000).optional(),
+  })),
+  async (req, res) => {
   const { name, email, reason } = req.body;
   if (!name || !email) {
     return res.status(400).json({ error: "Nome e e-mail são obrigatórios." });
@@ -413,9 +533,174 @@ app.post("/api/beta-request", async (req, res) => {
   return res.json({ ok: true });
 });
 
+// ─── Contato (formulário público) ─────────────────────────────────────────────
+const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "contato@apexenem.app";
+
+app.post(
+  "/api/contact",
+  distributedRateLimit({ name: "contact", max: 5, windowSec: 3600 }),
+  validateBody(z.object({
+    name: z.string().trim().min(1).max(200),
+    email: z.string().email(),
+    subject: z.string().trim().max(200).optional(),
+    message: z.string().trim().min(10).max(5000),
+  })),
+  async (req, res) => {
+    const { name, email, subject, message } = req.body;
+    const safeName = escapeHtml(name);
+    const safeEmail = escapeHtml(email);
+    const safeSubject = escapeHtml(subject || "Nova mensagem de contato");
+    const safeMessage = escapeHtml(message).replace(/\n/g, "<br>");
+
+    try {
+      if (supabaseAdmin) {
+        const { error } = await supabaseAdmin.from("contact_messages").insert({
+          name,
+          email: email.toLowerCase().trim(),
+          subject: subject || "",
+          message,
+          created_at: new Date().toISOString(),
+        });
+        if (error) console.error("[contact] insert failed:", error.message);
+      }
+    } catch (e: any) {
+      console.error("[contact] error:", e?.message);
+    }
+
+    const html = `
+      <div style="font-family:sans-serif;max-width:520px;margin:0 auto;padding:32px;background:#f0eeff;border-radius:16px">
+        <h1 style="color:#1b1574;font-size:20px;margin:0 0 12px">Nova mensagem de contato — ApexEnem</h1>
+        <p style="color:#444;font-size:14px;line-height:1.6"><strong>Nome:</strong> ${safeName}</p>
+        <p style="color:#444;font-size:14px;line-height:1.6"><strong>E-mail:</strong> ${safeEmail}</p>
+        <p style="color:#444;font-size:14px;line-height:1.6"><strong>Assunto:</strong> ${safeSubject}</p>
+        <hr style="border:none;border-top:1px solid #ddd;margin:16px 0" />
+        <p style="color:#333;font-size:14px;line-height:1.7">${safeMessage}</p>
+      </div>`;
+
+    const sent = await sendEmail(CONTACT_EMAIL, `[Contato] ${subject || "Nova mensagem"}`, html);
+    console.log(`[contact] from="${email}" subject="${subject || ""}" sent=${sent}`);
+
+    return res.json({ ok: true, delivered: sent });
+  }
+);
+
+const SERVER_ALLOWED_EMAILS = (process.env.ALLOWED_EMAILS || "")
+  .split(",")
+  .map((e) => e.trim().toLowerCase())
+  .filter(Boolean);
+
+app.get("/api/auth-access", (req, res) => {
+  const email = String(req.query.email || "").toLowerCase().trim();
+  const restricted = SERVER_ALLOWED_EMAILS.length > 0;
+  const allowed = !restricted || SERVER_ALLOWED_EMAILS.includes(email);
+  res.json({ restricted, allowed });
+});
+
+// ─── F1. Pesquisa de Repertórios ──────────────────────────────────────────────
+app.post(
+  "/api/repertoires",
+  distributedRateLimit({ name: "repertoires", max: 20, windowSec: 3600 }),
+  validateBody(z.object({ theme: z.string().trim().min(4).max(300) })),
+  async (req, res) => {
+    const { theme } = req.body;
+    const systemPrompt =
+      "Você é um professor de redação do ENEM. Sugira repertórios socioculturais produtivos (filmes, livros, séries, dados, leis, filosofia) adequados ao tema. Retorne APENAS JSON puro, sem markdown.";
+    const userPrompt = `Tema de redação ENEM: "${theme}".
+
+Retorne EXATAMENTE este JSON:
+{
+  "theme": "${theme}",
+  "categories": [
+    {
+      "name": "FILMES",
+      "items": [
+        {
+          "title": "Nome da obra",
+          "creator": "Diretor (filme) / Autor (livro) / Artista",
+          "studio": "Estúdio / Editora / Gravadora",
+          "year": 2009,
+          "synopsis": "Sinopse curta contextualizada ao tema.",
+          "rating": "98% (Fonte: Rotten Tomatoes)",
+          "watch": [{ "platform": "Disney+", "url": "https://..." }]
+        }
+      ]
+    }
+  ]
+}
+
+Regras:
+- Inclua ao menos 3 categorias (FILMES, LIVROS, DADOS/ESTATÍSTICAS, LEIS, FILOSOFIA, SÉRIES).
+- 2 a 3 itens por categoria, sempre com sinopse contextualizada ao tema.
+- Quando possível, inclua "watch" com links diretos de plataformas (Disney+, Prime Video, Apple TV, Netflix). Se não souber o link exato, use a URL de busca da plataforma.
+- Para DADOS/LEIS/FILOSOFIA, use "creator" e "year" com a fonte, e omita "watch".
+Apenas JSON puro.`;
+
+    try {
+      const raw = await callAI({ systemPrompt, userPrompt, maxTokens: 4096, temperature: 0.6, timeout: 25000, type: "general" });
+      const data = extractJsonFromText(raw);
+      if (!data?.categories) {
+        return res.status(503).json({ error: "Resposta da IA inválida. Tente novamente." });
+      }
+      return res.json({ theme, categories: data.categories });
+    } catch (err: any) {
+      if (err?.message?.startsWith("PENDING:")) {
+        return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Repertórios em processamento via IA..." });
+      }
+      if (err?.message?.startsWith("TRIAGEM:")) {
+        return res.status(400).json({ error: "Tema não aceito pela triagem de IA." });
+      }
+      console.error("[repertoires] failed:", err?.message);
+      return res.status(503).json({ error: "Serviço de IA indisponível no momento. Tente novamente." });
+    }
+  }
+);
+
+// ─── IA Professora (Apex) — planos de aula ───────────────────────────────────
+app.post(
+  "/api/teacher-plan",
+  distributedRateLimit({ name: "teacher-plan", max: 30, windowSec: 3600 }),
+  validateBody(z.object({ subject: z.string().trim().min(2).max(120), topic: z.string().trim().min(2).max(200), level: z.string().max(60).optional() })),
+  async (req, res) => {
+    const { subject, topic, level } = req.body;
+    const systemPrompt =
+      "Você é um professor experiente que elabora planos de aula alinhados à BNCC e ao ENEM. Retorne APENAS JSON puro, sem markdown.";
+    const userPrompt = `Crie um plano de aula de "${subject}" sobre "${topic}" (nível: ${level || "Ensino Médio"}).
+Retorne EXATAMENTE:
+{
+  "title": "...",
+  "objectives": ["..."],
+  "materials": ["..."],
+  "steps": [{ "title": "...", "duration": "10 min", "description": "..." }],
+  "assessment": ["..."],
+  "homework": ["..."]
+}
+Apenas JSON puro.`;
+
+    try {
+      const raw = await callAI({ systemPrompt, userPrompt, maxTokens: 3072, temperature: 0.7, timeout: 25000 });
+      const data = extractJsonFromText(raw);
+      if (!data?.steps) return res.status(503).json({ error: "Resposta da IA inválida." });
+      return res.json(data);
+    } catch (err: any) {
+      if (err?.message?.startsWith("PENDING:")) {
+        return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Plano de aula em processamento..." });
+      }
+      if (err?.message?.startsWith("TRIAGEM:")) return res.status(400).json({ error: "Conteúdo não aceito pela triagem." });
+      return res.status(503).json({ error: "Serviço de IA indisponível." });
+    }
+  }
+);
 
 
-app.post("/api/correct", async (req, res) => {
+
+app.post("/api/correct",
+  distributedRateLimit({ name: "correct", max: 30, windowSec: 3600 }),
+  validateBody(z.object({
+    title: z.string().max(300).optional(),
+    text: z.string().max(30000).optional(),
+    imageBase64: z.string().max(15_000_000).optional(),
+  })),
+  async (req, res) => {
   const { title, text, imageBase64 } = req.body;
 
   if (!text && !imageBase64) {
@@ -586,7 +871,7 @@ app.post("/api/questions", async (req, res) => {
       new Promise(resolve => setTimeout(resolve, delay)).then(() =>
         fetch(url, {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: renderHeaders(),
           body: JSON.stringify({ cura, prompt, type: "questions", maxTokens: 4096, temperature: 0.9 }),
           signal: AbortSignal.timeout(5000),
         }).catch(err => {
@@ -618,7 +903,7 @@ app.get("/api/questions/status/:cura", async (req, res) => {
   try {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 15000);
-    const r = await fetch(url, { signal: ctrl.signal });
+    const r = await fetch(url, { headers: renderHeaders(), signal: ctrl.signal });
     clearTimeout(tid);
     if (!r.ok) {
       console.log("[questions/status] Render returned:", r.status);
@@ -645,7 +930,7 @@ app.get("/api/status/:cura", async (req, res) => {
   try {
     const ctrl = new AbortController();
     const tid = setTimeout(() => ctrl.abort(), 10000);
-    const r = await fetch(url, { signal: ctrl.signal });
+    const r = await fetch(url, { headers: renderHeaders(), signal: ctrl.signal });
     clearTimeout(tid);
     if (!r.ok) {
       return res.status(502).json({ error: "Render returned " + r.status });
@@ -675,7 +960,7 @@ app.get("/api/questions/status-batch", async (req, res) => {
       const url = `${renderUrl.replace(/\/+$/, "")}/api/status/${cura}`;
       const ctrl = new AbortController();
       const tid = setTimeout(() => ctrl.abort(), 10000);
-      const r = await fetch(url, { signal: ctrl.signal });
+      const r = await fetch(url, { headers: renderHeaders(), signal: ctrl.signal });
       clearTimeout(tid);
       if (!r.ok) return { cura, status: "error", result: null };
       const data = await r.json();
@@ -695,7 +980,7 @@ app.get("/api/ai-task/:cura", async (req, res) => {
   const renderUrl = process.env.RENDER_PROCESS_URL;
   if (!renderUrl) return res.status(503).json({ error: "Serviço indisponível." });
   try {
-    const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`, { signal: AbortSignal.timeout(8000) });
+    const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`, { headers: renderHeaders(), signal: AbortSignal.timeout(8000) });
     if (!r.ok) return res.status(502).json({ error: "Render returned " + r.status });
     const data = await r.json();
     return res.json(data);
@@ -704,7 +989,13 @@ app.get("/api/ai-task/:cura", async (req, res) => {
   }
 });
 
-app.post("/api/openrouter-chat", async (req, res) => {
+app.post("/api/openrouter-chat",
+  validateBody(z.object({
+    questionText: z.string().max(8000),
+    instructions: z.string().max(500).optional(),
+    correctAnswer: z.string().max(2000).optional(),
+  })),
+  async (req, res) => {
   const { questionText, instructions, correctAnswer } = req.body;
 
   const cabritoPrompt = `Por favor, explique de forma motivadora este exercício para mim:\nExercício/Pergunta: "${questionText}"\nTipo do desafio: "${instructions}"\nGabarito Oficial: "${correctAnswer}"\n\nRetorne 2-3 parágrafos curtos, lúdicos e didáticos adicionando emojis de cabrito 🐐 e símbolos de livros.`;
@@ -1064,7 +1355,7 @@ Retorne APENAS um JSON no formato: {"explanations": {"id_da_questao": "explicaç
     try {
       await fetch(`${base}/api/process`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: renderHeaders(),
         body: JSON.stringify({ cura, prompt: batchPrompt, type: "general", systemPrompt }),
         signal: AbortSignal.timeout(5000),
       });
@@ -1368,11 +1659,31 @@ app.get("/api/supabase/keep-alive", async (req, res) => {
   }
 });
 
-app.post("/api/send-confirmation", async (req, res) => {
-  const { email, code } = req.body;
-  if (!email || !code) {
-    return res.status(400).json({ error: "Email e código são obrigatórios" });
+const RESEND_API_KEY = process.env.RESEND_API_KEY;
+const EMAIL_FROM = process.env.EMAIL_FROM || "ApexEnem <nao-responda@apexenem.app>";
+
+async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
+  if (!RESEND_API_KEY) return false;
+  try {
+    const r = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${RESEND_API_KEY}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ from: EMAIL_FROM, to: [to], subject, html }),
+      signal: AbortSignal.timeout(10000),
+    });
+    if (!r.ok) {
+      console.error("[sendEmail] Resend returned", r.status, (await r.text().catch(() => "")).slice(0, 200));
+      return false;
+    }
+    return true;
+  } catch (err: any) {
+    console.error("[sendEmail] failed:", err?.message);
+    return false;
   }
+}
+
+app.post("/api/send-confirmation", validateBody(z.object({ email: z.string().email(), code: z.string().min(4).max(12) })), async (req, res) => {
+  const { email, code } = req.body;
 
   let token: string;
   try {
@@ -1384,8 +1695,22 @@ app.post("/api/send-confirmation", async (req, res) => {
 
   const confirmLink = `${getBaseUrl()}/api/confirm-email?email=${encodeURIComponent(email)}&code=${encodeURIComponent(code)}&token=${encodeURIComponent(token)}`;
 
-  console.log(`[SIMULATED] Confirmation code for ${email}: ${code}`);
-  res.json({ sent: true, simulated: true, token, confirmLink });
+  const html = `
+    <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px;background:#f0eeff;border-radius:16px">
+      <h1 style="color:#1b1574;font-size:22px;margin:0 0 12px">Confirmar e-mail — ApexEnem</h1>
+      <p style="color:#444;font-size:14px;line-height:1.6">Use o código abaixo para confirmar seu e-mail e ativar sua conta:</p>
+      <p style="font-size:32px;font-weight:800;letter-spacing:6px;color:#2563eb;text-align:center;margin:24px 0">${escapeHtml(code)}</p>
+      <p style="text-align:center"><a href="${confirmLink}" style="display:inline-block;padding:12px 28px;background:#2563eb;color:#fff;border-radius:12px;text-decoration:none;font-weight:700;font-size:14px">Confirmar e-mail</a></p>
+      <p style="color:#888;font-size:12px;line-height:1.6;margin-top:20px">Se você não criou uma conta no ApexEnem, ignore este e-mail.</p>
+    </div>`;
+
+  const sent = await sendEmail(email, "Seu código de confirmação — ApexEnem", html);
+
+  if (!sent) {
+    console.log(`[SIMULATED] Confirmation code for ${email}: ${code}`);
+    return res.json({ sent: true, simulated: true, token, confirmLink });
+  }
+  return res.json({ sent: true, simulated: false });
 });
 
 function escapeHtml(str: string): string {
@@ -1533,7 +1858,16 @@ app.get("/api/enem-questions", async (req, res) => {
   res.json({ questions: selected });
 });
 
+let statsCache: { at: number; data: any } | null = null;
+
 app.get("/api/stats", async (_req, res) => {
+  if (statsCache && Date.now() - statsCache.at < 5 * 60 * 1000) {
+    return res.json(statsCache.data);
+  }
+  const sendStats = (data: any) => {
+    statsCache = { at: Date.now(), data };
+    return res.json(data);
+  };
   let totalUsers = 0;
   let tablesExist = false;
   const regionCounts: Record<string, number> = { Norte: 0, Nordeste: 0, "Centro-Oeste": 0, Sudeste: 0, Sul: 0 };
@@ -1558,7 +1892,7 @@ app.get("/api/stats", async (_req, res) => {
             cityCounts[p.city] = (cityCounts[p.city] || 0) + 1;
           }
         }
-        return res.json({ totalUsers, regionCounts, stateCounts, cityCounts, tablesExist });
+        return sendStats({ totalUsers, regionCounts, stateCounts, cityCounts, tablesExist });
       }
     } catch {}
   }
@@ -1586,13 +1920,13 @@ app.get("/api/stats", async (_req, res) => {
             }
           }
           tablesExist = true;
-          return res.json({ totalUsers, regionCounts, stateCounts, cityCounts, tablesExist });
+          return sendStats({ totalUsers, regionCounts, stateCounts, cityCounts, tablesExist });
         }
       }
     } catch {}
   }
 
-  res.json({ totalUsers, regionCounts, tablesExist });
+  sendStats({ totalUsers, regionCounts, tablesExist });
 });
 
 app.post("/api/delete-account", async (req, res) => {
