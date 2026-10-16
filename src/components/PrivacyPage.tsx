@@ -208,7 +208,7 @@ const PRIVACY_SECTIONS: Section[] = [
       'informação sobre o compartilhamento de dados;',
       'revogação do consentimento, quando esta for a base legal do tratamento.',
     ],
-    note: 'As solicitações serão analisadas dentro dos prazos previstos na legislação e poderão ser enviadas ao nosso Encarregado de Proteção de Dados (DPO) pelo e-mail privacidade@apexenem.app.',
+    note: 'As solicitações serão analisadas dentro dos prazos previstos na legislação e poderão ser enviadas ao nosso Encarregado de Proteção de Dados (DPO) pelo e-mail apexenem@gmail.com.',
   },
   {
     title: '9.1. Encarregado de Proteção de Dados (DPO)',
@@ -217,7 +217,7 @@ const PRIVACY_SECTIONS: Section[] = [
     ],
     items: [
       'Encarregado (DPO): Equipe de Privacidade ApexEnem',
-      'E-mail: privacidade@apexenem.app',
+      'E-mail: apexenem@gmail.com',
       'Assunto sugerido: [LGPD] — descrição da sua solicitação',
     ],
   },
@@ -248,7 +248,7 @@ const PRIVACY_SECTIONS: Section[] = [
     title: '13. Contato',
     paragraphs: [
       'Caso tenha dúvidas, queira exercer seus direitos previstos na LGPD ou solicitar informações sobre o tratamento de seus dados pessoais, entre em contato pelos canais oficiais do ApexEnem.',
-      'Atendimento geral: contato@apexenem.app · Privacidade e LGPD (DPO): privacidade@apexenem.app',
+      'Atendimento geral e Privacidade/LGPD (DPO): apexenem@gmail.com',
     ],
   },
 ];

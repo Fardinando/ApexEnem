@@ -21,7 +21,7 @@ import DevNoticeBanner from './components/DevNoticeBanner';
 import BlogView from './components/BlogView';
 import AuthorsView from './components/AuthorsView';
 import ContactPage from './components/ContactPage';
-import RepertoiresView from './components/RepertoiresView';
+import RepertoiresView, { RepertoireSearch } from './components/RepertoiresView';
 import PlansPage from './components/PlansPage';
 
 const DashboardView = lazy(() => import('./components/DashboardView'));
@@ -671,6 +671,7 @@ export default function App() {
               triProfile={triProfile}
             />
           )}
+          {activeTab === 'repertorios' && <RepertoireSearch embedded />}
           {activeTab === 'teacher' && (
             <TeacherPlanView
               accessToken={session.access_token}

@@ -534,7 +534,7 @@ app.post("/api/beta-request",
 });
 
 // ─── Contato (formulário público) ─────────────────────────────────────────────
-const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "contato@apexenem.app";
+  const CONTACT_EMAIL = process.env.CONTACT_EMAIL || "apexenem@gmail.com";
 
 app.post(
   "/api/contact",
@@ -1660,7 +1660,7 @@ app.get("/api/supabase/keep-alive", async (req, res) => {
 });
 
 const RESEND_API_KEY = process.env.RESEND_API_KEY;
-const EMAIL_FROM = process.env.EMAIL_FROM || "ApexEnem <nao-responda@apexenem.app>";
+const EMAIL_FROM = process.env.EMAIL_FROM || "ApexEnem <onboarding@resend.dev>";
 
 async function sendEmail(to: string, subject: string, html: string): Promise<boolean> {
   if (!RESEND_API_KEY) return false;

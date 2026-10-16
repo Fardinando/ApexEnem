@@ -21,28 +21,31 @@ export interface PlanDef {
 // cota de moedas ou custo de funcionalidade. Nada mais no app precisa mudar.
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Moedas concedidas por mês em cada plano. */
+/** Moedas concedidas por mês em cada plano (PRO/Apex). */
 export const MONTHLY_COINS: Record<PlanId, number> = {
-  free: 40,
+  free: 10,
   pro: 600,
   apex: 2000,
 };
 
+/** No plano Free, o saldo "zera" para este valor no início de cada semana. */
+export const WEEKLY_RESET_COINS = 10;
+
 /** Custo em moedas de cada funcionalidade de IA (0 = livre). */
 export const COIN_COSTS = {
-  essayCorrection: 6,
-  aiQuestion: 1,
-  studyPlan: 12,
-  teacherPlan: 25,
+  essayCorrection: 10,
+  aiQuestion: 10,
+  studyPlan: 10,
+  teacherPlan: 10,
 } as const;
 
 export type CoinFeature = keyof typeof COIN_COSTS;
 
 /** Moedas ganhas por assistir a um anúncio recompensado. */
-export const REWARDED_COINS = 5;
+export const REWARDED_COINS = 20;
 
 /** Limite diário de anúncios recompensados por usuário. */
-export const REWARDED_DAILY_LIMIT = 5;
+export const REWARDED_DAILY_LIMIT = 10;
 
 /** No plano Free, o saldo de moedas pode ser recarregado assistindo anúncios. */
 export const ADS_TO_COINS_PLANS: PlanId[] = ['free'];
@@ -69,8 +72,8 @@ export const PLANS: PlanDef[] = [
       { label: 'Simulados com questões reais do ENEM', included: true },
       { label: 'Plano de estudos adaptativo', included: true },
       { label: 'Pesquisa de repertórios', included: true },
-      { label: `${MONTHLY_COINS.free} moedas por mês`, included: true },
-      { label: 'Recarga de moedas via anúncios', included: true },
+      { label: `${WEEKLY_RESET_COINS} moedas por semana (renovadas toda semana)`, included: true },
+      { label: `Recarga via anúncios (+${REWARDED_COINS} moedas, até ${REWARDED_DAILY_LIMIT}/dia)`, included: true },
       { label: 'Sem anúncios', included: false },
       { label: 'IA Professora (planos de aula)', included: false },
       { label: 'Vídeos sem limite', included: true },

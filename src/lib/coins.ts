@@ -1,5 +1,5 @@
 import type { PlanId } from '../types';
-import { MONTHLY_COINS, COIN_COSTS, REWARDED_COINS, REWARDED_DAILY_LIMIT, type CoinFeature } from '../config/plans';
+import { MONTHLY_COINS, WEEKLY_RESET_COINS, COIN_COSTS, REWARDED_COINS, REWARDED_DAILY_LIMIT, type CoinFeature } from '../config/plans';
 
 export type { CoinFeature };
 
@@ -15,6 +15,7 @@ export interface WalletState {
   plan: PlanId;
   coins: number;
   refreshedAt: string;
+  weeklyResetAt: string;
   dailyRewarded: { date: string; count: number };
   history: CoinHistoryEntry[];
 }
@@ -23,11 +24,24 @@ function todayStr(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Chave da semana ISO no formato "2026-W03". */
+function isoWeekKey(d: Date): string {
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+  const week = 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 24 * 3600 * 1000));
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
 function defaultWallet(): WalletState {
   return {
     plan: 'free',
-    coins: MONTHLY_COINS.free,
+    coins: WEEKLY_RESET_COINS,
     refreshedAt: new Date().toISOString(),
+    weeklyResetAt: isoWeekKey(new Date()),
     dailyRewarded: { date: todayStr(), count: 0 },
     history: [],
   };
@@ -82,17 +96,37 @@ export function getCoins(): number {
 export function setPlan(plan: PlanId, opts: { grantMonthly?: boolean } = {}) {
   const changed = plan !== state.plan;
   state.plan = plan;
+  const now = new Date();
   if (changed && opts.grantMonthly !== false) {
-    state.coins += MONTHLY_COINS[plan];
-    state.refreshedAt = new Date().toISOString();
-    pushHistory(MONTHLY_COINS[plan], `Bônus inicial do plano ${plan.toUpperCase()}`);
+    if (plan === 'free') {
+      state.coins = WEEKLY_RESET_COINS;
+      state.weeklyResetAt = isoWeekKey(now);
+      pushHistory(WEEKLY_RESET_COINS, 'Recarga semanal do plano Free');
+    } else {
+      state.coins += MONTHLY_COINS[plan];
+      state.refreshedAt = now.toISOString();
+      pushHistory(MONTHLY_COINS[plan], `Bônus inicial do plano ${plan.toUpperCase()}`);
+    }
   }
   persist();
 }
 
-/** Concede a cota mensal quando virou o mês. */
-export function ensureMonthlyAllowance() {
+/**
+ * Aplica as regras de recarga: plano Free reseta para 10 moedas no início de
+ * cada semana; planos pagos recebem a cota mensal quando vira o mês.
+ */
+export function ensureAllowances() {
   const now = new Date();
+  if (state.plan === 'free') {
+    const week = isoWeekKey(now);
+    if (state.weeklyResetAt !== week) {
+      state.coins = WEEKLY_RESET_COINS;
+      state.weeklyResetAt = week;
+      pushHistory(WEEKLY_RESET_COINS, 'Recarga semanal do plano Free');
+      persist();
+    }
+    return;
+  }
   const last = new Date(state.refreshedAt);
   if (isNaN(last.getTime()) || now.getMonth() !== last.getMonth() || now.getFullYear() !== last.getFullYear()) {
     state.coins += MONTHLY_COINS[state.plan];

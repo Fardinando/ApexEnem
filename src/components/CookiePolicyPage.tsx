@@ -178,7 +178,7 @@ const COOKIE_SECTIONS: Section[] = [
     title: '9. Contato',
     paragraphs: [
       'Caso tenha dúvidas sobre esta Política de Cookies ou sobre o tratamento de dados relacionados ao uso de cookies, entre em contato pelos canais oficiais do ApexEnem.',
-      'Atendimento geral: contato@apexenem.app · Privacidade e LGPD (DPO): privacidade@apexenem.app',
+      'Atendimento geral e Privacidade/LGPD (DPO): apexenem@gmail.com',
     ],
   },
 ];

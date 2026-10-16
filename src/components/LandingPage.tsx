@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, BookOpen, PenLine, BarChart3, Users, ArrowRight, ChevronDown, Brain, Shield, Zap, MapPin, ChevronRight, X } from 'lucide-react';
 import { REGIONS, REGION_COLORS, STATES, getStatesByRegion, getCitiesByState, type RegionBR } from '../data/brazil-locations';
 import Logo from './Logo';
+import { RepertoireSearch } from './RepertoiresView';
 import { REGION_MAP_DATA, BRAZIL_VIEWBOX, getStateBBox } from '../data/brazil-map-paths';
 import { CITY_COORDINATES } from '../data/brazil-city-coordinates';
 
@@ -467,6 +468,7 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
             <button type="button" onClick={() => scrollTo('features')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Recursos</button>
+            <button type="button" onClick={() => scrollTo('demo')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Demo</button>
             <button type="button" onClick={() => goTo('/repertorios')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Repertórios</button>
             <button type="button" onClick={() => goTo('/blog')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Blog</button>
             <button type="button" onClick={() => goTo('/planos')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Planos</button>
@@ -552,6 +554,24 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </div>
         </section>
       )}
+
+      <section id="demo" className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-10">
+            <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 rounded-full text-xs font-semibold text-emerald-700 dark:text-emerald-400 mb-5">
+              <Sparkles className="h-3.5 w-3.5" /> Demo ao vivo — sem cadastro
+            </div>
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Experimente o ApexEnem agora</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">
+              Teste, em tempo real, a pesquisa de repertórios com IA da plataforma. Digite um tema e veja sugestões de filmes,
+              livros, dados e leis para enriquecer sua redação — sem criar conta.
+            </p>
+          </motion.div>
+          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }} className="rounded-3xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b]/40 p-6 md:p-8 shadow-sm">
+            <RepertoireSearch embedded />
+          </motion.div>
+        </div>
+      </section>
 
       <section id="features" className="py-20 md:py-28 bg-slate-50/50 dark:bg-[#0f0a1e]/50">
         <div className="max-w-6xl mx-auto px-4">

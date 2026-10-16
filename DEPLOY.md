@@ -225,8 +225,8 @@ Sem isso, os e-mails ficam apenas simulados no log.
    siga os registros DNS (SPF/DKIM). Sem domínio, você pode testar com o remetente
    `onboarding@resend.dev`.
 3. **API Keys → Create** → copie → `RESEND_API_KEY`.
-4. Defina `EMAIL_FROM` (ex.: `ApexEnem <no-reply@seudominio.com>`) e `CONTACT_EMAIL`
-   (o e-mail que você lê).
+4. Defina `EMAIL_FROM` (ex.: `ApexEnem <onboarding@resend.dev>` para teste, ou do
+   seu domínio verificado) e `CONTACT_EMAIL` (padrão: `apexenem@gmail.com`).
 5. Adicione na Vercel e faça **Redeploy**.
 
 ---

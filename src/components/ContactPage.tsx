@@ -144,7 +144,7 @@ export default function ContactPage() {
             <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#1e293b]/50 border border-slate-200 dark:border-slate-800">
               <Mail className="h-5 w-5 text-blue-600 dark:text-blue-400 mb-2" aria-hidden="true" />
               <p className="text-sm font-bold mb-1">E-mail</p>
-              <a href="mailto:contato@apexenem.app" className="text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 transition break-all">contato@apexenem.app</a>
+              <a href="mailto:apexenem@gmail.com" className="text-xs text-slate-500 dark:text-slate-400 hover:text-blue-600 transition break-all">apexenem@gmail.com</a>
             </div>
             <div className="p-5 rounded-2xl bg-slate-50 dark:bg-[#1e293b]/50 border border-slate-200 dark:border-slate-800">
               <MessageSquare className="h-5 w-5 text-blue-600 dark:text-blue-400 mb-2" aria-hidden="true" />
