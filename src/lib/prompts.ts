@@ -38,7 +38,7 @@ const MODELS = {
   }),
   openRouterLlama: (): ModelConfig => ({
     provider: 'openrouter',
-    modelId: 'meta-llama/llama-3.2-3b-instruct:free',
+    modelId: 'google/gemma-4-31b-it:free',
     temperature: 0.9,
     maxTokens: 2048,
     timeout: 9900,

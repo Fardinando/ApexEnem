@@ -221,14 +221,33 @@ function validateQuestions(qs) {
   );
 }
 
+// ─── Modelos usados (APENAS gratuitos) ───────────────────────────────────────
+// Regra do projeto: NÃO usar modelos pagos. Somente modelos com preço US$ 0.
+//
+// OPENROUTER_MODELS: lista (separada por vírgula) de modelos do OpenRouter.
+// Só use modelos terminados em ":free" — eles têm preço US$ 0 (gratuitos).
+const OR_MODELS = (
+  process.env.OPENROUTER_MODELS ||
+  [
+    "google/gemma-4-31b-it:free",
+    "nvidia/nemotron-3-ultra-550b-a55b:free",
+    "nvidia/nemotron-3-super-120b-a12b:free",
+    "google/gemma-4-26b-a4b-it:free",
+    "nvidia/nemotron-3.5-lightning:free",
+  ].join(",")
+)
+  .split(",")
+  .map((m) => m.trim())
+  .filter(Boolean);
+
+// GROQ_MODEL: a Groq só é gratuita no plano Free (sem cartão). qwen3.8-27b é o
+// sucessor direto do qwen3.6-27b (descontinuado em 14/09/2026).
+const GROQ_MODEL = process.env.GROQ_MODEL || "qwen/qwen3.8-27b";
+
+// GEMINI_MODEL: camada gratuita do Google AI Studio.
+const GEMINI_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+
 // ─── Provider Callers ────────────────────────────────────────────────────────
-const OR_MODELS = [
-  "nvidia/nemotron-3-nano-30b-a3b:free",
-  "nvidia/nemotron-nano-9b-v2:free",
-  "google/gemma-4-31b-it:free",
-  "nvidia/nemotron-3-ultra-550b-a55b:free",
-  "openai/gpt-oss-20b:free",
-];
 
 async function callGroq(sysMsg, userPrompt, key, maxTokens, temperature, timeoutMs) {
   if (!key) throw new Error("no groq key");
@@ -238,7 +257,7 @@ async function callGroq(sysMsg, userPrompt, key, maxTokens, temperature, timeout
       method: "POST",
       headers: { "Content-Type": "application/json", Authorization: `Bearer ${key}` },
       body: JSON.stringify({
-        model: "qwen/qwen3.6-27b",
+        model: GROQ_MODEL,
         messages: [
           { role: "system", content: sysMsg },
           { role: "user", content: userPrompt },
@@ -262,7 +281,7 @@ async function callGemini(sysMsg, userPrompt, maxTokens, temperature, timeoutMs)
   if (!googleApiKey) throw new Error("GOOGLE_API_KEY not set");
   const timer = new Promise((_, reject) => setTimeout(() => reject(new Error("gemini timeout")), timeoutMs || 60000));
   const fetchPromise = (async () => {
-    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${googleApiKey}`, {
+    const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${GEMINI_MODEL}:generateContent?key=${googleApiKey}`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({

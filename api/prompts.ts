@@ -24,7 +24,7 @@ const MODELS = {
   }),
   groqLlama33: (): ModelConfig => ({
     provider: 'groq',
-    modelId: 'llama-3.3-70b-versatile',
+    modelId: 'qwen/qwen3.8-27b',
     temperature: 0.85,
     maxTokens: 8192,
     timeout: 9000,
