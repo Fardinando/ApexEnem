@@ -1,4 +1,4 @@
-const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) || 'https://apexenem.vercel.app';
+const SITE_URL = (import.meta.env.VITE_SITE_URL as string | undefined) || 'https://apexenem.com.br';
 const DEFAULT_TITLE = 'ApexEnem — Plataforma de estudos e correção de redação por IA para o ENEM';
 const DEFAULT_DESC =
   'Plataforma brasileira de preparação para o ENEM: correção de redação por inteligência artificial, simulados, questões inéditas, plano de estudos adaptativo e pesquisa de repertório sociocultural.';

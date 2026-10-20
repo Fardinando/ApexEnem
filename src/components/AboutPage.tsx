@@ -172,7 +172,7 @@ export default function AboutPage({
                 <div className="w-3 h-3 rounded-full bg-rose-400" />
                 <div className="w-3 h-3 rounded-full bg-amber-400" />
                 <div className="w-3 h-3 rounded-full bg-emerald-400" />
-                <span className="ml-2 text-xs text-slate-400 font-mono">apexenem.vercel.app</span>
+                <span className="ml-2 text-xs text-slate-400 font-mono">apexenem.com.br</span>
               </div>
               <div className="space-y-3">
                 <div className="flex items-center gap-3 p-3 rounded-xl bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900/40">

@@ -4,4 +4,4 @@ Disallow: /api/
 Disallow: /login
 Disallow: /signup
 
-Sitemap: https://apexenem.vercel.app/sitemap.xml
+Sitemap: https://apexenem.com.br/sitemap.xml

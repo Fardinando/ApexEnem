@@ -308,7 +308,7 @@ async function callOpenRouter(sysMsg, userPrompt, key, model, maxTokens, tempera
       headers: {
         "Content-Type": "application/json",
         Authorization: `Bearer ${key}`,
-        "HTTP-Referer": "https://apexenem.vercel.app",
+        "HTTP-Referer": "https://apexenem.com.br",
         "X-Title": "ApexAI",
       },
       body: JSON.stringify({
