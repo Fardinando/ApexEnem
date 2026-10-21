@@ -2,8 +2,13 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Wrench, Mail } from 'lucide-react';
 
+// Aviso de "site em desenvolvimento" desativado a pedido.
+const DEV_NOTICE_ENABLED = false;
+
 export default function DevNoticeBanner() {
   const [open, setOpen] = useState(true);
+
+  if (!DEV_NOTICE_ENABLED) return null;
 
   return (
     <AnimatePresence>

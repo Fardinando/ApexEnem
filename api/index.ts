@@ -628,6 +628,76 @@ function watchLinksFor(title: string, type: string): { platform: string; url: st
   return [];
 }
 
+// Verificação factual de títulos via Wikipédia (PT), sem API key. Confirma que
+// a obra existe e devolve o TÍTULO CANÔNICO real, corrigindo nomes errados.
+const WIKI_TYPES = new Set(["filme", "serie", "série", "livro", "documentário", "documentario", "animação", "animacao"]);
+
+function normalizeForMatch(s: string): string {
+  return (s || "")
+    .toLowerCase()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/\(.*?\)/g, " ")      // remove disambiguadores "(filme)", "(livro)"
+    .replace(/[^a-z0-9\s]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function stripDisambiguator(title: string): string {
+  return title.replace(/\s*\((?:filme|série|serie|livro|romance|obra|minissérie|minisserie|telenovela)[^)]*\)\s*$/i, "").trim();
+}
+
+async function wikiSearchTitle(title: string, extra: string): Promise<string | null> {
+  const q = encodeURIComponent(`${title} ${extra}`.trim());
+  const url = `https://pt.wikipedia.org/w/api.php?action=query&list=search&srsearch=${q}&format=json&srlimit=3&srnamespace=0`;
+  try {
+    const r = await fetch(url, {
+      headers: { "User-Agent": "ApexEnem/1.0 (https://apexenem.com.br; educational repertory checker)" },
+      signal: AbortSignal.timeout(6000),
+    });
+    if (!r.ok) return null;
+    const data: any = await r.json();
+    const results: any[] = data?.query?.search || [];
+    const target = normalizeForMatch(title);
+    if (!target) return null;
+    for (const res of results) {
+      const cand = normalizeForMatch(res?.title || "");
+      // aceita quando o título canônico bate (ou contém) o título sugerido
+      if (cand === target || cand.startsWith(target + " ") || target.startsWith(cand + " ")) {
+        return stripDisambiguator(String(res.title));
+      }
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+/** Confirma/corrige títulos de obras reais. Não é fatal: em falha, mantém o original. */
+async function verifyItemTitles(categories: any[]): Promise<any[]> {
+  const tasks: Promise<void>[] = [];
+  for (const cat of categories) {
+    for (const item of cat.items || []) {
+      const type = String(item?.type || "").toLowerCase();
+      if (!WIKI_TYPES.has(type)) continue;
+      const title = String(item?.title || "").trim();
+      if (!title) continue;
+      const extra = [item?.creator, item?.year].filter(Boolean).join(" ");
+      tasks.push(
+        wikiSearchTitle(title, extra).then((canonical) => {
+          if (canonical && normalizeForMatch(canonical) !== normalizeForMatch(title)) {
+            item.title = canonical;
+            item.titleVerified = true;
+          } else if (canonical) {
+            item.titleVerified = true;
+          }
+        })
+      );
+    }
+  }
+  await Promise.allSettled(tasks);
+  return categories;
+}
+
 /** Normaliza a resposta da IA: títulos limpos + links de confiança montados no servidor. */
 function normalizeRepertoires(parsed: any): { categories: any[] } {
   const categories = Array.isArray(parsed?.categories) ? parsed.categories : [];
@@ -647,6 +717,7 @@ function normalizeRepertoires(parsed: any): { categories: any[] } {
             year: item?.year,
             synopsis: item?.synopsis ? String(item.synopsis).trim() : undefined,
             rating: item?.rating ? String(item.rating).trim() : undefined,
+            titleVerified: !!item?.titleVerified,
           };
           if (watch.length > 0) cleaned.watch = watch;
           return cleaned;
@@ -738,7 +809,11 @@ app.get("/api/repertoires/status/:cura", async (req, res) => {
     if (!r.ok) return res.status(502).json({ error: "Render returned " + r.status });
     const data = await r.json();
     if (data?.status === "done" && typeof data.result === "string") {
-      const parsed = extractJsonFromText(data.result);
+      let parsed: any = null;
+      try { parsed = extractJsonFromText(data.result); } catch { parsed = null; }
+      if (parsed?.categories) {
+        await verifyItemTitles(parsed.categories); // confirma/corrige título via Wikipédia
+      }
       const normalized = normalizeRepertoires(parsed);
       return res.json({ status: "done", result: { categories: normalized.categories } });
     }

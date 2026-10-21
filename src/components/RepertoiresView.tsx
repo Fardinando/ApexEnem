@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { Search, Sparkles, Loader2, ExternalLink, Star, Clapperboard, BookOpen, BarChart3, Scale, Lightbulb, Tv } from 'lucide-react';
+import { Search, Sparkles, Loader2, ExternalLink, Star, Clapperboard, BookOpen, BarChart3, Scale, Lightbulb, Tv, BadgeCheck } from 'lucide-react';
 import PublicLayout from './PublicLayout';
 import AdSlot from './AdSlot';
 import { applySeo } from '../lib/seo';
@@ -7,11 +7,13 @@ import { navigate } from '../lib/nav';
 
 interface RepertoireItem {
   title: string;
+  type?: string;
   creator?: string;
   studio?: string;
   year?: number | string;
   synopsis?: string;
   rating?: string;
+  titleVerified?: boolean;
   watch?: { platform: string; url: string }[];
 }
 
@@ -221,7 +223,14 @@ export function RepertoireSearch({ embedded = false }: { embedded?: boolean }) {
                 <div className="grid sm:grid-cols-2 gap-4">
                   {(cat.items || []).map((item, ii) => (
                     <article key={ii} className="p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800">
-                      <h3 className="text-sm font-bold mb-1">{item.title}</h3>
+                      <h3 className="text-sm font-bold mb-1 flex items-center gap-1.5">
+                        {item.title}
+                        {item.titleVerified && (
+                          <span title="Título confirmado" className="inline-flex text-emerald-500 shrink-0">
+                            <BadgeCheck className="h-3.5 w-3.5" aria-hidden="true" />
+                          </span>
+                        )}
+                      </h3>
                       <p className="text-[11px] text-slate-400 mb-2">
                         {[item.creator, item.studio, item.year].filter(Boolean).join(' · ')}
                       </p>
