@@ -224,7 +224,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/contact"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
-    if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/status/")) return next();
+    if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/repertoires/status/") || req.path.startsWith("/status/")) return next();
 
   const authHeader = req.headers.authorization;
   if (!authHeader || !authHeader.startsWith("Bearer ")) {
@@ -600,6 +600,79 @@ app.get("/api/auth-access", (req, res) => {
 });
 
 // ─── F1. Pesquisa de Repertórios ──────────────────────────────────────────────
+
+// Plataformas de streaming: geramos SEMPRE um link de busca oficial (nunca um
+// link "inventado" que cai em página vazia). O link de busca sempre abre uma
+// página funcional mostrando a obra (ou "sem resultados", sem tela quebrada).
+const STREAM_PLATFORMS: Record<string, (q: string) => string> = {
+  "netflix": (q) => `https://www.netflix.com/search?q=${q}`,
+  "prime video": (q) => `https://www.primevideo.com/search?phrase=${q}`,
+  "amazon prime video": (q) => `https://www.primevideo.com/search?phrase=${q}`,
+  "amazon prime": (q) => `https://www.primevideo.com/search?phrase=${q}`,
+  "disney+": (q) => `https://www.disneyplus.com/search?q=${q}`,
+  "disney plus": (q) => `https://www.disneyplus.com/search?q=${q}`,
+  "max": (q) => `https://www.max.com/search?q=${q}`,
+  "hbo max": (q) => `https://www.max.com/search?q=${q}`,
+  "globoplay": (q) => `https://globoplay.globo.com/busca/?q=${q}`,
+  "apple tv": (q) => `https://tv.apple.com/search?term=${q}`,
+  "apple tv+": (q) => `https://tv.apple.com/search?term=${q}`,
+  "paramount+": (q) => `https://www.paramountplus.com/search/?q=${q}`,
+  "star+": (q) => `https://www.starplus.com/search?q=${q}`,
+  "youtube": (q) => `https://www.youtube.com/results?search_query=${q}`,
+  "youtube movies": (q) => `https://www.youtube.com/results?search_query=${q}`,
+  "spotify": (q) => `https://open.spotify.com/search/${q}`,
+};
+
+function buildWatchLinks(title: string, platforms: string[] | undefined): { platform: string; url: string }[] {
+  const cleanTitle = title.trim();
+  if (!cleanTitle) return [];
+  const q = encodeURIComponent(cleanTitle);
+  const seen = new Set<string>();
+  const links: { platform: string; url: string }[] = [];
+  for (const raw of platforms || []) {
+    const key = String(raw || "").trim().toLowerCase();
+    const builder = STREAM_PLATFORMS[key];
+    if (!builder || seen.has(key)) continue;
+    seen.add(key);
+    links.push({ platform: String(raw).trim(), url: builder(q) });
+  }
+  return links;
+}
+
+/** Normaliza a resposta da IA: títulos limpos + links de busca sempre válidos. */
+function normalizeRepertoires(parsed: any): { categories: any[] } {
+  const categories = Array.isArray(parsed?.categories) ? parsed.categories : [];
+  const out = categories
+    .map((cat: any) => {
+      const items = (Array.isArray(cat?.items) ? cat.items : [])
+        .map((item: any) => {
+          const title = String(item?.title || "").replace(/\s+/g, " ").trim();
+          if (!title) return null;
+          // A IA passa apenas os NOMES das plataformas; o servidor monta a URL.
+          const platformNames = Array.isArray(item?.platforms)
+            ? item.platforms
+            : Array.isArray(item?.watch)
+              ? item.watch.map((w: any) => w?.platform).filter(Boolean)
+              : [];
+          const watch = buildWatchLinks(title, platformNames);
+          const cleaned: any = {
+            title,
+            creator: item?.creator ? String(item.creator).trim() : undefined,
+            studio: item?.studio ? String(item.studio).trim() : undefined,
+            year: item?.year,
+            synopsis: item?.synopsis ? String(item.synopsis).trim() : undefined,
+            rating: item?.rating ? String(item.rating).trim() : undefined,
+          };
+          if (watch.length > 0) cleaned.watch = watch;
+          return cleaned;
+        })
+        .filter(Boolean);
+      return { name: String(cat?.name || "").trim(), items };
+    })
+    .filter((cat: any) => cat.name && cat.items.length > 0);
+  return { categories: out };
+}
+
 app.post(
   "/api/repertoires",
   distributedRateLimit({ name: "repertoires", max: 20, windowSec: 3600 }),
@@ -607,44 +680,49 @@ app.post(
   async (req, res) => {
     const { theme } = req.body;
     const systemPrompt =
-      "Você é um professor de redação do ENEM. Sugira repertórios socioculturais produtivos (filmes, livros, séries, dados, leis, filosofia) adequados ao tema. Retorne APENAS JSON puro, sem markdown.";
+      "Você é um professor de redação do ENEM com memória enciclopédica de obras culturais. " +
+      "Você só usa obras REALMENTE FAMOSAS e reconhecidas, nunca inventa títulos. Retorne APENAS JSON puro, sem markdown.";
     const userPrompt = `Tema de redação ENEM: "${theme}".
+
+Sugira repertórios socioculturais de ALTO IMPACTO para usar como repertório em uma redação nota 1000.
 
 Retorne EXATAMENTE este JSON:
 {
-  "theme": "${theme}",
   "categories": [
     {
       "name": "FILMES",
       "items": [
         {
-          "title": "Nome da obra",
+          "title": "Nome oficial da obra",
           "creator": "Diretor (filme) / Autor (livro) / Artista",
           "studio": "Estúdio / Editora / Gravadora",
           "year": 2009,
           "synopsis": "Sinopse curta contextualizada ao tema.",
           "rating": "98% (Fonte: Rotten Tomatoes)",
-          "watch": [{ "platform": "Disney+", "url": "https://..." }]
+          "platforms": ["Netflix", "Prime Video"]
         }
       ]
     }
   ]
 }
 
-Regras:
-- Inclua ao menos 3 categorias (FILMES, LIVROS, DADOS/ESTATÍSTICAS, LEIS, FILOSOFIA, SÉRIES).
-- 2 a 3 itens por categoria, sempre com sinopse contextualizada ao tema.
-- Quando possível, inclua "watch" com links diretos de plataformas (Disney+, Prime Video, Apple TV, Netflix). Se não souber o link exato, use a URL de busca da plataforma.
-- Para DADOS/LEIS/FILOSOFIA, use "creator" e "year" com a fonte, e omita "watch".
+REGRAS CRÍTICAS:
+1. Use SOMENTE obras amplamente famosas e verificáveis (clássicos, best-sellers, filmes premiados, séries de grande audiência). Nunca invente obras nem títulos alternativos.
+2. Escreva o TÍTULO OFICIAL exato e completo, como aparece no Brasil (tradução consagrada quando for o caso). Confira que o título e o ano batem com a obra real antes de responder.
+3. Para "platforms", informe apenas os NOMES de plataformas onde a obra famosa comprovadamente existe (Netflix, Prime Video, Disney+, Max, Globoplay, Apple TV, YouTube, Spotify). NÃO escreva URLs.
+4. Inclua ao menos 3 categorias (FILMES, LIVROS, SÉRIES, DADOS/ESTATÍSTICAS, LEIS, FILOSOFIA/CIÊNCIA).
+5. 2 a 3 itens por categoria, sempre com sinopse contextualizada ao tema, em português do Brasil.
+6. Para DADOS/LEIS/FILOSOFIA, use "creator" e "year" com a fonte e omita "platforms".
+7. Ao final, revise mentalmente cada item: o título existe? o ano está certo? a obra é conhecida? Se não tiver certeza de um item, substitua por outro mais famoso.
 Apenas JSON puro.`;
 
     try {
-      const raw = await callAI({ systemPrompt, userPrompt, maxTokens: 4096, temperature: 0.6, timeout: 25000, type: "general" });
+      const raw = await callAI({ systemPrompt, userPrompt, maxTokens: 4096, temperature: 0.5, timeout: 25000, type: "repertoires" });
       const data = extractJsonFromText(raw);
       if (!data?.categories) {
         return res.status(503).json({ error: "Resposta da IA inválida. Tente novamente." });
       }
-      return res.json({ theme, categories: data.categories });
+      return res.json({ theme, ...normalizeRepertoires(data) });
     } catch (err: any) {
       if (err?.message?.startsWith("PENDING:")) {
         return res.json({ pending: true, cura: err.message.replace("PENDING:", ""), message: "Repertórios em processamento via IA..." });
@@ -657,6 +735,29 @@ Apenas JSON puro.`;
     }
   }
 );
+
+// Status dos repertórios: quando o job termina, normalizamos (títulos + links
+// de busca válidos) ANTES de devolver ao cliente.
+app.get("/api/repertoires/status/:cura", async (req, res) => {
+  const renderUrl = process.env.RENDER_PROCESS_URL;
+  if (!renderUrl) return res.status(503).json({ error: "Serviço indisponível." });
+  try {
+    const r = await fetch(`${renderUrl.replace(/\/+$/, "")}/api/status/${req.params.cura}`, {
+      headers: renderHeaders(),
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!r.ok) return res.status(502).json({ error: "Render returned " + r.status });
+    const data = await r.json();
+    if (data?.status === "done" && typeof data.result === "string") {
+      const parsed = extractJsonFromText(data.result);
+      const normalized = normalizeRepertoires(parsed);
+      return res.json({ status: "done", result: { categories: normalized.categories } });
+    }
+    return res.json({ status: data?.status, error: data?.error });
+  } catch (err: any) {
+    return res.status(502).json({ error: "Render unavailable: " + (err?.message || "timeout") });
+  }
+});
 
 // ─── IA Professora (Apex) — planos de aula ───────────────────────────────────
 app.post(

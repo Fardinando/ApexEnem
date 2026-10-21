@@ -60,13 +60,18 @@ async function pollRepertoires(cura: string): Promise<{ categories?: RepertoireC
   while (Date.now() < deadline) {
     await sleep(2500);
     try {
-      const r = await fetch(`/api/ai-task/${encodeURIComponent(cura)}`);
+      const r = await fetch(`/api/repertoires/status/${encodeURIComponent(cura)}`);
       if (!r.ok) continue;
       const d = await r.json().catch(() => ({}));
       if (d?.status === 'error') return { error: 'A IA não conseguiu gerar os repertórios. Tente novamente.' };
       if (d?.status === 'done' && d?.result) {
-        const parsed = parseAiJson(d.result);
-        if (parsed && Array.isArray(parsed.categories)) return { categories: parsed.categories };
+        const categories = Array.isArray(d.result.categories)
+          ? d.result.categories
+          : (() => {
+              const parsed = parseAiJson(d.result);
+              return parsed && Array.isArray(parsed.categories) ? parsed.categories : null;
+            })();
+        if (categories) return { categories };
         return { error: 'Resposta da IA inválida. Tente novamente.' };
       }
     } catch {

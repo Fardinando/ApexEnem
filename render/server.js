@@ -330,6 +330,50 @@ async function callOpenRouter(sysMsg, userPrompt, key, model, maxTokens, tempera
   return Promise.race([fetchPromise, timer]);
 }
 
+// ─── Verificação de repertórios (2ª passada) ─────────────────────────────────
+// Revisa títulos, anos e plataformas das obras para reduzir erro de nome. Se
+// falhar, devolve o texto original (a geração continua válida).
+async function verifyRepertoires(originalText, sourceName) {
+  const sysMsg =
+    "Você é um revisor rigoroso de repertórios culturais para o ENEM. Só confie em obras famosas e verificáveis. " +
+    "Você corrige títulos oficiais, anos e nomes de plataformas. Retorne APENAS JSON puro, sem markdown.";
+  const userPrompt = `Revise o JSON de repertórios abaixo e CORRIJA erros factuais.
+
+Regras da revisão:
+1. Corrija o campo "title" para o TÍTULO OFICIAL exato da obra (em português do Brasil, tradução consagrada quando houver). Se o título estiver errado, incompleto ou inventado, corrija ou substitua por outra obra REALMENTE famosa sobre o mesmo eixo temático.
+2. Confira e corrija o "year" (ano de lançamento/publicação) e o "creator".
+3. Em "platforms", mantenha apenas plataformas onde a obra famosa de fato existe (Netflix, Prime Video, Disney+, Max, Globoplay, Apple TV, YouTube, Spotify). Nunca escreva URLs.
+4. Se um item não corresponder a uma obra real e conhecida, substitua-o por outra obra famosa adequada ao tema.
+5. Preserve os campos "synopsis", "rating" e a estrutura/categorias. Mantenha o tema.
+6. Responda EXATAMENTE no mesmo formato JSON ({"categories":[{"name":"...","items":[...]}]}).
+
+JSON para revisar:
+${originalText}
+
+Responda apenas o JSON corrigido.`;
+
+  const attempts = [];
+  for (const k of groqKeys.slice(0, 3)) attempts.push((v) => callGroq(sysMsg, v, k, 4096, 0.2, 60000));
+  if (googleApiKey) attempts.push((v) => callGemini(sysMsg, v, 4096, 0.2, 60000));
+  if (openRouterKeys.length > 0) attempts.push((v) => callOpenRouter(sysMsg, v, openRouterKeys[0], OR_MODELS[0], 4096, 0.2, 60000));
+
+  for (const fn of attempts) {
+    try {
+      const raw = await fn(userPrompt);
+      const parsed = extractJson(raw);
+      if (parsed && Array.isArray(parsed.categories) && parsed.categories.length > 0) {
+        const cleaned = JSON.stringify(parsed);
+        console.log(`[verify] ${sourceName}: revisão aplicada`);
+        return cleaned;
+      }
+    } catch (err) {
+      console.log(`[verify] ${sourceName} revisão falhou: ${err.message?.slice(0, 60)}`);
+    }
+  }
+  console.log(`[verify] ${sourceName}: sem revisão, usando original`);
+  return originalText;
+}
+
 // ─── Job Processor ───────────────────────────────────────────────────────────
 async function processJob(cura, opts, attempt = 1) {
   const job = jobs.get(cura);
@@ -386,8 +430,11 @@ async function processJob(cura, opts, attempt = 1) {
       if (!validateQuestions(normalized)) throw new Error(`${name} failed validation`);
       return { name, value: normalized };
     }
-    const text = stripCodeFences(typeof raw === "string" ? raw : JSON.stringify(raw));
+    let text = stripCodeFences(typeof raw === "string" ? raw : JSON.stringify(raw));
     if (!text) throw new Error(`${name} returned empty text`);
+    if (type === "repertoires") {
+      text = await verifyRepertoires(text, name);
+    }
     return { name, value: text };
   }
 
