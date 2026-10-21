@@ -335,17 +335,18 @@ async function callOpenRouter(sysMsg, userPrompt, key, model, maxTokens, tempera
 // falhar, devolve o texto original (a geração continua válida).
 async function verifyRepertoires(originalText, sourceName) {
   const sysMsg =
-    "Você é um revisor rigoroso de repertórios culturais para o ENEM. Só confie em obras famosas e verificáveis. " +
-    "Você corrige títulos oficiais, anos e nomes de plataformas. Retorne APENAS JSON puro, sem markdown.";
+    "Você é um revisor rigoroso de repertórios culturais para o ENEM. Só confia em obras MUITO CONHECIDAS e verificáveis. " +
+    "Você corrige títulos oficiais e anos. Retorne APENAS JSON puro, sem markdown.";
   const userPrompt = `Revise o JSON de repertórios abaixo e CORRIJA erros factuais.
 
 Regras da revisão:
-1. Corrija o campo "title" para o TÍTULO OFICIAL exato da obra (em português do Brasil, tradução consagrada quando houver). Se o título estiver errado, incompleto ou inventado, corrija ou substitua por outra obra REALMENTE famosa sobre o mesmo eixo temático.
-2. Confira e corrija o "year" (ano de lançamento/publicação) e o "creator".
-3. Em "platforms", mantenha apenas plataformas onde a obra famosa de fato existe (Netflix, Prime Video, Disney+, Max, Globoplay, Apple TV, YouTube, Spotify). Nunca escreva URLs.
-4. Se um item não corresponder a uma obra real e conhecida, substitua-o por outra obra famosa adequada ao tema.
-5. Preserve os campos "synopsis", "rating" e a estrutura/categorias. Mantenha o tema.
-6. Responda EXATAMENTE no mesmo formato JSON ({"categories":[{"name":"...","items":[...]}]}).
+1. Corrija o campo "title" para o TÍTULO OFICIAL exato da obra (em português do Brasil, tradução consagrada quando houver). Se o título estiver errado, incompleto ou inventado, corrija.
+2. Se a obra NÃO for MUITO conhecida (de nicho, obscura, "de premiação" que o aluno não reconhece), SUBSTITUA por outra obra MUITO conhecida (cultura pop, best-seller, clássico popular, filme/série de grande audiência) cujo FOCO seja o mesmo tema.
+3. Se a obra apenas tangencia o tema (não é o foco dela), substitua por uma mais direta.
+4. Confira e corrija "year" (ano) e "creator". Garanta que "type" seja um de: "filme", "serie", "livro", "dado", "lei", "filosofia".
+5. NÃO escreva URLs nem nomes de plataformas de streaming. Remova qualquer campo "platforms" ou "watch" que existir.
+6. Preserve os campos "synopsis", "rating" e a estrutura/categorias. Mantenha o tema.
+7. Responda EXATAMENTE no mesmo formato JSON ({"categories":[{"name":"...","items":[...]}]}).
 
 JSON para revisar:
 ${originalText}

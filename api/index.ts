@@ -600,46 +600,35 @@ app.get("/api/auth-access", (req, res) => {
 });
 
 // ─── F1. Pesquisa de Repertórios ──────────────────────────────────────────────
-
-// Plataformas de streaming: geramos SEMPRE um link de busca oficial (nunca um
-// link "inventado" que cai em página vazia). O link de busca sempre abre uma
-// página funcional mostrando a obra (ou "sem resultados", sem tela quebrada).
-const STREAM_PLATFORMS: Record<string, (q: string) => string> = {
-  "netflix": (q) => `https://www.netflix.com/search?q=${q}`,
-  "prime video": (q) => `https://www.primevideo.com/search?phrase=${q}`,
-  "amazon prime video": (q) => `https://www.primevideo.com/search?phrase=${q}`,
-  "amazon prime": (q) => `https://www.primevideo.com/search?phrase=${q}`,
-  "disney+": (q) => `https://www.disneyplus.com/search?q=${q}`,
-  "disney plus": (q) => `https://www.disneyplus.com/search?q=${q}`,
-  "max": (q) => `https://www.max.com/search?q=${q}`,
-  "hbo max": (q) => `https://www.max.com/search?q=${q}`,
-  "globoplay": (q) => `https://globoplay.globo.com/busca/?q=${q}`,
-  "apple tv": (q) => `https://tv.apple.com/search?term=${q}`,
-  "apple tv+": (q) => `https://tv.apple.com/search?term=${q}`,
-  "paramount+": (q) => `https://www.paramountplus.com/search/?q=${q}`,
-  "star+": (q) => `https://www.starplus.com/search?q=${q}`,
-  "youtube": (q) => `https://www.youtube.com/results?search_query=${q}`,
-  "youtube movies": (q) => `https://www.youtube.com/results?search_query=${q}`,
-  "spotify": (q) => `https://open.spotify.com/search/${q}`,
-};
-
-function buildWatchLinks(title: string, platforms: string[] | undefined): { platform: string; url: string }[] {
-  const cleanTitle = title.trim();
-  if (!cleanTitle) return [];
-  const q = encodeURIComponent(cleanTitle);
-  const seen = new Set<string>();
-  const links: { platform: string; url: string }[] = [];
-  for (const raw of platforms || []) {
-    const key = String(raw || "").trim().toLowerCase();
-    const builder = STREAM_PLATFORMS[key];
-    if (!builder || seen.has(key)) continue;
-    seen.add(key);
-    links.push({ platform: String(raw).trim(), url: builder(q) });
+//
+// Sobre os links: a IA erra ao "chutar" a plataforma de streaming (a obra pode
+// não estar lá → busca vazia). Por isso NÃO pedimos plataforma nenhuma à IA.
+// Montamos os links no servidor por TIPO de obra:
+//   - filme/série → JustWatch (agregador "onde assistir", dados do BR) + YouTube
+//   - livro       → Google Books + Wikipédia
+// Assim o link nunca cai em busca vazia: o JustWatch sempre mostra a obra e em
+// quais serviços ela está (ou avisa honestamente que não está disponível).
+function watchLinksFor(title: string, type: string): { platform: string; url: string }[] {
+  const clean = title.trim();
+  if (!clean) return [];
+  const q = encodeURIComponent(clean);
+  const t = (type || "").toLowerCase();
+  if (t === "filme" || t === "série" || t === "serie" || t === "documentário" || t === "documentario" || t === "animação" || t === "animacao") {
+    return [
+      { platform: "Onde assistir", url: `https://www.justwatch.com/br/busca?q=${q}` },
+      { platform: "YouTube", url: `https://www.youtube.com/results?search_query=${q}` },
+    ];
   }
-  return links;
+  if (t === "livro" || t === "romance" || t === "poema" || t === "peça" || t === "peca" || t === "quadrinhos" || t === "mangá" || t === "manga") {
+    return [
+      { platform: "Google Livros", url: `https://www.google.com/search?tbm=bks&q=${q}` },
+      { platform: "Wikipédia", url: `https://pt.wikipedia.org/w/index.php?search=${q}` },
+    ];
+  }
+  return [];
 }
 
-/** Normaliza a resposta da IA: títulos limpos + links de busca sempre válidos. */
+/** Normaliza a resposta da IA: títulos limpos + links de confiança montados no servidor. */
 function normalizeRepertoires(parsed: any): { categories: any[] } {
   const categories = Array.isArray(parsed?.categories) ? parsed.categories : [];
   const out = categories
@@ -648,15 +637,11 @@ function normalizeRepertoires(parsed: any): { categories: any[] } {
         .map((item: any) => {
           const title = String(item?.title || "").replace(/\s+/g, " ").trim();
           if (!title) return null;
-          // A IA passa apenas os NOMES das plataformas; o servidor monta a URL.
-          const platformNames = Array.isArray(item?.platforms)
-            ? item.platforms
-            : Array.isArray(item?.watch)
-              ? item.watch.map((w: any) => w?.platform).filter(Boolean)
-              : [];
-          const watch = buildWatchLinks(title, platformNames);
+          const type = String(item?.type || "").trim();
+          const watch = watchLinksFor(title, type); // ignora qualquer URL vinda da IA
           const cleaned: any = {
             title,
+            type: type || undefined,
             creator: item?.creator ? String(item.creator).trim() : undefined,
             studio: item?.studio ? String(item.studio).trim() : undefined,
             year: item?.year,
@@ -680,11 +665,15 @@ app.post(
   async (req, res) => {
     const { theme } = req.body;
     const systemPrompt =
-      "Você é um professor de redação do ENEM com memória enciclopédica de obras culturais. " +
-      "Você só usa obras REALMENTE FAMOSAS e reconhecidas, nunca inventa títulos. Retorne APENAS JSON puro, sem markdown.";
+      "Você é um professor de redação do ENEM com memória enciclopédica de cultura pop e obras conhecidas. " +
+      "Você seleciona obras MUITO CONHECIDAS cujo assunto central é exatamente o tema pedido. Nunca inventa títulos. Retorne APENAS JSON puro, sem markdown.";
     const userPrompt = `Tema de redação ENEM: "${theme}".
 
-Sugira repertórios socioculturais de ALTO IMPACTO para usar como repertório em uma redação nota 1000.
+Escolha repertórios socioculturais para enriquecer uma redação sobre esse tema.
+
+PRIORIDADE MÁXIMA (as duas ao mesmo tempo):
+A) OBRAS MUITO CONHECIDAS — coisas que um estudante brasileiro reconhece na hora: cultura pop, best-sellers, clássicos populares, filmes/séries de grande audiência. NÃO escolha obras por prêmios ou por serem "de nicho"/eruditas.
+B) CUJO FOCO SEJA O TEMA — a obra precisa tratar CENTRALMENTE desse assunto (não apenas tangenciar). Se a obra só menciona o tema de passagem, não serve: troque por outra mais direta.
 
 Retorne EXATAMENTE este JSON:
 {
@@ -694,12 +683,12 @@ Retorne EXATAMENTE este JSON:
       "items": [
         {
           "title": "Nome oficial da obra",
-          "creator": "Diretor (filme) / Autor (livro) / Artista",
-          "studio": "Estúdio / Editora / Gravadora",
+          "type": "filme",
+          "creator": "Diretor (filme/série) / Autor (livro)",
+          "studio": "Estúdio / Editora",
           "year": 2009,
-          "synopsis": "Sinopse curta contextualizada ao tema.",
-          "rating": "98% (Fonte: Rotten Tomatoes)",
-          "platforms": ["Netflix", "Prime Video"]
+          "synopsis": "Sinopse curta, mostrando POR QUE a obra tem a ver com o tema.",
+          "rating": "Nota ou indicação curta de fama (ex.: 4,8/5 no Google)"
         }
       ]
     }
@@ -707,13 +696,13 @@ Retorne EXATAMENTE este JSON:
 }
 
 REGRAS CRÍTICAS:
-1. Use SOMENTE obras amplamente famosas e verificáveis (clássicos, best-sellers, filmes premiados, séries de grande audiência). Nunca invente obras nem títulos alternativos.
-2. Escreva o TÍTULO OFICIAL exato e completo, como aparece no Brasil (tradução consagrada quando for o caso). Confira que o título e o ano batem com a obra real antes de responder.
-3. Para "platforms", informe apenas os NOMES de plataformas onde a obra famosa comprovadamente existe (Netflix, Prime Video, Disney+, Max, Globoplay, Apple TV, YouTube, Spotify). NÃO escreva URLs.
-4. Inclua ao menos 3 categorias (FILMES, LIVROS, SÉRIES, DADOS/ESTATÍSTICAS, LEIS, FILOSOFIA/CIÊNCIA).
-5. 2 a 3 itens por categoria, sempre com sinopse contextualizada ao tema, em português do Brasil.
-6. Para DADOS/LEIS/FILOSOFIA, use "creator" e "year" com a fonte e omita "platforms".
-7. Ao final, revise mentalmente cada item: o título existe? o ano está certo? a obra é conhecida? Se não tiver certeza de um item, substitua por outro mais famoso.
+1. "type" deve ser um destes: "filme", "serie", "livro", "dado", "lei", "filosofia".
+2. NÃO escreva nenhuma URL e NÃO chute plataformas de streaming. (Deixe os links com o sistema.)
+3. Escreva o TÍTULO OFICIAL exato, como é conhecido no Brasil (tradução consagrada quando for o caso). Confira título e ano antes de responder.
+4. Inclua ao menos 3 categorias entre: FILMES, SÉRIES, LIVROS, DADOS/ESTATÍSTICAS, LEIS, FILOSOFIA/CIÊNCIA.
+5. 2 a 3 itens por categoria, com sinopse curta em português do Brasil que deixe clara a ligação com o tema.
+6. Para DADOS/LEIS/FILOSOFIA, use "type" correspondente, "creator" com a fonte e "year".
+7. Revise cada item antes de responder: o título existe? o ano está certo? é uma obra MUITO conhecida? o tema é o FOCO dela? Se alguma resposta for "não", substitua por outra obra.
 Apenas JSON puro.`;
 
     try {
