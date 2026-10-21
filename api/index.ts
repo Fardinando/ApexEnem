@@ -1474,6 +1474,114 @@ app.get("/api/supabase/get-progress", async (req, res) => {
   }
 });
 
+// ─── Wallet (moedas) — persistente por usuário ───────────────────────────────
+const WALLET_MONTHLY_COINS: Record<string, number> = { free: 10, pro: 600, apex: 2000 };
+const WALLET_WEEKLY_RESET_COINS = 10;
+const WALLET_MAX_COINS = 10_000_000;
+
+function walletIsoWeekKey(d: Date): string {
+  const date = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dayNum = (date.getUTCDay() + 6) % 7;
+  date.setUTCDate(date.getUTCDate() - dayNum + 3);
+  const firstThursday = new Date(Date.UTC(date.getUTCFullYear(), 0, 4));
+  const firstDayNum = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstDayNum + 3);
+  const week = 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 24 * 3600 * 1000));
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
+}
+
+function normalizeWalletRow(row: any) {
+  const plan: string = ["free", "pro", "apex"].includes(row?.plan) ? row.plan : "free";
+  const now = new Date();
+  let coins = Number.isFinite(row?.coins) ? Math.max(0, Math.floor(row.coins)) : WALLET_WEEKLY_RESET_COINS;
+  let weeklyResetAt: string = typeof row?.weekly_reset_at === "string" && row.weekly_reset_at ? row.weekly_reset_at : walletIsoWeekKey(now);
+  let refreshedAt: string = row?.refreshed_at || now.toISOString();
+  const history: any[] = Array.isArray(row?.history) ? row.history.slice(0, 100) : [];
+
+  if (plan === "free") {
+    // Free: recarrega para 10 moedas no início de cada semana ISO.
+    const week = walletIsoWeekKey(now);
+    if (weeklyResetAt !== week) {
+      coins = WALLET_WEEKLY_RESET_COINS;
+      weeklyResetAt = week;
+      history.unshift({ ts: Date.now(), delta: WALLET_WEEKLY_RESET_COINS, reason: "Recarga semanal do plano Free" });
+    }
+  } else {
+    // Pagos: cota mensal quando vira o mês.
+    const last = new Date(refreshedAt);
+    if (isNaN(last.getTime()) || now.getUTCMonth() !== last.getUTCMonth() || now.getUTCFullYear() !== last.getUTCFullYear()) {
+      coins += WALLET_MONTHLY_COINS[plan] || 0;
+      refreshedAt = now.toISOString();
+      history.unshift({ ts: Date.now(), delta: WALLET_MONTHLY_COINS[plan] || 0, reason: `Cota mensal do plano ${plan.toUpperCase()}` });
+    }
+  }
+
+  coins = Math.min(WALLET_MAX_COINS, coins);
+  return { plan, coins, refreshed_at: refreshedAt, weekly_reset_at: weeklyResetAt, history: history.slice(0, 100) };
+}
+
+app.get("/api/wallet", async (req: any, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Usuário não autenticado." });
+  if (!supabaseAdmin) return res.status(503).json({ error: "Serviço indisponível." });
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("wallets")
+      .select("plan, coins, refreshed_at, weekly_reset_at, history")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      console.warn("Wallet fetch error:", error.message);
+      return res.status(500).json({ error: "Erro ao carregar carteira." });
+    }
+
+    const normalized = normalizeWalletRow(data);
+    const { error: upErr } = await supabaseAdmin
+      .from("wallets")
+      .upsert({ user_id: userId, ...normalized, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+    if (upErr) console.warn("Wallet upsert warning:", upErr.message);
+
+    return res.json({ success: true, wallet: normalized });
+  } catch (err: any) {
+    console.error("Wallet load failed:", err.message);
+    return res.status(500).json({ error: "Erro interno ao carregar carteira." });
+  }
+});
+
+app.post("/api/wallet", async (req: any, res) => {
+  const userId = req.user?.id;
+  if (!userId) return res.status(401).json({ error: "Usuário não autenticado." });
+  if (!supabaseAdmin) return res.status(503).json({ error: "Serviço indisponível." });
+
+  const body = req.body || {};
+  const plan: string = ["free", "pro", "apex"].includes(body.plan) ? body.plan : "free";
+  const coins = Number.isFinite(body.coins) ? Math.max(0, Math.min(WALLET_MAX_COINS, Math.floor(body.coins))) : WALLET_WEEKLY_RESET_COINS;
+  const weeklyResetAt: string = typeof body.weeklyResetAt === "string" && body.weeklyResetAt ? body.weeklyResetAt : walletIsoWeekKey(new Date());
+  const refreshedAt: string = typeof body.refreshedAt === "string" && body.refreshedAt ? body.refreshedAt : new Date().toISOString();
+  const history: any[] = Array.isArray(body.history)
+    ? body.history
+        .filter((h: any) => h && Number.isFinite(h.delta))
+        .slice(0, 100)
+        .map((h: any) => ({ ts: Number.isFinite(h.ts) ? h.ts : Date.now(), delta: Math.floor(h.delta), reason: String(h.reason || "").slice(0, 120) }))
+    : [];
+
+  try {
+    const row = { user_id: userId, plan, coins, refreshed_at: refreshedAt, weekly_reset_at: weeklyResetAt, history, updated_at: new Date().toISOString() };
+    const { error } = await supabaseAdmin.from("wallets").upsert(row, { onConflict: "user_id" });
+    if (error) {
+      console.warn("Wallet save error:", error.message);
+      return res.status(500).json({ error: "Erro ao salvar carteira." });
+    }
+    const normalized = normalizeWalletRow(row);
+    return res.json({ success: true, wallet: normalized });
+  } catch (err: any) {
+    console.error("Wallet save failed:", err.message);
+    return res.status(500).json({ error: "Erro interno ao salvar carteira." });
+  }
+});
+
 app.post("/api/supabase/setup", async (req, res) => {
   const supabaseUrl = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -1482,7 +1590,7 @@ app.post("/api/supabase/setup", async (req, res) => {
     return res.json({ success: false, message: "SUPABASE_SERVICE_ROLE_KEY não configurada no Vercel." });
   }
 
-  const tables = ["profiles", "essay_corrections", "simulado_history", "activity_logs", "ApexEnem_progress"];
+  const tables = ["profiles", "essay_corrections", "simulado_history", "activity_logs", "ApexEnem_progress", "wallets"];
   const missing: string[] = [];
 
   for (const t of tables) {
@@ -1630,6 +1738,29 @@ DROP POLICY IF EXISTS "all_access" ON public."ApexEnem_progress";
 CREATE POLICY "all_access" ON public."ApexEnem_progress"
   USING (auth.jwt() ->> 'email' = email)
   WITH CHECK (auth.jwt() ->> 'email' = email);`;
+
+    case "wallets":
+      return `CREATE TABLE IF NOT EXISTS public.wallets (
+  user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE PRIMARY KEY,
+  plan TEXT NOT NULL DEFAULT 'free',
+  coins INTEGER NOT NULL DEFAULT 10,
+  refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  weekly_reset_at TEXT,
+  history JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='wallets' AND policyname='read') THEN
+    CREATE POLICY "read" ON public.wallets FOR SELECT USING (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='wallets' AND policyname='insert') THEN
+    CREATE POLICY "insert" ON public.wallets FOR INSERT WITH CHECK (auth.uid() = user_id);
+  END IF;
+  IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE schemaname='public' AND tablename='wallets' AND policyname='update') THEN
+    CREATE POLICY "update" ON public.wallets FOR UPDATE USING (auth.uid() = user_id);
+  END IF;
+END $$;`;
 
     default:
       return "";

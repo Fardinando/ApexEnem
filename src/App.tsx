@@ -23,6 +23,7 @@ import AuthorsView from './components/AuthorsView';
 import ContactPage from './components/ContactPage';
 import RepertoiresView, { RepertoireSearch } from './components/RepertoiresView';
 import PlansPage from './components/PlansPage';
+import { setWalletAuthToken } from './lib/coins';
 
 const DashboardView = lazy(() => import('./components/DashboardView'));
 const RedacaoView = lazy(() => import('./components/RedacaoView'));
@@ -100,6 +101,15 @@ export default function App() {
       sub.data.subscription.unsubscribe();
     };
   }, []);
+
+  // Mantém a carteira de moedas sincronizada com o servidor (persistente por conta).
+  useEffect(() => {
+    if (session?.user && session?.access_token) {
+      setWalletAuthToken(session.access_token);
+    } else {
+      setWalletAuthToken(null);
+    }
+  }, [session?.user?.id, session?.access_token]);
 
   useEffect(() => {
     if (!session?.user) {

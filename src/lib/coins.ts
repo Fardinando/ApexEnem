@@ -55,13 +55,105 @@ function load(): WalletState {
 let state: WalletState = load();
 const listeners = new Set<(w: WalletState) => void>();
 
-function persist() {
+// ─── Sincronização com o servidor (Supabase, por usuário) ────────────────────
+// A carteira vive no servidor para persistir entre aparelhos. O localStorage é
+// apenas um cache offline (e a fonte para visitantes não autenticados).
+let authToken: string | null = null;
+let remoteEnabled = false;
+let syncTimer: ReturnType<typeof setTimeout> | null = null;
+let syncInFlight = false;
+let syncQueued = false;
+
+/** Define (ou limpa) o token de autenticação e hidrata a carteira do servidor. */
+export function setWalletAuthToken(token: string | null) {
+  authToken = token || null;
+  remoteEnabled = !!authToken;
+  if (!authToken) {
+    if (syncTimer) {
+      clearTimeout(syncTimer);
+      syncTimer = null;
+    }
+    return;
+  }
+  void loadFromServer();
+}
+
+/** Unifica estado local com o do servidor (servidor é a fonte da verdade). */
+export function hydrateWallet(remote: Partial<WalletState> | null | undefined) {
+  if (!remote) return;
+  const next: WalletState = {
+    plan: (['free', 'pro', 'apex'] as PlanId[]).includes(remote.plan as PlanId) ? (remote.plan as PlanId) : state.plan,
+    coins: Number.isFinite(remote.coins) ? Math.max(0, Math.floor(remote.coins as number)) : state.coins,
+    refreshedAt: typeof remote.refreshedAt === 'string' && remote.refreshedAt ? remote.refreshedAt : state.refreshedAt,
+    weeklyResetAt: typeof remote.weeklyResetAt === 'string' && remote.weeklyResetAt ? remote.weeklyResetAt : state.weeklyResetAt,
+    history: Array.isArray(remote.history) ? remote.history.slice(0, 100) : state.history,
+  };
+  state = next;
+  cacheOnly();
+  listeners.forEach((l) => l(state));
+}
+
+function cacheOnly() {
   try {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
   } catch {
     /* storage unavailable */
   }
+}
+
+async function loadFromServer() {
+  const token = authToken;
+  if (!token) return;
+  try {
+    const res = await fetch('/api/wallet', { headers: { Authorization: `Bearer ${token}` } });
+    if (!res.ok) return;
+    const data = await res.json().catch(() => null);
+    if (authToken !== token) return; // sessão mudou durante o fetch
+    if (data?.wallet) hydrateWallet(data.wallet);
+  } catch {
+    /* offline: mantém o cache local */
+  }
+}
+
+async function pushToServer() {
+  const token = authToken;
+  if (!token || !remoteEnabled) return;
+  if (syncInFlight) {
+    syncQueued = true;
+    return;
+  }
+  syncInFlight = true;
+  try {
+    const res = await fetch('/api/wallet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+      body: JSON.stringify(state),
+    });
+    if (res.ok) {
+      const data = await res.json().catch(() => null);
+      if (data?.wallet) hydrateWallet(data.wallet);
+    }
+  } catch {
+    /* offline: o próximo persist reenvia */
+  } finally {
+    syncInFlight = false;
+    if (syncQueued) {
+      syncQueued = false;
+      void pushToServer();
+    }
+  }
+}
+
+function persist() {
+  cacheOnly();
   listeners.forEach((l) => l(state));
+  if (remoteEnabled) {
+    if (syncTimer) clearTimeout(syncTimer);
+    syncTimer = setTimeout(() => {
+      syncTimer = null;
+      void pushToServer();
+    }, 600);
+  }
 }
 
 function pushHistory(delta: number, reason: string) {

@@ -95,6 +95,19 @@ os links de confirmação/reset passam a apontar para o domínio próprio.
 > Se ainda **não** rodou: `supabase-setup.sql` e `fix-rls.sql` no **SQL Editor**
 > (do deploy antigo). E mantenha o `keep-alive` (já no `vercel.json`, cron diário).
 
+### 3.1 🔴 Tabela `wallets` (moedas persistentes)
+
+As moedas **agora são salvas por conta no Supabase** (antes ficavam só no
+navegador, por isso resetavam ao trocar de computador). Falta criar a tabela:
+
+1. **SQL Editor** → cole e rode o bloco `-- 8. TABELA: wallets` do
+   `supabase-setup.sql` (ou clique em **Configurações → "Criar tabelas"** no app,
+   que dispara `/api/supabase/setup`).
+
+Com a tabela criada, o saldo de um usuário é o mesmo em qualquer aparelho e
+**só reseta no fim da semana** (plano Free → 10 moedas; PRO/Apex mantêm a cota
+mensal de 600/2000).
+
 ---
 
 ## 4. 🟡 Resend — enviar e-mail pelo domínio (agora é possível)

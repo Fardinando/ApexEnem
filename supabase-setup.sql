@@ -168,6 +168,27 @@ CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
 
+-- 8. TABELA: wallets (carteira de moedas persistente por usuário)
+CREATE TABLE IF NOT EXISTS public.wallets (
+  user_id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+  plan TEXT NOT NULL DEFAULT 'free',
+  coins INTEGER NOT NULL DEFAULT 10,
+  refreshed_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  weekly_reset_at TEXT,
+  history JSONB NOT NULL DEFAULT '[]'::jsonb,
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+
+ALTER TABLE public.wallets ENABLE ROW LEVEL SECURITY;
+
+DROP POLICY IF EXISTS "read" ON public.wallets;
+DROP POLICY IF EXISTS "insert" ON public.wallets;
+DROP POLICY IF EXISTS "update" ON public.wallets;
+
+CREATE POLICY "read" ON public.wallets FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "insert" ON public.wallets FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "update" ON public.wallets FOR UPDATE USING (auth.uid() = user_id);
+
 -- Beta requests table
 CREATE TABLE IF NOT EXISTS public.beta_requests (
   id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
