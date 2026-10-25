@@ -17,7 +17,6 @@ import CookiePolicyPage from './components/CookiePolicyPage';
 import CookieConsentBanner from './components/CookieConsentBanner';
 import SubscriptionTermsPage from './components/SubscriptionTermsPage';
 import RefundPolicyPage from './components/RefundPolicyPage';
-import DevNoticeBanner from './components/DevNoticeBanner';
 import BlogView from './components/BlogView';
 import AuthorsView from './components/AuthorsView';
 import ContactPage from './components/ContactPage';
@@ -398,6 +397,7 @@ export default function App() {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`,
         },
+        body: JSON.stringify({ confirm: 'APAGAR MINHA CONTA' }),
       });
 
       if (!res.ok) {
@@ -447,7 +447,6 @@ export default function App() {
           <div className="animate-spin w-8 h-8 border-2 border-blue-600 border-t-transparent rounded-full mx-auto" />
           <p className="text-sm text-slate-500">Carregando...</p>
         </div>
-        <DevNoticeBanner />
       </div>
     );
   }
@@ -457,7 +456,6 @@ export default function App() {
       <>
         <AboutPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} onBack={() => navigate('/')} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -467,7 +465,6 @@ export default function App() {
       <>
         <TermsPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -477,7 +474,6 @@ export default function App() {
       <>
         <PrivacyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -487,7 +483,6 @@ export default function App() {
       <>
         <CookiePolicyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -497,7 +492,6 @@ export default function App() {
       <>
         <SubscriptionTermsPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -507,7 +501,6 @@ export default function App() {
       <>
         <RefundPolicyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -518,7 +511,6 @@ export default function App() {
       <>
         <BlogView slug={slug} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -529,7 +521,6 @@ export default function App() {
       <>
         <AuthorsView slug={slug} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -539,7 +530,6 @@ export default function App() {
       <>
         <ContactPage />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -549,7 +539,6 @@ export default function App() {
       <>
         <RepertoiresView />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -559,7 +548,6 @@ export default function App() {
       <>
         <PlansPage onSignup={() => navigate('/signup')} onLogin={() => navigate('/login')} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -570,7 +558,6 @@ export default function App() {
         <>
           <AuthView defaultTab={currentPath === '/login' ? 'login' : 'signup'} onSuccess={handleAuthSuccess} onBack={() => navigate('/')} />
           <CookieConsentBanner />
-          <DevNoticeBanner />
         </>
       );
     }
@@ -578,7 +565,6 @@ export default function App() {
       <>
         <LandingPage onStart={() => navigate('/login')} onSignup={() => navigate('/signup')} />
         <CookieConsentBanner />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -597,7 +583,6 @@ export default function App() {
     return (
       <>
         <OnboardingView currentUser={userProfile as any} onCompleted={handleOnboardingCompleted} />
-        <DevNoticeBanner />
       </>
     );
   }
@@ -691,7 +676,6 @@ export default function App() {
         </Suspense>
       </main>
       </div>
-      <DevNoticeBanner />
     </>
   );
 }

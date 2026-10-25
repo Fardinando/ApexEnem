@@ -152,8 +152,22 @@ export default function PublicLayout({
               </ul>
             </div>
           </div>
-          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 text-center text-xs text-slate-400">
-            ApexEnem © {new Date().getFullYear()} — Plataforma Educacional Adaptativa
+          <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col items-center gap-2 text-xs text-slate-400">
+            <div className="text-center">
+              ApexEnem © {new Date().getFullYear()} — Plataforma Educacional Adaptativa
+            </div>
+            <div className="flex items-center gap-1.5">
+              <span>Desenvolvido por</span>
+              <a
+                href="https://marmitacode.vercel.app"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="font-bold tracking-tight bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent hover:from-amber-400 hover:to-orange-500 transition"
+                aria-label="MarmitaCode — abre em nova aba"
+              >
+                MarmitaCode
+              </a>
+            </div>
           </div>
         </div>
       </footer>

@@ -177,9 +177,11 @@ app.use("/api/", apiLimiter);
 app.use((req, res, next) => {
   res.setHeader("X-Content-Type-Options", "nosniff");
   res.setHeader("X-Frame-Options", "DENY");
-  res.setHeader("X-XSS-Protection", "1; mode=block");
   res.setHeader("Referrer-Policy", "strict-origin-when-cross-origin");
-  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=()");
+  res.setHeader("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), magnetometer=(), gyroscope=(), accelerometer=(), interest-cohort=()");
+  res.setHeader("Cross-Origin-Opener-Policy", "same-origin");
+  res.setHeader("Cross-Origin-Resource-Policy", "same-origin");
+  res.setHeader("X-Permitted-Cross-Domain-Policies", "none");
   res.setHeader("Content-Security-Policy", [
     "default-src 'self'",
     "script-src 'self' 'unsafe-inline' https://pagead2.googlesyndication.com https://partner.googleadservices.com https://tpc.googlesyndication.com https://www.googletagservices.com https://adservice.google.com https://securepubads.g.doubleclick.net https://www.googletagmanager.com https://www.google-analytics.com https://js.hcaptcha.com https://*.hcaptcha.com",
@@ -190,15 +192,24 @@ app.use((req, res, next) => {
     "img-src 'self' data: https://storage.googleapis.com https://pagead2.googlesyndication.com https://*.gstatic.com https://*.googleusercontent.com https://www.google-analytics.com",
     "object-src 'none'",
     "base-uri 'self'",
+    "form-action 'self'",
     "frame-ancestors 'none'",
+    "upgrade-insecure-requests",
   ].join("; "));
-  res.setHeader("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload");
+  res.setHeader("Strict-Transport-Security", "max-age=63072000; includeSubDomains; preload");
   next();
 });
 
+const DEFAULT_ALLOWED_ORIGINS = [
+  "https://apexenem.com.br",
+  "https://www.apexenem.com.br",
+  "https://apexenem.vercel.app",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
 const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map(o => o.trim())
-  : ["http://localhost:5173", "http://localhost:3000"];
+  : DEFAULT_ALLOWED_ORIGINS;
 app.use((req, res, next) => {
   const origin = req.headers.origin;
   if (origin && ALLOWED_ORIGINS.includes(origin)) {
@@ -781,6 +792,9 @@ Apenas JSON puro.`;
       const data = extractJsonFromText(raw);
       if (!data?.categories) {
         return res.status(503).json({ error: "Resposta da IA inválida. Tente novamente." });
+      }
+      if (Array.isArray(data.categories)) {
+        await verifyItemTitles(data.categories);
       }
       return res.json({ theme, ...normalizeRepertoires(data) });
     } catch (err: any) {
@@ -1981,7 +1995,9 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
   }
 }
 
-app.post("/api/send-confirmation", validateBody(z.object({ email: z.string().email(), code: z.string().min(4).max(12) })), async (req, res) => {
+app.post("/api/send-confirmation",
+  distributedRateLimit({ name: "send-confirmation", max: 5, windowSec: 3600 }),
+  validateBody(z.object({ email: z.string().email(), code: z.string().min(4).max(12) })), async (req, res) => {
   const { email, code } = req.body;
 
   let token: string;
@@ -2228,7 +2244,10 @@ app.get("/api/stats", async (_req, res) => {
   sendStats({ totalUsers, regionCounts, tablesExist });
 });
 
-app.post("/api/delete-account", async (req, res) => {
+app.post("/api/delete-account",
+  distributedRateLimit({ name: "delete-account", max: 3, windowSec: 3600 }),
+  validateBody(z.object({ confirm: z.literal("APAGAR MINHA CONTA") })),
+  async (req, res) => {
   if (!supabaseAdmin) {
     return res.status(500).json({ error: "Serviço de autenticação indisponível." });
   }
