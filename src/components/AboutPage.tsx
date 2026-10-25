@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion } from 'motion/react';
 import Logo from './Logo';
+import MarmitaCodeCredit from './MarmitaCodeCredit';
 import {
   Sparkles, ArrowRight, BookOpen, Brain, BarChart3,
   PenLine, Shield, Rocket, Target, Eye, Heart, LineChart, Users,
@@ -468,6 +469,9 @@ export default function AboutPage({
           <div className="pt-6 border-t border-slate-100 dark:border-slate-800 flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-xs text-slate-400">ApexEnem © 2026 — Plataforma Educacional Adaptativa</p>
             <p className="text-xs text-slate-400">Feito com 💙 para estudantes brasileiros</p>
+          </div>
+          <div className="pt-4 flex justify-center">
+            <MarmitaCodeCredit />
           </div>
         </div>
       </footer>

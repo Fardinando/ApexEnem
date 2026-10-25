@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { supabase } from '../lib/supabase';
 import { Mail, Lock, Eye, EyeOff, ArrowRight, User, MapPin, Globe, CheckCircle, Send, X } from 'lucide-react';
 import Logo from './Logo';
+import MarmitaCodeCredit from './MarmitaCodeCredit';
 import type { RegionBR } from '../types';
 import { REGIONS as BRAZIL_REGIONS, STATES, getCitiesByState, getStatesByRegion } from '../data/brazil-locations';
 
@@ -168,7 +169,10 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
   };
 
   return (
-    <div className={`min-h-screen bg-[#fcf8ff] dark:bg-[#0a0814] text-[#1b1b24] dark:text-[#f3effc] transition-colors duration-300 ${step === 'confirm' ? 'flex items-center justify-center p-4' : 'grid grid-cols-1 lg:grid-cols-12'}`}>
+    <div className={`relative min-h-screen bg-[#fcf8ff] dark:bg-[#0a0814] text-[#1b1b24] dark:text-[#f3effc] transition-colors duration-300 ${step === 'confirm' ? 'flex items-center justify-center p-4 pb-14' : 'grid grid-cols-1 lg:grid-cols-12 pb-10'}`}>
+      <div className="absolute bottom-3 inset-x-0 flex justify-center z-10 pointer-events-none">
+        <div className="pointer-events-auto"><MarmitaCodeCredit /></div>
+      </div>
       {step === 'confirm' ? (
         <div className="w-full max-w-md animate-fade-in">
           <div className="bg-white dark:bg-[#1e293b] p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl text-center space-y-6">

@@ -1,6 +1,7 @@
 import React from 'react';
 import { RotateCcw } from 'lucide-react';
 import Logo from './Logo';
+import MarmitaCodeCredit from './MarmitaCodeCredit';
 
 interface Section {
   title: string;
@@ -166,6 +167,9 @@ export default function RefundPolicyPage({
               </section>
             ))}
           </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 pb-10 pt-4 flex justify-center">
+          <MarmitaCodeCredit />
         </div>
       </main>
     </div>

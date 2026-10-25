@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'motion/react';
 import { Sparkles, BookOpen, PenLine, BarChart3, Users, ArrowRight, ChevronDown, Brain, Shield, Zap, MapPin, ChevronRight, X } from 'lucide-react';
 import { REGIONS, REGION_COLORS, STATES, getStatesByRegion, getCitiesByState, type RegionBR } from '../data/brazil-locations';
 import Logo from './Logo';
+import MarmitaCodeCredit from './MarmitaCodeCredit';
 import { RepertoireSearch } from './RepertoiresView';
 import { REGION_MAP_DATA, BRAZIL_VIEWBOX, getStateBBox } from '../data/brazil-map-paths';
 import { CITY_COORDINATES } from '../data/brazil-city-coordinates';
@@ -643,8 +644,9 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
               <a href="/reembolso" onClick={(e) => { e.preventDefault(); window.history.pushState({}, '', '/reembolso'); window.dispatchEvent(new Event('popstate')); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Política de Reembolso</a>
             </nav>
           </div>
-          <div className="text-center text-xs text-slate-400">
+          <div className="text-center text-xs text-slate-400 flex flex-col items-center gap-2">
             <span>Feito com 💙 para estudantes brasileiros</span>
+            <MarmitaCodeCredit />
           </div>
         </div>
       </footer>

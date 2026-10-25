@@ -1,6 +1,7 @@
 import React from 'react';
 import Logo from './Logo';
 import { ShieldCheck } from 'lucide-react';
+import MarmitaCodeCredit from './MarmitaCodeCredit';
 
 interface SubSection {
   title?: string;
@@ -388,6 +389,9 @@ export default function PrivacyPage({
               Entendi e quero criar minha conta
             </button>
           </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 pb-10 pt-4 flex justify-center">
+          <MarmitaCodeCredit />
         </div>
       </main>
     </div>

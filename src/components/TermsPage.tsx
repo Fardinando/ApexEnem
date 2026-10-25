@@ -1,6 +1,7 @@
 import React from 'react';
 import Logo from './Logo';
 import { ScrollText } from 'lucide-react';
+import MarmitaCodeCredit from './MarmitaCodeCredit';
 
 const TERM_SECTIONS = [
   {
@@ -278,6 +279,9 @@ export default function TermsPage({
               Concordo e quero criar minha conta
             </button>
           </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 pb-10 pt-4 flex justify-center">
+          <MarmitaCodeCredit />
         </div>
       </main>
     </div>

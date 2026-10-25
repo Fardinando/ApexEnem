@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, X, ChevronRight } from 'lucide-react';
 import Logo from './Logo';
+import MarmitaCodeCredit from './MarmitaCodeCredit';
 import { navigate, isActive } from '../lib/nav';
 
 export interface Crumb {
@@ -156,18 +157,7 @@ export default function PublicLayout({
             <div className="text-center">
               ApexEnem © {new Date().getFullYear()} — Plataforma Educacional Adaptativa
             </div>
-            <div className="flex items-center gap-1.5">
-              <span>Desenvolvido por</span>
-              <a
-                href="https://marmitacode.vercel.app"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-bold tracking-tight bg-gradient-to-r from-amber-500 to-orange-600 bg-clip-text text-transparent hover:from-amber-400 hover:to-orange-500 transition"
-                aria-label="MarmitaCode — abre em nova aba"
-              >
-                MarmitaCode
-              </a>
-            </div>
+            <MarmitaCodeCredit />
           </div>
         </div>
       </footer>

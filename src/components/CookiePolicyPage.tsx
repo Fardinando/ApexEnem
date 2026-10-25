@@ -1,6 +1,7 @@
 import React from 'react';
 import Logo from './Logo';
 import { Cookie } from 'lucide-react';
+import MarmitaCodeCredit from './MarmitaCodeCredit';
 
 interface SubSection {
   title?: string;
@@ -301,6 +302,9 @@ export default function CookiePolicyPage({
               Entendi e quero criar minha conta
             </button>
           </div>
+        </div>
+        <div className="max-w-4xl mx-auto px-4 pb-10 pt-4 flex justify-center">
+          <MarmitaCodeCredit />
         </div>
       </main>
     </div>
