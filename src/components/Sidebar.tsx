@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, HelpCircle, BookOpen,
   Settings, Flame, LogOut, Target, Sun, Moon, X, Plus, User, Zap,
-  GraduationCap, Coins, Crown, Library, PlayCircle
+  GraduationCap, Coins, Crown, Library, PlayCircle, Users
 } from 'lucide-react';
 import { UserProfile, PlanId } from '../types';
 import { getLevelFromXp, getLevelTitle, type GamificationStats } from '../lib/gamification';
@@ -48,9 +48,10 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
 
   const hasTeacher = planHasTeacherAI(plan);
   const repertorioTab = { id: 'repertorios', label: 'Repertórios', icon: Library };
+  const salasTab      = { id: 'salas',       label: 'Salas',       icon: Users   };
   const navTabs = hasTeacher
-    ? [...MAIN_TABS, repertorioTab, { id: 'teacher', label: 'Professor IA', icon: GraduationCap }]
-    : [...MAIN_TABS, repertorioTab];
+    ? [...MAIN_TABS, repertorioTab, salasTab, { id: 'teacher', label: 'Professor IA', icon: GraduationCap }]
+    : [...MAIN_TABS, repertorioTab, salasTab];
 
   return (
     <>
@@ -129,6 +130,9 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
               )}
               <button type="button" onClick={() => { setActiveTab('repertorios'); setShowMoreSheet(false); }} className="w-full py-3 px-4 rounded-xl text-left text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#0f172a] flex items-center gap-3 transition cursor-pointer">
                 <Library className="h-4.5 w-4.5" /> Repertórios
+              </button>
+              <button type="button" onClick={() => { setActiveTab('salas'); setShowMoreSheet(false); }} className="w-full py-3 px-4 rounded-xl text-left text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#0f172a] flex items-center gap-3 transition cursor-pointer">
+                <Users className="h-4.5 w-4.5" /> Salas (competição)
               </button>
               <button type="button" onClick={() => { setShowMoreSheet(false); window.history.pushState({}, '', '/planos'); window.dispatchEvent(new Event('popstate')); }} className="w-full py-3 px-4 rounded-xl text-left text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-[#0f172a] flex items-center gap-3 transition cursor-pointer">
                 <Crown className="h-4.5 w-4.5 text-amber-500" /> Planos & Moedas

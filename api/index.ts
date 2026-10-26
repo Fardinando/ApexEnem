@@ -232,7 +232,8 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/openrouter-chat", "/generate-learning-exercises",
     "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
     "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request",
-    "/contact", "/denuncia", "/password-reset-request"
+    "/contact", "/denuncia", "/password-reset-request",
+    "/send-parental-notice", "/responsavel/dashboard"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
     if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/repertoires/status/") || req.path.startsWith("/status/")) return next();
@@ -619,6 +620,16 @@ app.get("/api/auth-access", (req, res) => {
 //   - livro       → Google Books + Wikipédia
 // Assim o link nunca cai em busca vazia: o JustWatch sempre mostra a obra e em
 // quais serviços ela está (ou avisa honestamente que não está disponível).
+// Links da pesquisa de repertórios. Para obras com venda direta (livros), damos
+// prioridade a Amazon.br com tag de afiliado (AMAZON_AFFILIATE_TAG). Em filmes
+// e séries continuamos no JustWatch (agregador honesto de "onde assistir") +
+// YouTube como fallback — não há programa de afiliado útil para streaming.
+const AMAZON_TAG = process.env.AMAZON_AFFILIATE_TAG || "";
+function amazonSearchUrl(query: string): string {
+  const base = `https://www.amazon.com.br/s?k=${encodeURIComponent(query)}`;
+  return AMAZON_TAG ? `${base}&tag=${encodeURIComponent(AMAZON_TAG)}` : base;
+}
+
 function watchLinksFor(title: string, type: string): { platform: string; url: string }[] {
   const clean = title.trim();
   if (!clean) return [];
@@ -627,11 +638,13 @@ function watchLinksFor(title: string, type: string): { platform: string; url: st
   if (t === "filme" || t === "série" || t === "serie" || t === "documentário" || t === "documentario" || t === "animação" || t === "animacao") {
     return [
       { platform: "Onde assistir", url: `https://www.justwatch.com/br/busca?q=${q}` },
+      { platform: "Comprar/Alugar (Amazon)", url: amazonSearchUrl(`${clean} filme`) },
       { platform: "YouTube", url: `https://www.youtube.com/results?search_query=${q}` },
     ];
   }
   if (t === "livro" || t === "romance" || t === "poema" || t === "peça" || t === "peca" || t === "quadrinhos" || t === "mangá" || t === "manga") {
     return [
+      { platform: "Comprar na Amazon", url: amazonSearchUrl(`${clean} livro`) },
       { platform: "Google Livros", url: `https://www.google.com/search?tbm=bks&q=${q}` },
       { platform: "Wikipédia", url: `https://pt.wikipedia.org/w/index.php?search=${q}` },
     ];
@@ -1995,6 +2008,104 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
   }
 }
 
+// ─── Painel do Responsável (menores de 18, ECA Digital + LGPD Art. 14) ──────
+// Signup de menor dispara e-mail ao responsável com link assinado HMAC;
+// link mostra uma página read-only com nome, idade e atividade recente.
+function signParentToken(studentId: string): string {
+  if (!HMAC_SECRET) throw new Error("HMAC_SECRET não configurado");
+  return crypto.createHmac("sha256", HMAC_SECRET).update(`parent:${studentId}`).digest("hex");
+}
+
+function verifyParentToken(studentId: string, token: string): boolean {
+  try {
+    const expected = signParentToken(studentId);
+    if (token.length !== expected.length) return false;
+    return crypto.timingSafeEqual(Buffer.from(token), Buffer.from(expected));
+  } catch { return false; }
+}
+
+app.post("/api/send-parental-notice",
+  distributedRateLimit({ name: "parental-notice", max: 10, windowSec: 3600 }),
+  validateBody(z.object({
+    student_id: z.string().uuid(),
+    student_name: z.string().trim().min(1).max(120),
+    student_email: z.string().email(),
+    parent_email: z.string().email(),
+    birthdate: z.string().min(8).max(20),
+  })),
+  async (req, res) => {
+    const { student_id, student_name, student_email, parent_email, birthdate } = req.body;
+    let token: string;
+    try { token = signParentToken(student_id); } catch {
+      return res.status(500).json({ error: "Serviço de responsável indisponível." });
+    }
+    const link = `${getBaseUrl()}/responsavel?s=${encodeURIComponent(student_id)}&t=${encodeURIComponent(token)}`;
+    const html = `
+<!DOCTYPE html>
+<html lang="pt-BR"><body style="margin:0;padding:0;background:#f0eeff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1b1b24">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="padding:32px 16px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:560px;background:#fff;border-radius:24px;overflow:hidden;box-shadow:0 10px 25px rgba(27,21,116,0.08)">
+        <tr><td style="background:linear-gradient(135deg,#1b1574 0%,#3525cd 50%,#712ae2 100%);padding:40px 32px;text-align:center">
+          <h1 style="margin:0 0 8px;color:#fff;font-size:24px;font-weight:800">ApexEnem — Aviso ao responsável</h1>
+          <p style="margin:0;color:rgba(255,255,255,.9);font-size:14px">Confirmação de cadastro de estudante menor de 18 anos</p>
+        </td></tr>
+        <tr><td style="padding:40px 32px">
+          <p style="margin:0 0 16px;color:#334155;font-size:15px;line-height:1.6">
+            Olá! Você está recebendo este e-mail porque <strong>${escapeHtml(student_name)}</strong> (${escapeHtml(student_email)}, nascimento ${escapeHtml(birthdate)}) indicou você como responsável legal durante o cadastro no <strong>ApexEnem</strong>, uma plataforma brasileira de preparação para o ENEM.
+          </p>
+          <p style="margin:0 0 16px;color:#334155;font-size:15px;line-height:1.6">
+            Como exige a <strong>LGPD (Art. 14)</strong> e o <strong>ECA Digital (Lei nº 15.211/2025)</strong>, o cadastro de adolescentes depende da sua autorização expressa. Clique no botão abaixo para acessar o <strong>Painel do Responsável</strong>, onde você pode:
+          </p>
+          <ul style="margin:0 0 24px;padding-left:20px;color:#475569;font-size:14px;line-height:1.8">
+            <li>Ver qual conteúdo o(a) estudante tem acessado</li>
+            <li>Acompanhar progresso e horas de estudo</li>
+            <li>Pedir a exclusão da conta a qualquer momento (direito ao esquecimento)</li>
+            <li>Entrar em contato direto com nossa equipe</li>
+          </ul>
+          <p style="text-align:center;margin:32px 0"><a href="${link}" style="display:inline-block;padding:14px 36px;background:#2563eb;color:#fff;border-radius:12px;text-decoration:none;font-weight:800;font-size:15px;box-shadow:0 4px 12px rgba(37,99,235,.3)">Acessar painel do responsável</a></p>
+          <p style="margin:0 0 12px;color:#64748b;font-size:12px;line-height:1.6">Se preferir, copie e cole este link:</p>
+          <p style="margin:0 0 20px;padding:12px;background:#f1f5f9;border-radius:8px;color:#475569;font-size:11px;font-family:'Courier New',monospace;word-break:break-all;line-height:1.5">${escapeHtml(link)}</p>
+          <div style="padding:16px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px">
+            <p style="margin:0;color:#92400e;font-size:12px;line-height:1.5"><strong>Não autorizou?</strong> Responda a este e-mail ou escreva para apexenem@gmail.com — removemos a conta imediatamente.</p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:24px 32px 32px;background:#f8fafc;border-top:1px solid #e2e8f0">
+          <p style="margin:0;color:#94a3b8;font-size:11px;text-align:center">ApexEnem © ${new Date().getFullYear()} — Projeto independente, sem vínculo com INEP/MEC.</p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body></html>`;
+    const sent = await sendEmail(parent_email, "Autorização para cadastro de menor — ApexEnem", html);
+    if (!sent) console.log(`[parental-notice simulated] ${parent_email}: ${link}`);
+    return res.json({ ok: true });
+  }
+);
+
+app.get("/api/responsavel/dashboard", async (req, res) => {
+  const studentId = String(req.query.s || "");
+  const token     = String(req.query.t || "");
+  if (!studentId || !token || !verifyParentToken(studentId, token)) {
+    return res.status(401).json({ error: "Link inválido ou expirado." });
+  }
+  if (!supabaseAdmin) {
+    return res.status(503).json({ error: "Serviço indisponível." });
+  }
+  const [profileRes, logsRes, essaysRes, simRes] = await Promise.all([
+    supabaseAdmin.from("profiles").select("name,birthdate,parent_email,serie,target_score,created_at,last_login_date,longest_streak").eq("id", studentId).maybeSingle(),
+    supabaseAdmin.from("activity_logs").select("type,title,date").eq("user_id", studentId).order("date", { ascending: false }).limit(20),
+    supabaseAdmin.from("essay_corrections").select("score,title,created_at").eq("user_id", studentId).order("created_at", { ascending: false }).limit(10),
+    supabaseAdmin.from("simulado_history").select("area,total,correct,created_at").eq("user_id", studentId).order("created_at", { ascending: false }).limit(10),
+  ]);
+  return res.json({
+    profile: profileRes.data || null,
+    activity: logsRes.data || [],
+    essays: essaysRes.data || [],
+    simulados: simRes.data || [],
+  });
+});
+
 // ─── Password reset com e-mail HTML bonito ───────────────────────────────────
 // Usa supabaseAdmin.auth.admin.generateLink({type:'recovery'}) para gerar o
 // link oficial do Supabase e envelopa num e-mail HTML customizado via Resend.
@@ -2367,6 +2478,105 @@ app.post("/api/delete-account",
   }
 
   return res.json({ success: true });
+});
+
+// ─── Salas (competição com amigos) ───────────────────────────────────────────
+function genRoomCode(): string {
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sem 0/O/1/I
+  let out = "";
+  const bytes = crypto.randomBytes(6);
+  for (let i = 0; i < 6; i++) out += alphabet[bytes[i] % alphabet.length];
+  return out;
+}
+
+app.post("/api/salas",
+  distributedRateLimit({ name: "sala-create", max: 10, windowSec: 3600 }),
+  validateBody(z.object({ name: z.string().trim().min(2).max(60), max_members: z.number().int().min(2).max(50).optional() })),
+  async (req, res) => {
+    if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
+    const { name, max_members } = req.body;
+    const code = genRoomCode();
+    const { data, error } = await supabaseAdmin.from("salas").insert({
+      name, code, owner_id: req.user.id, max_members: max_members || 20
+    }).select().single();
+    if (error) return res.status(500).json({ error: "Falha ao criar sala." });
+    await supabaseAdmin.from("sala_membros").insert({ sala_id: data.id, user_id: req.user.id, xp_sala: 0 });
+    return res.json({ sala: data });
+  }
+);
+
+app.post("/api/salas/join",
+  distributedRateLimit({ name: "sala-join", max: 30, windowSec: 3600 }),
+  validateBody(z.object({ code: z.string().trim().min(4).max(20) })),
+  async (req, res) => {
+    if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
+    const code = String(req.body.code).toUpperCase();
+    const { data: sala } = await supabaseAdmin.from("salas").select("*").eq("code", code).maybeSingle();
+    if (!sala) return res.status(404).json({ error: "Código inválido." });
+    const { count } = await supabaseAdmin.from("sala_membros").select("*", { count: "exact", head: true }).eq("sala_id", sala.id);
+    if ((count || 0) >= sala.max_members) return res.status(409).json({ error: "Sala lotada." });
+    const { error } = await supabaseAdmin.from("sala_membros").upsert({ sala_id: sala.id, user_id: req.user.id, xp_sala: 0 });
+    if (error) return res.status(500).json({ error: "Falha ao entrar na sala." });
+    return res.json({ sala });
+  }
+);
+
+app.get("/api/salas", async (req, res) => {
+  if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
+  const { data: mine } = await supabaseAdmin
+    .from("sala_membros").select("sala_id, salas:salas(id, name, code, owner_id, created_at)")
+    .eq("user_id", req.user.id);
+  return res.json({ salas: (mine || []).map((m: any) => m.salas).filter(Boolean) });
+});
+
+app.get("/api/salas/:id", async (req, res) => {
+  if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
+  const salaId = req.params.id;
+  // confirma que o user é membro
+  const { data: isMember } = await supabaseAdmin
+    .from("sala_membros").select("sala_id").eq("sala_id", salaId).eq("user_id", req.user.id).maybeSingle();
+  if (!isMember) return res.status(403).json({ error: "Você não é membro desta sala." });
+  const { data: sala } = await supabaseAdmin.from("salas").select("*").eq("id", salaId).maybeSingle();
+  if (!sala) return res.status(404).json({ error: "Sala não encontrada." });
+  const { data: membros } = await supabaseAdmin
+    .from("sala_membros").select("user_id, xp_sala, joined_at")
+    .eq("sala_id", salaId).order("xp_sala", { ascending: false });
+  // nomes dos membros
+  const ids = (membros || []).map((m: any) => m.user_id);
+  const { data: profiles } = ids.length
+    ? await supabaseAdmin.from("profiles").select("id, name").in("id", ids)
+    : { data: [] };
+  const nameMap: Record<string, string> = {};
+  (profiles || []).forEach((p: any) => { nameMap[p.id] = p.name || 'Estudante'; });
+  const ranking = (membros || []).map((m: any, i: number) => ({
+    user_id: m.user_id,
+    name: nameMap[m.user_id] || 'Estudante',
+    xp_sala: m.xp_sala,
+    position: i + 1,
+    is_me: m.user_id === req.user.id,
+  }));
+  return res.json({ sala, ranking });
+});
+
+app.post("/api/salas/:id/xp",
+  distributedRateLimit({ name: "sala-xp", max: 300, windowSec: 3600 }),
+  validateBody(z.object({ delta: z.number().int().min(1).max(1000) })),
+  async (req, res) => {
+    if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
+    const salaId = req.params.id;
+    const { data: cur } = await supabaseAdmin
+      .from("sala_membros").select("xp_sala").eq("sala_id", salaId).eq("user_id", req.user.id).maybeSingle();
+    if (!cur) return res.status(403).json({ error: "Você não é membro desta sala." });
+    const novo = (cur.xp_sala || 0) + req.body.delta;
+    await supabaseAdmin.from("sala_membros").update({ xp_sala: novo }).eq("sala_id", salaId).eq("user_id", req.user.id);
+    return res.json({ xp_sala: novo });
+  }
+);
+
+app.delete("/api/salas/:id/leave", async (req, res) => {
+  if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
+  await supabaseAdmin.from("sala_membros").delete().eq("sala_id", req.params.id).eq("user_id", req.user.id);
+  return res.json({ ok: true });
 });
 
 // ─── Denúncia extrajudicial (ECA Digital Lei 15.211/2025) ────────────────────

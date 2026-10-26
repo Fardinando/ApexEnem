@@ -19,6 +19,7 @@ import SubscriptionTermsPage from './components/SubscriptionTermsPage';
 import RefundPolicyPage from './components/RefundPolicyPage';
 import DenunciarPage from './components/DenunciarPage';
 import ResetPasswordPage from './components/ResetPasswordPage';
+import ResponsavelPage from './components/ResponsavelPage';
 import BlogView from './components/BlogView';
 import AuthorsView from './components/AuthorsView';
 import ContactPage from './components/ContactPage';
@@ -33,6 +34,7 @@ const SimuladosView = lazy(() => import('./components/SimuladosView'));
 const ConfiguracoesView = lazy(() => import('./components/ConfiguracoesView'));
 const AprendizadoView = lazy(() => import('./components/AprendizadoView'));
 const AulasView = lazy(() => import('./components/AulasView'));
+const SalasView = lazy(() => import('./components/SalasView'));
 const PerfilView = lazy(() => import('./components/PerfilView'));
 const TeacherPlanView = lazy(() => import('./components/TeacherPlanView'));
 
@@ -561,6 +563,15 @@ export default function App() {
     );
   }
 
+  if (currentPath === '/responsavel') {
+    return (
+      <>
+        <ResponsavelPage />
+        <CookieConsentBanner />
+      </>
+    );
+  }
+
   if (currentPath === '/blog' || currentPath.startsWith('/blog/')) {
     const slug = currentPath.startsWith('/blog/') ? decodeURIComponent(currentPath.slice('/blog/'.length)) : undefined;
     return (
@@ -688,6 +699,9 @@ export default function App() {
           )}
           {activeTab === 'aulas' && (
             <AulasView currentUser={currentUser as any} />
+          )}
+          {activeTab === 'salas' && (
+            <SalasView currentUser={currentUser as any} />
           )}
           {activeTab === 'aprendizado' && (
             <AprendizadoView

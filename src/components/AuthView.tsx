@@ -236,7 +236,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
     }
     setLoading(true);
     const isMinor = age < 18;
-    const { error } = await supabase.auth.signUp({
+    const { data: signupData, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -265,6 +265,23 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
       setCaptchaToken('');
       return;
     }
+
+    // Se menor, dispara e-mail ao responsável com link do Painel do Responsável
+    const studentId = signupData?.user?.id;
+    if (isMinor && studentId) {
+      fetch('/api/send-parental-notice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: studentId,
+          student_name: name,
+          student_email: email.toLowerCase().trim(),
+          parent_email: parentEmail.toLowerCase().trim(),
+          birthdate,
+        }),
+      }).catch(() => { /* não bloqueia o cadastro se falhar */ });
+    }
+
     setStep('confirm');
     setSuccMessage(`Enviamos um e-mail de confirmação para ${email.toLowerCase()}. Verifique sua caixa de entrada e clique no link para ativar sua conta.`);
   };
