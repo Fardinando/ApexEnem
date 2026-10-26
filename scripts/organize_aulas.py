@@ -29,6 +29,7 @@ Modelos (faster-whisper): tiny / base / small / medium / large-v3
 
 from __future__ import annotations
 import argparse
+import io
 import json
 import os
 import re
@@ -36,7 +37,16 @@ import shutil
 import sys
 import unicodedata
 from pathlib import Path
-from typing import Any
+from typing import Any, Optional, Tuple, List, Dict
+
+# Força stdout/stderr UTF-8 no Windows (console cp1252 explode em "→" e acentos)
+if sys.platform == "win32":
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
+        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
 
 VIDEO_EXTS = {".mp4", ".mkv", ".mov", ".avi", ".webm", ".m4v", ".ts", ".flv"}
 TRANSCRIBE_SECONDS = 180  # só os primeiros 3min — rapidíssimo e já identifica
@@ -44,23 +54,30 @@ TRANSCRIBE_SECONDS = 180  # só os primeiros 3min — rapidíssimo e já identif
 # ─── Dicionário de áreas/tópicos ──────────────────────────────────────────────
 # Cada entrada: (area_curta, assunto_descritivo, [palavras-chave em minusculas
 # sem acento])
-TOPICS: list[tuple[str, str, list[str]]] = [
+TOPICS: List[Tuple[str, str, List[str]]] = [
     # Matemática
     ("Matematica", "Funcao de Primeiro Grau", ["funcao do primeiro grau", "funcao afim", "funcao linear"]),
-    ("Matematica", "Funcao de Segundo Grau", ["funcao do segundo grau", "funcao quadratica", "parabola", "vertice da parabola"]),
-    ("Matematica", "Funcao Exponencial", ["funcao exponencial", "exponencial", "crescimento exponencial"]),
-    ("Matematica", "Logaritmo", ["logaritmo", "log na base", "propriedade do logaritmo"]),
-    ("Matematica", "Trigonometria", ["seno", "cosseno", "tangente", "radiano", "arco", "ciclo trigonometrico", "lei dos senos", "lei dos cossenos"]),
-    ("Matematica", "Geometria Plana", ["area do triangulo", "area do circulo", "poligono", "pitagoras", "teorema de pitagoras", "perimetro"]),
-    ("Matematica", "Geometria Espacial", ["volume do cubo", "volume do cilindro", "volume da piramide", "volume da esfera", "prisma", "cone"]),
-    ("Matematica", "Geometria Analitica", ["geometria analitica", "distancia entre pontos", "equacao da reta", "coeficiente angular", "plano cartesiano"]),
-    ("Matematica", "Progressao Aritmetica e Geometrica", ["progressao aritmetica", "progressao geometrica", "razao da pa", "razao da pg"]),
-    ("Matematica", "Probabilidade", ["probabilidade", "espaco amostral", "evento provavel"]),
-    ("Matematica", "Analise Combinatoria", ["combinatoria", "permutacao", "arranjo", "combinacao", "fatorial"]),
-    ("Matematica", "Estatistica", ["estatistica", "media aritmetica", "mediana", "moda", "desvio padrao", "variancia"]),
-    ("Matematica", "Matrizes e Determinantes", ["matriz", "determinante", "regra de sarrus"]),
-    ("Matematica", "Porcentagem e Juros", ["porcentagem", "juros simples", "juros compostos", "desconto"]),
-    ("Matematica", "Razao e Proporcao", ["razao e proporcao", "regra de tres"]),
+    ("Matematica", "Funcao de Segundo Grau", ["funcao do segundo grau", "funcao quadratica", "funcao de segundo grau", "parabola", "vertice da parabola", "bhaskara", "delta positivo", "concavidade"]),
+    ("Matematica", "Funcao Exponencial", ["funcao exponencial", "crescimento exponencial", "decrescimento exponencial"]),
+    ("Matematica", "Logaritmo", ["logaritmo", "log na base", "propriedade do logaritmo", "logaritmando"]),
+    ("Matematica", "Trigonometria", ["seno", "cosseno", "tangente", "radiano", "ciclo trigonometrico", "lei dos senos", "lei dos cossenos", "razoes trigonometricas"]),
+    ("Matematica", "Conjuntos", ["conjunto", "conjuntos", "uniao de conjuntos", "interseccao", "diferenca de conjuntos", "bota e tira", "diagrama de venn", "elemento pertence", "subconjunto"]),
+    ("Matematica", "Radiciacao e Potenciacao", ["raiz quadrada", "raiz cubica", "radiciacao", "potenciacao", "expoente", "aproximacao de raiz"]),
+    ("Matematica", "Logica e Proposicoes", ["proposicao logica", "tabela verdade", "negacao logica", "conjuncao", "disjuncao"]),
+    ("Matematica", "Geometria Plana", ["area do triangulo", "area do circulo", "poligono", "pitagoras", "teorema de pitagoras", "perimetro", "angulo interno", "quadrilatero"]),
+    ("Matematica", "Geometria Espacial", ["volume do cubo", "volume do cilindro", "volume da piramide", "volume da esfera", "poliedro", "prisma reto", "tronco de cone"]),
+    ("Matematica", "Geometria Analitica", ["geometria analitica", "distancia entre pontos", "equacao da reta", "coeficiente angular", "plano cartesiano", "equacao da circunferencia"]),
+    ("Matematica", "Progressao Aritmetica", ["progressao aritmetica", "razao da pa", "termo geral da pa"]),
+    ("Matematica", "Progressao Geometrica", ["progressao geometrica", "razao da pg", "termo geral da pg", "soma dos termos da pg"]),
+    ("Matematica", "Probabilidade", ["probabilidade", "espaco amostral", "evento provavel", "eventos independentes"]),
+    ("Matematica", "Analise Combinatoria", ["analise combinatoria", "permutacao", "arranjo simples", "combinacao simples", "fatorial", "principio fundamental da contagem"]),
+    ("Matematica", "Estatistica", ["estatistica", "media aritmetica", "mediana", "moda estatistica", "desvio padrao", "variancia", "quartil"]),
+    ("Matematica", "Matrizes e Determinantes", ["matriz", "determinante", "regra de sarrus", "matriz inversa"]),
+    ("Matematica", "Matematica Financeira", ["matematica financeira", "juros simples", "juros compostos", "montante", "capital inicial", "desconto comercial"]),
+    ("Matematica", "Porcentagem", ["porcentagem", "aumento percentual", "desconto percentual"]),
+    ("Matematica", "Razao e Proporcao", ["razao e proporcao", "regra de tres", "grandezas proporcionais", "escala cartografica"]),
+    ("Matematica", "MMC e MDC", ["minimo multiplo comum", "mmc", "maximo divisor comum", "mdc"]),
+    ("Matematica", "Equacoes e Sistemas", ["equacao do primeiro grau", "equacao do segundo grau", "sistema de equacoes", "metodo da substituicao"]),
     # Física
     ("Natureza-Fisica", "Cinematica", ["cinematica", "movimento uniforme", "mru", "mruv", "velocidade media", "aceleracao"]),
     ("Natureza-Fisica", "Dinamica (Leis de Newton)", ["leis de newton", "forca resultante", "segunda lei de newton", "dinamica"]),
@@ -130,8 +147,10 @@ def normalize(s: str) -> str:
     return strip_accents(s).lower()
 
 
-def classify(text: str, fname: str) -> tuple[str, str, int]:
-    """Devolve (area, assunto, score). Score alto = mais confiança."""
+def classify(text: str, fname: str) -> Tuple[str, str, int]:
+    """Devolve (area, assunto, score). Score alto = mais confiança.
+    Casa cada keyword como palavra inteira (word-boundary) pra evitar que
+    substrings genéricas (ex.: 'cone' dentro de 'conectivos') contem."""
     hay = normalize(text + " \n " + fname)
     best_score = 0
     best = ("Outros", "Nao classificado")
@@ -139,15 +158,22 @@ def classify(text: str, fname: str) -> tuple[str, str, int]:
         score = 0
         for kw in keywords:
             kw_n = normalize(kw)
-            if kw_n in hay:
-                score += len(kw_n.split())  # frases contam mais
+            tokens = kw_n.split()
+            if len(tokens) >= 2:
+                # frase: substring é suficiente (frases longas raramente dão falso-positivo)
+                if kw_n in hay:
+                    score += len(tokens) * 2  # bônus pra frases
+            else:
+                # palavra única: exige word-boundary
+                if re.search(rf"\b{re.escape(kw_n)}\b", hay):
+                    score += 1
         if score > best_score:
             best_score = score
             best = (area, assunto)
     return best[0], best[1], best_score
 
 
-def detect_enem_questao(text: str, fname: str) -> tuple[str | None, str | None]:
+def detect_enem_questao(text: str, fname: str) -> Tuple[Optional[str], Optional[str]]:
     """Procura ano do ENEM e número da questão no texto + no nome do arquivo."""
     corpus = text + "\n" + fname
     ano_match = ENEM_RE.search(corpus)
@@ -190,7 +216,7 @@ def safe_component(s: str) -> str:
     return s[:120] or "Aula"
 
 
-def propor_destino(video: Path, area: str, assunto: str, ano: str | None, q: str | None, resolucao: bool) -> tuple[str, str]:
+def propor_destino(video: Path, area: str, assunto: str, ano: Optional[str], q: Optional[str], resolucao: bool) -> Tuple[str, str]:
     if resolucao and ano and q:
         novo_nome = f"Resolução de Questão ENEM {ano} - Questão {int(q)} - {assunto}{video.suffix.lower()}"
     elif resolucao and ano:
@@ -209,6 +235,10 @@ def main() -> int:
     ap.add_argument("--apply", action="store_true", help="Executa o plano (move/renomeia). Sem isso é dry-run.")
     ap.add_argument("--copy", action="store_true", help="Com --apply, copia em vez de mover (preserva originais).")
     ap.add_argument("--max-files", type=int, default=0, help="Limite de arquivos (0 = todos). Útil pra testar.")
+    ap.add_argument("--recursive", action="store_true", default=True, help="Varre subpastas (padrão: ligado).")
+    ap.add_argument("--no-recursive", dest="recursive", action="store_false", help="Só a raiz, não desce em subpastas.")
+    ap.add_argument("--skip-transcribe", action="store_true", help="Pula transcrição e classifica só pelo nome do arquivo + pasta pai (rápido, menos preciso).")
+    ap.add_argument("--reclassify", action="store_true", help="Lê plan.json existente, re-classifica usando o dicionário atual (sem transcrever de novo) e sobrescreve.")
     args = ap.parse_args()
 
     folder = Path(args.folder)
@@ -217,6 +247,38 @@ def main() -> int:
         return 1
 
     plan_path = folder / args.plan
+
+    # Modo reclassify: lê plan existente e refaz só a classificação
+    if args.reclassify:
+        if not plan_path.exists():
+            print(f"Plano não encontrado em {plan_path}.", file=sys.stderr)
+            return 2
+        plan = json.loads(plan_path.read_text(encoding="utf-8"))
+        for it in plan["items"]:
+            text = it.get("transcricao") or it.get("preview_transcricao", "")
+            v = Path(it["origem"])
+            try:
+                fname_ctx = f"{v.name} {' '.join(v.relative_to(folder).parts[:-1])}"
+            except ValueError:
+                fname_ctx = v.name
+            area, assunto, score = classify(text, fname_ctx)
+            ano, q = detect_enem_questao(text, fname_ctx)
+            resolucao = is_resolucao(text, fname_ctx) or bool(ano and q) or "quest" in normalize(fname_ctx)
+            pasta, novo = propor_destino(v, area, assunto, ano, q, resolucao)
+            it.update({
+                "area": area, "assunto": assunto,
+                "enem_ano": ano, "enem_questao": q,
+                "resolucao": resolucao, "confianca": score,
+                "destino_pasta": pasta, "destino_nome": novo,
+            })
+        plan_path.write_text(json.dumps(plan, ensure_ascii=False, indent=2), encoding="utf-8")
+        counts: Dict[str, int] = {}
+        for it in plan["items"]:
+            counts[it["destino_pasta"]] = counts.get(it["destino_pasta"], 0) + 1
+        print("Reclassificado. Distribuição por pasta:")
+        for k, v in sorted(counts.items(), key=lambda x: -x[1]):
+            print(f"  {k}: {v}")
+        return 0
 
     # Modo apply: carrega plano existente
     if args.apply:
@@ -228,13 +290,23 @@ def main() -> int:
         done = 0
         for it in plan["items"]:
             src = Path(it["origem"])
-            dst = folder / it["destino_pasta"] / it["destino_nome"]
-            dst.parent.mkdir(parents=True, exist_ok=True)
+            dst_dir = folder / it["destino_pasta"]
+            dst_dir.mkdir(parents=True, exist_ok=True)
+            base_name = it["destino_nome"]
+            dst = dst_dir / base_name
+            # Resolve colisão adicionando sufixo numérico
+            if dst.exists() and dst.resolve() != src.resolve():
+                stem = Path(base_name).stem
+                ext = Path(base_name).suffix
+                k = 2
+                while (dst_dir / f"{stem} ({k}){ext}").exists():
+                    k += 1
+                dst = dst_dir / f"{stem} ({k}){ext}"
             if not src.exists():
                 print(f"  SKIP (arquivo sumiu): {src.name}")
                 continue
-            if dst.exists():
-                print(f"  SKIP (destino já existe): {dst.name}")
+            if dst.resolve() == src.resolve():
+                print(f"  SKIP (ja no destino): {src.name}")
                 continue
             if args.copy:
                 shutil.copy2(src, dst)
@@ -246,16 +318,25 @@ def main() -> int:
         return 0
 
     # Modo dry-run: carrega modelo e analisa
-    try:
-        from faster_whisper import WhisperModel
-    except ImportError:
-        print("ERRO: faster-whisper não instalado. Rode:  pip install faster-whisper", file=sys.stderr)
-        return 3
+    model = None
+    if not args.skip_transcribe:
+        try:
+            from faster_whisper import WhisperModel
+        except ImportError:
+            print("ERRO: faster-whisper não instalado. Rode:  pip install faster-whisper", file=sys.stderr)
+            print("Ou passe --skip-transcribe pra classificar só pelo nome do arquivo.", file=sys.stderr)
+            return 3
+        print(f"Carregando modelo faster-whisper '{args.model}' (CPU)…")
+        model = WhisperModel(args.model, device="cpu", compute_type="int8")
 
-    print(f"Carregando modelo faster-whisper '{args.model}' (CPU)…")
-    model = WhisperModel(args.model, device="cpu", compute_type="int8")
+    def iter_videos(base: Path):
+        for p in sorted(base.rglob("*") if args.recursive else base.iterdir()):
+            if p.is_file() and p.suffix.lower() in VIDEO_EXTS:
+                # Não mexer em arquivos que já estão sob uma pasta de destino nossa
+                # (ex.: usuário rodou --apply antes e quer refazer)
+                yield p
 
-    videos = sorted(p for p in folder.iterdir() if p.suffix.lower() in VIDEO_EXTS and p.is_file())
+    videos = list(iter_videos(folder))
     if args.max_files:
         videos = videos[: args.max_files]
     if not videos:
@@ -263,20 +344,27 @@ def main() -> int:
         return 0
     print(f"Vídeos encontrados: {len(videos)}\n")
 
-    items: list[dict[str, Any]] = []
+    items: List[Dict[str, Any]] = []
     for i, v in enumerate(videos, 1):
-        print(f"[{i}/{len(videos)}] {v.name}")
-        text = transcribe(v, model)
-        preview = re.sub(r"\s+", " ", text)[:160]
-        print(f"  Prévia: {preview}{'…' if len(text) > 160 else ''}")
-        area, assunto, score = classify(text, v.name)
-        ano, q = detect_enem_questao(text, v.name)
-        resolucao = is_resolucao(text, v.name) or bool(ano and q)
+        rel = v.relative_to(folder)
+        print(f"[{i}/{len(videos)}] {rel}")
+        # Combina nome do arquivo com nome da(s) pasta(s) pai pra dar contexto
+        fname_ctx = f"{v.name} {' '.join(part for part in v.relative_to(folder).parts[:-1])}"
+        text = ""
+        if model is not None:
+            text = transcribe(v, model)
+            preview = re.sub(r"\s+", " ", text)[:160]
+            print(f"  Prévia: {preview}{'…' if len(text) > 160 else ''}")
+        area, assunto, score = classify(text, fname_ctx)
+        ano, q = detect_enem_questao(text, fname_ctx)
+        resolucao = is_resolucao(text, fname_ctx) or bool(ano and q) or "quest" in normalize(fname_ctx)
         pasta, novo = propor_destino(v, area, assunto, ano, q, resolucao)
         print(f"  → {pasta}/{novo}  (confiança={score}{', resolução' if resolucao else ''})\n")
         items.append({
             "origem": str(v),
-            "preview_transcricao": preview,
+            "origem_rel": str(rel),
+            "transcricao": re.sub(r"\s+", " ", text),
+            "preview_transcricao": re.sub(r"\s+", " ", text)[:160],
             "area": area,
             "assunto": assunto,
             "enem_ano": ano,
