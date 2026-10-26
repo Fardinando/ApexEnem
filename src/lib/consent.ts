@@ -94,15 +94,54 @@ export function loadAnalytics() {
   (window as any).gtag('config', GA_ID, { anonymize_ip: true });
 }
 
+// ECA Digital (Lei 15.211/2025) + LGPD Art. 14 §3º proíbem perfilamento
+// publicitário de crianças e adolescentes. Mesmo com consentimento do
+// responsável, mantemos ads não-personalizados (NPA) e aplicamos TFUA
+// (tag_for_under_age_of_consent) para menores de 16 e TFCD para < 13.
+function readAgeFromProfile(): number | null {
+  try {
+    const raw = localStorage.getItem('ApexEnem_user_birthdate');
+    if (!raw) return null;
+    const d = new Date(raw);
+    if (isNaN(d.getTime())) return null;
+    const now = new Date();
+    let age = now.getFullYear() - d.getFullYear();
+    const m = now.getMonth() - d.getMonth();
+    if (m < 0 || (m === 0 && now.getDate() < d.getDate())) age--;
+    return age;
+  } catch {
+    return null;
+  }
+}
+
 export function loadAdSense() {
   if (adsenseLoaded || !hasConsent('marketing')) return;
   const client = getAdSenseClient();
   if (!client) return;
   adsenseLoaded = true;
+
+  const age = readAgeFromProfile();
+  const isMinor = age !== null && age < 18;
+  const underAgeOfConsent = age !== null && age < 16;
+  const childDirected = age !== null && age < 13;
+
+  (window as any).adsbygoogle = (window as any).adsbygoogle || [];
+  if (isMinor || age === null) {
+    // non-personalized ads por padrão quando idade desconhecida ou menor
+    (window as any).adsbygoogle.requestNonPersonalizedAds = 1;
+  }
+  (window as any).adsbygoogle.pauseAdRequests = 0;
+  (window as any).adsbygoogle.push = (window as any).adsbygoogle.push || function (c: any) {
+    (window as any).adsbygoogle.length = ((window as any).adsbygoogle.length || 0) + 1;
+    return c;
+  };
+
   const s = document.createElement('script');
   s.async = true;
   s.crossOrigin = 'anonymous';
   s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`;
+  if (underAgeOfConsent) s.setAttribute('data-tag-for-under-age-of-consent', '1');
+  if (childDirected) s.setAttribute('data-tag-for-child-directed-treatment', '1');
   document.head.appendChild(s);
 }
 

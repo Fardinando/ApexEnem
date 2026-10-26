@@ -17,6 +17,7 @@ import CookiePolicyPage from './components/CookiePolicyPage';
 import CookieConsentBanner from './components/CookieConsentBanner';
 import SubscriptionTermsPage from './components/SubscriptionTermsPage';
 import RefundPolicyPage from './components/RefundPolicyPage';
+import DenunciarPage from './components/DenunciarPage';
 import BlogView from './components/BlogView';
 import AuthorsView from './components/AuthorsView';
 import ContactPage from './components/ContactPage';
@@ -145,6 +146,16 @@ export default function App() {
         if (cancelled) return;
         setProfile(p);
         setRequireOnboarding(!p?.serie);
+
+        // Persiste birthdate pra consent.ts aplicar TFUA/TFCD/NPA no AdSense
+        // (ECA Digital + LGPD Art. 14 §3º — proibido perfilamento publicitário
+        // de menores, mesmo com consentimento parental).
+        const bd = p?.birthdate || session.user.user_metadata?.birthdate;
+        if (bd) {
+          try { localStorage.setItem('ApexEnem_user_birthdate', bd); } catch { /* noop */ }
+        } else {
+          try { localStorage.removeItem('ApexEnem_user_birthdate'); } catch { /* noop */ }
+        }
 
         // Sync XP/streak from server to localStorage if server has data
         const localXp = parseInt(localStorage.getItem('ApexEnem_total_xp') || '0', 10);
@@ -523,6 +534,15 @@ export default function App() {
     return (
       <>
         <RefundPolicyPage onBack={() => navigate('/signup')} onSignup={() => navigate('/signup')} />
+        <CookieConsentBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/denunciar') {
+    return (
+      <>
+        <DenunciarPage />
         <CookieConsentBanner />
       </>
     );

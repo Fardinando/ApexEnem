@@ -232,7 +232,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/openrouter-chat", "/generate-learning-exercises",
     "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
     "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request",
-    "/contact"
+    "/contact", "/denuncia"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
     if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/repertoires/status/") || req.path.startsWith("/status/")) return next();
@@ -2273,6 +2273,37 @@ app.post("/api/delete-account",
 
   return res.json({ success: true });
 });
+
+// ─── Denúncia extrajudicial (ECA Digital Lei 15.211/2025) ────────────────────
+app.post("/api/denuncia",
+  distributedRateLimit({ name: "denuncia", max: 10, windowSec: 3600 }),
+  validateBody(z.object({
+    categoria: z.string().min(2).max(60),
+    descricao: z.string().trim().min(20).max(5000),
+    url: z.string().max(500).optional().default(""),
+    contato: z.string().max(200).optional().default(""),
+  })),
+  async (req, res) => {
+    const { categoria, descricao, url, contato } = req.body;
+    const ip = (req.headers["x-forwarded-for"] as string || req.ip || "").split(",")[0].trim();
+    const payload = {
+      categoria,
+      descricao,
+      url_conteudo: url || null,
+      contato: contato || null,
+      ip_hash: ip ? crypto.createHash("sha256").update(ip).digest("hex").slice(0, 16) : null,
+      user_id: req.user?.id || null,
+      created_at: new Date().toISOString(),
+    };
+    if (supabaseAdmin) {
+      const { error } = await supabaseAdmin.from("denuncias").insert(payload);
+      if (error) console.warn("[denuncia] insert failed:", error.message);
+    } else {
+      console.log("[denuncia]", JSON.stringify(payload));
+    }
+    return res.json({ ok: true });
+  }
+);
 
 app.get("/api/credentials-status", (req, res) => {
   res.json({

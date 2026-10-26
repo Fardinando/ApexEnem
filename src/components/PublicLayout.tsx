@@ -157,6 +157,12 @@ export default function PublicLayout({
             <div className="text-center">
               ApexEnem © {new Date().getFullYear()} — Plataforma Educacional Adaptativa
             </div>
+            <p className="text-center text-[10px] max-w-xl leading-relaxed">
+              ApexEnem é um projeto independente, sem vínculo com o INEP ou com o Ministério da Educação. ENEM® é marca registrada do INEP, usada aqui apenas em caráter descritivo.
+            </p>
+            <button type="button" onClick={() => go('/denunciar')} className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+              Denunciar conteúdo
+            </button>
             <MarmitaCodeCredit />
           </div>
         </div>
