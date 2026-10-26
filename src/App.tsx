@@ -392,7 +392,30 @@ export default function App() {
   const handleUpdateProfile = async (updated: any) => {
     if (!session?.user) return;
     try {
-      await upsertProfile({ id: session.user.id, ...updated });
+      // Mapeia camelCase do frontend para snake_case das colunas em public.profiles.
+      // Também remove campos que não existem na tabela (email, streak etc. vêm do auth).
+      const DB_COLUMNS = new Set([
+        'id', 'name', 'serie', 'region', 'state', 'city',
+        'target_score', 'hard_subjects', 'avatar',
+        'total_xp', 'longest_streak', 'last_login_date',
+        'birthdate', 'is_minor', 'parent_email', 'parent_consent_at', 'consent_version',
+      ]);
+      const mapped: Record<string, any> = { id: session.user.id };
+      for (const [k, v] of Object.entries(updated)) {
+        if (v === undefined) continue;
+        const snake = k === 'targetScore' ? 'target_score'
+          : k === 'hardSubjects' ? 'hard_subjects'
+          : k === 'totalXp' ? 'total_xp'
+          : k === 'longestStreak' ? 'longest_streak'
+          : k === 'lastLoginDate' ? 'last_login_date'
+          : k === 'parentEmail' ? 'parent_email'
+          : k === 'parentConsentAt' ? 'parent_consent_at'
+          : k === 'consentVersion' ? 'consent_version'
+          : k === 'isMinor' ? 'is_minor'
+          : k;
+        if (DB_COLUMNS.has(snake)) mapped[snake] = v;
+      }
+      await upsertProfile(mapped);
       const p = await getProfile(session.user.id);
       if (p) setProfile(p);
     } catch (err) {
