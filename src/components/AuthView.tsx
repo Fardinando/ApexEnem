@@ -443,7 +443,25 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                     <div className="flex justify-between items-center">
                       <label className="text-xs font-semibold text-slate-700 dark:text-slate-200" htmlFor="password-input">Senha</label>
                       {isLoginTab && (
-                        <button type="button" className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400 cursor-pointer" onClick={() => { supabase.auth.resetPasswordForEmail(email); alert('Se o e-mail estiver cadastrado, enviaremos um link de redefinição.'); }}>Esqueci minha senha</button>
+                        <button
+                          type="button"
+                          className="text-xs font-medium text-blue-600 hover:underline dark:text-blue-400 cursor-pointer"
+                          onClick={async () => {
+                            if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                              setErrorMessage('Digite seu e-mail antes de pedir a redefinição.');
+                              return;
+                            }
+                            try {
+                              await fetch('/api/password-reset-request', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ email: email.toLowerCase().trim() }),
+                              });
+                            } catch { /* ignora: resposta é sempre ok */ }
+                            setSuccMessage(`Se o e-mail ${email.toLowerCase()} estiver cadastrado, você receberá um link de redefinição em alguns minutos.`);
+                            setErrorMessage('');
+                          }}
+                        >Esqueci minha senha</button>
                       )}
                     </div>
                     <div className="relative">

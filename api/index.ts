@@ -232,7 +232,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/openrouter-chat", "/generate-learning-exercises",
     "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
     "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request",
-    "/contact", "/denuncia"
+    "/contact", "/denuncia", "/password-reset-request"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
     if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/repertoires/status/") || req.path.startsWith("/status/")) return next();
@@ -1994,6 +1994,101 @@ async function sendEmail(to: string, subject: string, html: string): Promise<boo
     return false;
   }
 }
+
+// ─── Password reset com e-mail HTML bonito ───────────────────────────────────
+// Usa supabaseAdmin.auth.admin.generateLink({type:'recovery'}) para gerar o
+// link oficial do Supabase e envelopa num e-mail HTML customizado via Resend.
+// Sempre responde {ok:true} (não revela se o e-mail existe no banco).
+app.post("/api/password-reset-request",
+  distributedRateLimit({ name: "pwd-reset", max: 5, windowSec: 3600 }),
+  validateBody(z.object({ email: z.string().email() })),
+  async (req, res) => {
+    const { email } = req.body;
+    const emailLower = email.toLowerCase().trim();
+
+    if (!supabaseAdmin) {
+      return res.json({ ok: true, simulated: true });
+    }
+
+    const redirectTo = `${getBaseUrl()}/reset-password`;
+    let actionLink: string | null = null;
+    try {
+      const { data, error } = await supabaseAdmin.auth.admin.generateLink({
+        type: "recovery",
+        email: emailLower,
+        options: { redirectTo },
+      });
+      if (error) {
+        console.warn("[password-reset] generateLink error:", error.message);
+      } else {
+        actionLink = data?.properties?.action_link || null;
+      }
+    } catch (err: any) {
+      console.warn("[password-reset] generateLink threw:", err?.message);
+    }
+
+    if (!actionLink) {
+      // user não existe (ou erro silencioso): não revelamos
+      return res.json({ ok: true });
+    }
+
+    const html = `
+<!DOCTYPE html>
+<html lang="pt-BR">
+<body style="margin:0;padding:0;background:#f0eeff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1b1b24">
+  <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:#f0eeff;padding:32px 16px">
+    <tr><td align="center">
+      <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="max-width:520px;background:#ffffff;border-radius:24px;overflow:hidden;box-shadow:0 10px 25px rgba(27,21,116,0.08)">
+        <tr><td style="background:linear-gradient(135deg,#1b1574 0%,#3525cd 50%,#712ae2 100%);padding:40px 32px;text-align:center">
+          <h1 style="margin:0 0 8px;color:#ffffff;font-size:24px;font-weight:800;letter-spacing:-0.5px">ApexEnem</h1>
+          <p style="margin:0;color:rgba(255,255,255,0.9);font-size:14px">Redefinir sua senha</p>
+        </td></tr>
+        <tr><td style="padding:40px 32px 24px">
+          <h2 style="margin:0 0 16px;color:#1b1574;font-size:20px;font-weight:800">Olá! 👋</h2>
+          <p style="margin:0 0 16px;color:#334155;font-size:15px;line-height:1.6">
+            Recebemos um pedido para redefinir a senha da sua conta no ApexEnem. Se foi você, clique no botão abaixo para escolher uma nova senha:
+          </p>
+          <p style="text-align:center;margin:32px 0">
+            <a href="${actionLink}" style="display:inline-block;padding:14px 36px;background:#2563eb;color:#ffffff;border-radius:12px;text-decoration:none;font-weight:800;font-size:15px;box-shadow:0 4px 12px rgba(37,99,235,0.3)">
+              Redefinir minha senha
+            </a>
+          </p>
+          <p style="margin:0 0 16px;color:#64748b;font-size:13px;line-height:1.6">
+            Este link expira em 60 minutos e só pode ser usado uma vez. Se não funcionar ao clicar, copie e cole no navegador:
+          </p>
+          <p style="margin:0 0 24px;padding:12px;background:#f1f5f9;border-radius:8px;color:#475569;font-size:11px;font-family:'Courier New',monospace;word-break:break-all;line-height:1.5">
+            ${escapeHtml(actionLink)}
+          </p>
+          <div style="padding:16px;background:#fef3c7;border-left:4px solid #f59e0b;border-radius:8px;margin:0 0 16px">
+            <p style="margin:0;color:#92400e;font-size:12px;line-height:1.5">
+              <strong>Não foi você?</strong> Pode ignorar este e-mail — nenhuma alteração será feita na sua conta e seu acesso continua seguro.
+            </p>
+          </div>
+        </td></tr>
+        <tr><td style="padding:24px 32px 32px;background:#f8fafc;border-top:1px solid #e2e8f0">
+          <p style="margin:0 0 8px;color:#64748b;font-size:12px;text-align:center;line-height:1.5">
+            Precisa de ajuda? Envie um e-mail para <a href="mailto:apexenem@gmail.com" style="color:#2563eb;text-decoration:none">apexenem@gmail.com</a>
+          </p>
+          <p style="margin:0;color:#94a3b8;font-size:11px;text-align:center">
+            ApexEnem © ${new Date().getFullYear()} — Plataforma Educacional Adaptativa
+          </p>
+        </td></tr>
+      </table>
+      <p style="margin:16px 0 0;color:#94a3b8;font-size:11px;text-align:center">
+        Projeto independente, sem vínculo com INEP/MEC. ENEM® é marca registrada do INEP.
+      </p>
+    </td></tr>
+  </table>
+</body>
+</html>`;
+
+    const sent = await sendEmail(emailLower, "Redefinir sua senha — ApexEnem", html);
+    if (!sent) {
+      console.log(`[password-reset simulated] ${emailLower}: ${actionLink}`);
+    }
+    return res.json({ ok: true });
+  }
+);
 
 app.post("/api/send-confirmation",
   distributedRateLimit({ name: "send-confirmation", max: 5, windowSec: 3600 }),

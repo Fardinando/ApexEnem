@@ -18,6 +18,7 @@ import CookieConsentBanner from './components/CookieConsentBanner';
 import SubscriptionTermsPage from './components/SubscriptionTermsPage';
 import RefundPolicyPage from './components/RefundPolicyPage';
 import DenunciarPage from './components/DenunciarPage';
+import ResetPasswordPage from './components/ResetPasswordPage';
 import BlogView from './components/BlogView';
 import AuthorsView from './components/AuthorsView';
 import ContactPage from './components/ContactPage';
@@ -83,13 +84,16 @@ export default function App() {
     // Supabase e provedores OAuth entregam access_token/refresh_token/code no hash
     // ou query da URL (magic link, recovery, OAuth). Removemos imediatamente da barra
     // de endereços para não vazar em Referer, histórico, analytics ou screenshots.
+    // EXCEÇÃO: na página /reset-password o supabase-js precisa processar o hash
+    // antes — removemos só depois (ele mesmo faz replaceState no onAuthStateChange).
+    const isResetPage = window.location.pathname === '/reset-password';
     const url = new URL(window.location.href);
     const SENSITIVE = ['access_token', 'refresh_token', 'provider_token', 'token', 'token_hash', 'code', 'type', 'expires_in', 'expires_at'];
     let changed = false;
     for (const k of SENSITIVE) {
       if (url.searchParams.has(k)) { url.searchParams.delete(k); changed = true; }
     }
-    if (window.location.hash && /access_token=|refresh_token=|type=recovery/.test(window.location.hash)) {
+    if (!isResetPage && window.location.hash && /access_token=|refresh_token=|type=recovery/.test(window.location.hash)) {
       url.hash = '';
       changed = true;
     }
@@ -543,6 +547,15 @@ export default function App() {
     return (
       <>
         <DenunciarPage />
+        <CookieConsentBanner />
+      </>
+    );
+  }
+
+  if (currentPath === '/reset-password') {
+    return (
+      <>
+        <ResetPasswordPage />
         <CookieConsentBanner />
       </>
     );
