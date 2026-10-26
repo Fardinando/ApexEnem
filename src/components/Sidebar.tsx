@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import {
   LayoutDashboard, FileText, HelpCircle, BookOpen,
-  Settings, Flame, LogOut, Target, Sun, Moon, Trophy, X, Plus, User, Zap,
-  GraduationCap, Coins, Crown, Library
+  Settings, Flame, LogOut, Target, Sun, Moon, X, Plus, User, Zap,
+  GraduationCap, Coins, Crown, Library, PlayCircle
 } from 'lucide-react';
 import { UserProfile, PlanId } from '../types';
 import { getLevelFromXp, getLevelTitle, type GamificationStats } from '../lib/gamification';
@@ -24,7 +24,7 @@ interface SidebarProps {
 const MAIN_TABS = [
   { id: 'dashboard', label: 'Início', icon: LayoutDashboard },
   { id: 'redacao', label: 'Redação', icon: FileText },
-  { id: 'aprendizado', label: 'Estudos', icon: Trophy },
+  { id: 'aulas', label: 'Aulas', icon: PlayCircle },
   { id: 'simulados', label: 'Simulados', icon: BookOpen },
   { id: 'perguntas', label: 'Questões IA', icon: HelpCircle },
 ];

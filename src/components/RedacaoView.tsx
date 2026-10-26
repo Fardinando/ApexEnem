@@ -278,8 +278,8 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
       {/* Top Section Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
-        <div>
-          <h1 className="text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
+        <div className="min-w-0">
+          <h1 className="text-xl sm:text-2xl md:text-3xl font-extrabold tracking-tight text-slate-800 dark:text-slate-100">
             Corretor de Redação por IA
           </h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1.5">
@@ -289,11 +289,11 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
 
         {/* Existing corrections list selector */}
         {essayCorrections.length > 0 && (
-          <div className="flex items-center gap-2">
-            <label className="text-xs font-semibold text-slate-400" htmlFor="correction-history-select">Histórico:</label>
+          <div className="flex items-center gap-2 w-full md:w-auto min-w-0">
+            <label className="text-xs font-semibold text-slate-400 shrink-0" htmlFor="correction-history-select">Histórico:</label>
             <select
               id="correction-history-select"
-              className="bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-705 py-1.5 px-3 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
+              className="flex-1 md:flex-none max-w-full truncate bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-705 py-1.5 px-3 rounded-xl text-xs font-semibold focus:outline-none focus:ring-1 focus:ring-blue-500 text-slate-800 dark:text-slate-100"
               value={selectedCorrectionId || ''}
               onChange={(e) => setSelectedCorrectionId(e.target.value)}
             >
@@ -313,8 +313,8 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start" id="split-view-columns">
         
         {/* LEFT COLUMN: INPUT FORM (Spans 5 lines in large screens) */}
-        <div className="lg:col-span-6 space-y-6" id="input-column">
-          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-5">
+        <div className="lg:col-span-6 space-y-6 min-w-0" id="input-column">
+          <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-4 sm:p-6 shadow-sm space-y-5">
             
             <h3 className="font-display font-bold text-sm text-slate-800 dark:text-slate-100 flex items-center gap-2 pb-3 border-b border-slate-200 dark:border-slate-800">
               <span className="p-1 bg-blue-600 text-white rounded-lg"><FileText className="h-4 w-4" /></span>
@@ -380,9 +380,9 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
             {/* Interactive Areas depending on selection */}
             {activeTab === 'digitar' ? (
               <div className="space-y-1.5 animate-fade-in">
-                <div className="flex justify-between items-center text-xs text-slate-400">
+                <div className="flex flex-wrap justify-between items-center gap-x-3 gap-y-1 text-xs text-slate-400">
                   <label className="font-bold text-slate-800 dark:text-slate-200" htmlFor="essay-textarea">Conteúdo do Texto</label>
-                  <span>{text.length} caracteres ({Math.round(text.length / 5.5)} palavras estimadas)</span>
+                  <span className="text-[11px]">{text.length} chars · ~{Math.round(text.length / 5.5)} palavras</span>
                 </div>
                 
                 {/* Word count progress bar (ENEM target: ~300 words / 1650 chars) */}
@@ -504,7 +504,7 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
         </div>
 
         {/* RIGHT COLUMN: AI RESULTS PANEL */}
-        <div className="lg:col-span-6" id="results-column">
+        <div className="lg:col-span-6 min-w-0" id="results-column">
           
           {/* A. LOADING ANIMATION */}
           {isLoading && (

@@ -30,6 +30,7 @@ const PerguntasView = lazy(() => import('./components/PerguntasView'));
 const SimuladosView = lazy(() => import('./components/SimuladosView'));
 const ConfiguracoesView = lazy(() => import('./components/ConfiguracoesView'));
 const AprendizadoView = lazy(() => import('./components/AprendizadoView'));
+const AulasView = lazy(() => import('./components/AulasView'));
 const PerfilView = lazy(() => import('./components/PerfilView'));
 const TeacherPlanView = lazy(() => import('./components/TeacherPlanView'));
 
@@ -78,6 +79,23 @@ export default function App() {
   };
 
   useEffect(() => {
+    // Supabase e provedores OAuth entregam access_token/refresh_token/code no hash
+    // ou query da URL (magic link, recovery, OAuth). Removemos imediatamente da barra
+    // de endereços para não vazar em Referer, histórico, analytics ou screenshots.
+    const url = new URL(window.location.href);
+    const SENSITIVE = ['access_token', 'refresh_token', 'provider_token', 'token', 'token_hash', 'code', 'type', 'expires_in', 'expires_at'];
+    let changed = false;
+    for (const k of SENSITIVE) {
+      if (url.searchParams.has(k)) { url.searchParams.delete(k); changed = true; }
+    }
+    if (window.location.hash && /access_token=|refresh_token=|type=recovery/.test(window.location.hash)) {
+      url.hash = '';
+      changed = true;
+    }
+    if (changed) {
+      window.history.replaceState({}, '', url.pathname + url.search + url.hash);
+    }
+
     const onPop = () => setCurrentPath(window.location.pathname);
     window.addEventListener('popstate', onPop);
     supabase.auth.getSession()
@@ -251,6 +269,11 @@ export default function App() {
   const handleAuthSuccess = async () => {
     const { data: { session: s } } = await supabase.auth.getSession();
     if (s) setSession(s);
+    // Limpa /login, /signup e qualquer query string residual da URL depois de autenticar
+    if (window.location.pathname !== '/' || window.location.search || window.location.hash) {
+      window.history.replaceState({}, '', '/');
+      setCurrentPath('/');
+    }
   };
 
   const handleOnboardingCompleted = async (data: { serie: string; targetScore: number; hardSubjects: string[] }) => {
@@ -598,7 +621,7 @@ export default function App() {
         isDarkMode={isDarkMode}
         toggleDarkMode={() => setIsDarkMode(!isDarkMode)}
       />
-      <main id="view-pane" className="flex-grow p-6 md:p-10 lg:p-12 max-w-7xl mx-auto w-full lg:overflow-y-auto lg:h-screen">
+      <main id="view-pane" className="flex-grow p-4 sm:p-6 md:p-10 lg:p-12 pb-24 lg:pb-12 max-w-7xl mx-auto w-full lg:overflow-y-auto lg:h-screen overflow-x-hidden">
         <Suspense fallback={<ViewSpinner />}>
           {activeTab === 'dashboard' && (
             <DashboardView
@@ -629,6 +652,9 @@ export default function App() {
               triProfile={triProfile}
               onSaveResponses={handleSaveQuestionResponses}
             />
+          )}
+          {activeTab === 'aulas' && (
+            <AulasView currentUser={currentUser as any} />
           )}
           {activeTab === 'aprendizado' && (
             <AprendizadoView
