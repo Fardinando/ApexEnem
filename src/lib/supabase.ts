@@ -16,6 +16,26 @@ async function checkTables() {
   return _tablesOk;
 }
 
+// Upload de avatar pro bucket "avatars" (public read). Caminho: userId/arquivo.
+// RLS no bucket deve permitir INSERT/UPDATE/DELETE pelo próprio dono.
+export async function uploadAvatar(file: File, userId: string): Promise<string | null> {
+  if (!userId || !file) return null;
+  const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+  const safeExt = /^(png|jpe?g|webp|gif)$/.test(ext) ? ext : 'jpg';
+  const path = `${userId}/avatar-${Date.now()}.${safeExt}`;
+  const { error } = await supabase.storage.from('avatars').upload(path, file, {
+    cacheControl: '3600',
+    upsert: true,
+    contentType: file.type || `image/${safeExt}`,
+  });
+  if (error) {
+    console.warn('[uploadAvatar] failed:', error.message);
+    return null;
+  }
+  const { data } = supabase.storage.from('avatars').getPublicUrl(path);
+  return data?.publicUrl || null;
+}
+
 export async function isSupabaseReady() {
   const { error } = await supabase.from('profiles').select('id').limit(1).maybeSingle();
   return !(error?.message?.includes('does not exist') || error?.message?.includes('relation'));

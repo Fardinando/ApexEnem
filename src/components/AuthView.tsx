@@ -22,7 +22,10 @@ const HCAPTCHA_SITE_KEY = import.meta.env.VITE_HCAPTCHA_SITE_KEY || '';
 
 export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProps) {
   const [isLoginTab, setIsLoginTab] = useState(defaultTab !== 'signup');
-  const [step, setStep] = useState<'form' | 'confirm'>('form');
+  const [step, setStep] = useState<'form' | 'confirm' | 'mfa'>('form');
+  const [mfaFactorId, setMfaFactorId] = useState('');
+  const [mfaChallengeId, setMfaChallengeId] = useState('');
+  const [mfaCode, setMfaCode] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
@@ -110,6 +113,24 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
       }
       return;
     }
+    // Se o usuário tem 2FA ativa (AAL2 required), Supabase retorna AAL1 e exige
+    // challenge/verify antes de considerar autenticado.
+    try {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2') {
+        const { data: fs } = await supabase.auth.mfa.listFactors();
+        const first = (fs?.totp || []).find((f: any) => f.status === 'verified');
+        if (first) {
+          const ch = await supabase.auth.mfa.challenge({ factorId: first.id });
+          if (!ch.error) {
+            setMfaFactorId(first.id);
+            setMfaChallengeId(ch.data.id);
+            setStep('mfa');
+            return;
+          }
+        }
+      }
+    } catch { /* se MFA checar falhar, segue fluxo normal */ }
     const params = new URLSearchParams(window.location.search);
     const redirectTo = params.get('redirect_to');
     if (redirectTo) {
@@ -125,6 +146,25 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
         }
       } catch { /* URL inválida, ignora */ }
     }
+    onSuccess();
+  };
+
+  const handleMfaVerify = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrorMessage('');
+    if (!/^\d{6}$/.test(mfaCode)) {
+      setErrorMessage('Digite o código de 6 dígitos do app autenticador.');
+      return;
+    }
+    setLoading(true);
+    const { error } = await supabase.auth.mfa.verify({ factorId: mfaFactorId, challengeId: mfaChallengeId, code: mfaCode });
+    setLoading(false);
+    if (error) {
+      setErrorMessage('Código inválido. Tente de novo.');
+      return;
+    }
+    setMfaCode('');
+    setStep('form');
     onSuccess();
   };
 
@@ -230,11 +270,41 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
   };
 
   return (
-    <div className={`relative min-h-screen bg-[#fcf8ff] dark:bg-[#0a0814] text-[#1b1b24] dark:text-[#f3effc] transition-colors duration-300 ${step === 'confirm' ? 'flex items-center justify-center p-4 pb-14' : 'grid grid-cols-1 lg:grid-cols-12 pb-10'}`}>
+    <div className={`relative min-h-screen bg-[#fcf8ff] dark:bg-[#0a0814] text-[#1b1b24] dark:text-[#f3effc] transition-colors duration-300 ${step === 'confirm' || step === 'mfa' ? 'flex items-center justify-center p-4 pb-14' : 'grid grid-cols-1 lg:grid-cols-12 pb-10'}`}>
       <div className="absolute bottom-3 inset-x-0 flex justify-center z-10 pointer-events-none">
         <div className="pointer-events-auto"><MarmitaCodeCredit /></div>
       </div>
-      {step === 'confirm' ? (
+      {step === 'mfa' ? (
+        <form onSubmit={handleMfaVerify} className="w-full max-w-md animate-fade-in">
+          <div className="bg-white dark:bg-[#1e293b] p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl text-center space-y-5">
+            <div className="mx-auto p-3 bg-blue-50 dark:bg-blue-950/30 text-blue-600 rounded-full w-fit">
+              <Lock className="h-8 w-8" />
+            </div>
+            <div>
+              <h2 className="font-display font-extrabold text-lg mb-1">Verificação em duas etapas</h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400">Digite o código de 6 dígitos do seu app autenticador.</p>
+            </div>
+            <input
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]{6}"
+              maxLength={6}
+              placeholder="000000"
+              value={mfaCode}
+              onChange={(e) => setMfaCode(e.target.value.replace(/\D/g, ''))}
+              className="w-full px-4 py-3 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-xl font-mono text-center tracking-[0.6em] focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 text-slate-800 dark:text-white"
+              autoFocus
+            />
+            {errorMessage && <div className="p-2.5 bg-red-50 border border-red-200 text-red-700 text-xs rounded-lg">{errorMessage}</div>}
+            <button type="submit" disabled={loading || mfaCode.length !== 6} className="w-full py-3 bg-blue-600 hover:bg-blue-700 disabled:opacity-60 text-white font-bold rounded-xl text-sm transition cursor-pointer">
+              {loading ? 'Verificando…' : 'Confirmar e entrar'}
+            </button>
+            <button type="button" onClick={async () => { await supabase.auth.signOut(); setStep('form'); setMfaCode(''); setErrorMessage(''); }} className="text-xs text-slate-500 hover:text-red-600 underline cursor-pointer">
+              Cancelar e sair
+            </button>
+          </div>
+        </form>
+      ) : step === 'confirm' ? (
         <div className="w-full max-w-md animate-fade-in">
           <div className="bg-white dark:bg-[#1e293b] p-8 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-xl text-center space-y-6">
             <div className="mx-auto p-3 bg-green-50 dark:bg-green-950/30 text-green-600 dark:text-green-400 rounded-full w-fit">

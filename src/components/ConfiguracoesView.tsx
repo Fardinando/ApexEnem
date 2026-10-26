@@ -22,8 +22,9 @@ import {
   CheckCircle
 } from 'lucide-react';
 import { UserProfile } from '../types';
-import { supabase } from '../lib/supabase';
+import { supabase, uploadAvatar } from '../lib/supabase';
 import AdPlaceholder from './AdPlaceholder';
+import TwoFactorSection from './TwoFactorSection';
 
 interface ConfiguracoesViewProps {
   currentUser: UserProfile;
@@ -80,7 +81,7 @@ export default function ConfiguracoesView({
     });
   }, []);
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith('image/')) {
@@ -91,9 +92,25 @@ export default function ConfiguracoesView({
       alert('A imagem deve ter no máximo 2 MB.');
       return;
     }
+    // Preview imediato via data URL enquanto o upload acontece.
     const reader = new FileReader();
     reader.onload = (ev) => setNewAvatar(ev.target?.result as string);
     reader.readAsDataURL(file);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert('Faça login novamente para enviar a foto.');
+        return;
+      }
+      const publicUrl = await uploadAvatar(file, user.id);
+      if (publicUrl) {
+        setNewAvatar(publicUrl);
+      } else {
+        alert('Não foi possível enviar sua foto agora — ela aparecerá só neste dispositivo. Tente de novo em alguns minutos.');
+      }
+    } catch (err: any) {
+      console.warn('[avatar] upload failed:', err?.message);
+    }
   };
 
   const handleRemoveAvatar = () => setNewAvatar(undefined);
@@ -452,6 +469,8 @@ export default function ConfiguracoesView({
           </div>
 
         </div>
+
+        <TwoFactorSection />
 
         <AdPlaceholder slot="configuracoes-rodape" format="banner" className="my-4" user={currentUser} />
 
