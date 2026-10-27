@@ -27,7 +27,9 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
   const [mfaChallengeId, setMfaChallengeId] = useState('');
   const [mfaCode, setMfaCode] = useState('');
   const [email, setEmail] = useState('');
+  const [emailConfirm, setEmailConfirm] = useState('');
   const [password, setPassword] = useState('');
+  const [passwordConfirm, setPasswordConfirm] = useState('');
   const [name, setName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
@@ -184,6 +186,18 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
     setErrorMessage('');
     if (!name || !email || !password) {
       setErrorMessage('Preencha nome, e-mail e senha.');
+      return;
+    }
+    if (email.toLowerCase().trim() !== emailConfirm.toLowerCase().trim()) {
+      setErrorMessage('Os dois e-mails informados não coincidem. Confira com atenção — o link de confirmação será enviado pro endereço digitado.');
+      return;
+    }
+    if (password !== passwordConfirm) {
+      setErrorMessage('As duas senhas informadas não coincidem.');
+      return;
+    }
+    if (password.length < 8) {
+      setErrorMessage('A senha precisa de pelo menos 8 caracteres.');
       return;
     }
     if (!birthdate) {
@@ -522,9 +536,31 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                     <label className="text-xs font-semibold text-slate-700 dark:text-slate-200" htmlFor="email-input">E-mail</label>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400"><Mail className="h-4.5 w-4.5" /></span>
-                      <input id="email-input" type="email" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-800 dark:text-white" placeholder="nome@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} />
+                      <input id="email-input" type="email" autoComplete="email" className="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-800 dark:text-white" placeholder="nome@exemplo.com" value={email} onChange={(e) => setEmail(e.target.value)} onPaste={!isLoginTab ? (e) => { e.preventDefault(); setErrorMessage('Por segurança, digite o e-mail no lugar de colar — você vai confirmá-lo abaixo.'); } : undefined} />
                     </div>
                   </div>
+
+                  {!isLoginTab && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-200" htmlFor="email-confirm">Confirme o e-mail</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400"><Mail className="h-4.5 w-4.5" /></span>
+                        <input
+                          id="email-confirm"
+                          type="email"
+                          autoComplete="off"
+                          className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition text-slate-800 dark:text-white ${emailConfirm && emailConfirm.toLowerCase().trim() !== email.toLowerCase().trim() ? 'border-red-400 focus:border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500'}`}
+                          placeholder="Digite de novo o mesmo e-mail"
+                          value={emailConfirm}
+                          onChange={(e) => setEmailConfirm(e.target.value)}
+                          onPaste={(e) => { e.preventDefault(); setErrorMessage('Digite o e-mail de novo — colar derrota o objetivo da verificação.'); }}
+                        />
+                      </div>
+                      <p className="text-[10px] text-slate-500 dark:text-slate-400 leading-relaxed">
+                        O link de confirmação será enviado para esse endereço. Digite com atenção.
+                      </p>
+                    </div>
+                  )}
 
                   <div className="space-y-1.5">
                     <div className="flex justify-between items-center">
@@ -553,10 +589,31 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                     </div>
                     <div className="relative">
                       <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400"><Lock className="h-4.5 w-4.5" /></span>
-                      <input id="password-input" type={showPassword ? 'text' : 'password'} className="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-800 dark:text-white" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
+                      <input id="password-input" type={showPassword ? 'text' : 'password'} autoComplete={isLoginTab ? 'current-password' : 'new-password'} className="w-full pl-10 pr-10 py-2.5 bg-slate-50 dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 transition text-slate-800 dark:text-white" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} />
                       <button type="button" className="absolute inset-y-0 right-0 flex items-center pr-3.5 text-slate-400 hover:text-blue-600 cursor-pointer" onClick={() => setShowPassword(!showPassword)}>{showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}</button>
                     </div>
+                    {!isLoginTab && password.length > 0 && password.length < 8 && (
+                      <p className="text-[10px] text-amber-600 dark:text-amber-400">A senha precisa de pelo menos 8 caracteres.</p>
+                    )}
                   </div>
+
+                  {!isLoginTab && (
+                    <div className="space-y-1.5">
+                      <label className="text-xs font-semibold text-slate-700 dark:text-slate-200" htmlFor="password-confirm">Confirme a senha</label>
+                      <div className="relative">
+                        <span className="absolute inset-y-0 left-0 flex items-center pl-3.5 pointer-events-none text-slate-400"><Lock className="h-4.5 w-4.5" /></span>
+                        <input
+                          id="password-confirm"
+                          type={showPassword ? 'text' : 'password'}
+                          autoComplete="new-password"
+                          className={`w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-[#0f172a] border rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 transition text-slate-800 dark:text-white ${passwordConfirm && passwordConfirm !== password ? 'border-red-400 focus:border-red-500' : 'border-slate-200 dark:border-slate-800 focus:border-blue-500'}`}
+                          placeholder="Digite a mesma senha de novo"
+                          value={passwordConfirm}
+                          onChange={(e) => setPasswordConfirm(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  )}
 
                   {HCAPTCHA_SITE_KEY && (
                     <div id="hcaptcha-container" className="flex justify-center"></div>
