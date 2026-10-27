@@ -56,28 +56,36 @@ TRANSCRIBE_SECONDS = 180  # só os primeiros 3min — rapidíssimo e já identif
 # sem acento])
 TOPICS: List[Tuple[str, str, List[str]]] = [
     # Matemática
-    ("Matematica", "Funcao de Primeiro Grau", ["funcao do primeiro grau", "funcao afim", "funcao linear"]),
-    ("Matematica", "Funcao de Segundo Grau", ["funcao do segundo grau", "funcao quadratica", "funcao de segundo grau", "parabola", "vertice da parabola", "bhaskara", "delta positivo", "concavidade"]),
+    ("Matematica", "Funcao de Primeiro Grau", ["funcao do primeiro grau", "funcao afim", "funcao linear", "funcao perigural", "y igual a x mais b", "coeficiente linear"]),
+    ("Matematica", "Funcao de Segundo Grau", ["funcao do segundo grau", "funcao segundo grau", "funcao quadratica", "funcao de segundo grau", "parabola", "vertice da parabola", "bhaskara", "delta positivo", "concavidade", "lucro em funcao", "coordenadas do vertice", "x do vertice", "y do vertice", "x de vertice", "y de vertice"]),
     ("Matematica", "Funcao Exponencial", ["funcao exponencial", "crescimento exponencial", "decrescimento exponencial"]),
     ("Matematica", "Logaritmo", ["logaritmo", "log na base", "propriedade do logaritmo", "logaritmando"]),
     ("Matematica", "Trigonometria", ["seno", "cosseno", "tangente", "radiano", "ciclo trigonometrico", "lei dos senos", "lei dos cossenos", "razoes trigonometricas"]),
-    ("Matematica", "Conjuntos", ["conjunto", "conjuntos", "uniao de conjuntos", "interseccao", "diferenca de conjuntos", "bota e tira", "diagrama de venn", "elemento pertence", "subconjunto"]),
-    ("Matematica", "Radiciacao e Potenciacao", ["raiz quadrada", "raiz cubica", "radiciacao", "potenciacao", "expoente", "aproximacao de raiz"]),
+    ("Matematica", "Conjuntos", ["conjunto", "conjuntos", "uniao de conjuntos", "interseccao", "diferenca de conjuntos", "bota e tira", "botaetira", "diagrama de venn", "elemento pertence", "subconjunto"]),
+    ("Matematica", "Radiciacao e Potenciacao", ["raiz quadrada", "raiz cubica", "radiciacao", "potenciacao", "expoente", "aproximacao de raiz", "ao quadrado da", "elevado ao", "potencia de", "5 ao quadrado", "quadrado da"]),
     ("Matematica", "Logica e Proposicoes", ["proposicao logica", "tabela verdade", "negacao logica", "conjuncao", "disjuncao"]),
-    ("Matematica", "Geometria Plana", ["area do triangulo", "area do circulo", "poligono", "pitagoras", "teorema de pitagoras", "perimetro", "angulo interno", "quadrilatero"]),
-    ("Matematica", "Geometria Espacial", ["volume do cubo", "volume do cilindro", "volume da piramide", "volume da esfera", "poliedro", "prisma reto", "tronco de cone"]),
-    ("Matematica", "Geometria Analitica", ["geometria analitica", "distancia entre pontos", "equacao da reta", "coeficiente angular", "plano cartesiano", "equacao da circunferencia"]),
+    ("Matematica", "Geometria Plana", ["area do triangulo", "area do circulo", "area do quadrado", "area do retangulo", "poligono", "pitagoras", "teorema de pitagoras", "perimetro", "angulo interno", "quadrilatero", "lado ao quadrado", "calcular area", "triangulo retangulo", "coroa circular", "triangulo 30 60", "triangulo equilatero", "circulo dentro", "cateto", "hipotenusa", "comprimento da circunferencia", "circunferencia"]),
+    ("Matematica", "Geometria Espacial", ["volume do cubo", "volume do cilindro", "volume da piramide", "volume da esfera", "poliedro", "prisma reto", "tronco de cone", "esfera com", "formato de esfera", "diametro da esfera", "cone reto", "planificacao do cone", "planificar um cone", "diametro de", "formato de laranja", "cm de diametro", "conio reto", "planificar um conio", "laranjas como"]),
+    ("Matematica", "Geometria Analitica", ["geometria analitica", "distancia entre pontos", "equacao da reta", "coeficiente angular", "plano cartesiano", "equacao da circunferencia", "circunferencia no plano"]),
     ("Matematica", "Progressao Aritmetica", ["progressao aritmetica", "razao da pa", "termo geral da pa"]),
     ("Matematica", "Progressao Geometrica", ["progressao geometrica", "razao da pg", "termo geral da pg", "soma dos termos da pg"]),
     ("Matematica", "Probabilidade", ["probabilidade", "espaco amostral", "evento provavel", "eventos independentes"]),
-    ("Matematica", "Analise Combinatoria", ["analise combinatoria", "permutacao", "arranjo simples", "combinacao simples", "fatorial", "principio fundamental da contagem"]),
-    ("Matematica", "Estatistica", ["estatistica", "media aritmetica", "mediana", "moda estatistica", "desvio padrao", "variancia", "quartil"]),
+    ("Matematica", "Analise Combinatoria", ["analise combinatoria", "permutacao", "arranjo simples", "combinacao simples", "fatorial", "principio fundamental da contagem", "quantas possibilidades", "quantas maneiras", "quantas formas de", "6 opcoes", "escolha o tipo", "possibilidades de arrumar", "arrumar em pacotes", "disputarao a final", "atletas disputar", "grupo de atletas"]),
+    ("Matematica", "Estatistica", ["estatistica", "media aritmetica", "mediana", "moda estatistica", "desvio padrao", "variancia", "quartil", "maior frequencia", "tabela de frequencia", "distribuicao de frequencia", "idade media"]),
     ("Matematica", "Matrizes e Determinantes", ["matriz", "determinante", "regra de sarrus", "matriz inversa"]),
-    ("Matematica", "Matematica Financeira", ["matematica financeira", "juros simples", "juros compostos", "montante", "capital inicial", "desconto comercial"]),
-    ("Matematica", "Porcentagem", ["porcentagem", "aumento percentual", "desconto percentual"]),
-    ("Matematica", "Razao e Proporcao", ["razao e proporcao", "regra de tres", "grandezas proporcionais", "escala cartografica"]),
-    ("Matematica", "MMC e MDC", ["minimo multiplo comum", "mmc", "maximo divisor comum", "mdc"]),
+    ("Matematica", "Matematica Financeira", ["matematica financeira", "juros simples", "juros compostos", "montante", "capital inicial", "desconto comercial", "investimento mensal", "poupanca", "aplicacao financeira", "deposito mensal", "mensalmente deposito"]),
+    ("Matematica", "Porcentagem", ["porcentagem", "aumento percentual", "desconto percentual", "reduzir 10", "reduzir 20", "reduzir 30", "aumento de", "diminuicao de", "por cento"]),
+    ("Matematica", "Razao e Proporcao", ["razao e proporcao", "regra de tres", "grandezas proporcionais", "escala cartografica", "razao entre", "escala e razao", "fixacao razao", "tipos de grandeza", "comparar areas", "comparar volumes", "escales", "diferentes tipos de grande", "area do grande sobre"]),
+    ("Matematica", "MMC e MDC", ["minimo multiplo comum", "mmc", "maximo divisor comum", "mdc", "mmcxmdc", "mmc e mdc", "mmc x mdc", "divisibilidade", "multiplos de", "dividir em grupos", "mesma quantidade", "grupos iguais", "numero de alunos", "divisao por 11", "divisao exata", "divisor comum"]),
+    ("Matematica", "Fracoes", ["fracao", "fracao propria", "fracao impropria", "fracao equivalente", "numerador", "denominador"]),
     ("Matematica", "Equacoes e Sistemas", ["equacao do primeiro grau", "equacao do segundo grau", "sistema de equacoes", "metodo da substituicao"]),
+    ("Matematica", "Problemas de Trabalho e Tempo", ["trabalho harmonico", "duas torneiras", "trabalho em conjunto", "quanto tempo juntas"]),
+    ("Matematica", "Grandezas Proporcionais", ["grandezas diretamente proporcionais", "grandezas inversamente proporcionais", "diretamente proporcional", "inversamente proporcional"]),
+    # Fallbacks por termos muito gerais encontrados em cursos de matemática ENEM
+    ("Matematica", "Interpretacao de Graficos", ["grafico de barras", "grafico de linhas", "grafico de setores", "interpretacao de grafico", "leitura de grafico", "tabela e grafico"]),
+    ("Matematica", "Questoes ENEM - Matematica Geral", ["questao do enem", "prova amarela", "prova azul", "prova rosa", "prova cinza", "gabarito do enem", "cursinho de matematica", "revisao de matematica", "aula de matematica", "custinho", "revisao matematica", "do enem", "prova do enem"]),
+    ("Matematica", "Apresentacao do Curso", ["venho aqui falar", "quer passar", "4 horas de aula", "lado do custinho", "foco do curso", "aula de revisao", "aula teorica", "venho conversar", "fraco na matematica", "resolucao em video", "você querer e se d", "quer passar e nao", "plataforma", "fraco em matematica", "nao tem desculpa", "se dedicar", "esforco dele", "essencial para voce", "ano de 2020", "pude ver"]),
+    ("Matematica", "MMC e Trabalho em Grupo", ["tempo de mistura", "tres padeiros", "producao de paes", "duas torneiras"]),
     # Física
     ("Natureza-Fisica", "Cinematica", ["cinematica", "movimento uniforme", "mru", "mruv", "velocidade media", "aceleracao"]),
     ("Natureza-Fisica", "Dinamica (Leis de Newton)", ["leis de newton", "forca resultante", "segunda lei de newton", "dinamica"]),
@@ -85,7 +93,7 @@ TOPICS: List[Tuple[str, str, List[str]]] = [
     ("Natureza-Fisica", "Hidrostatica", ["hidrostatica", "pressao hidrostatica", "principio de pascal", "arquimedes", "empuxo"]),
     ("Natureza-Fisica", "Termologia e Termodinamica", ["termologia", "termodinamica", "primeira lei da termodinamica", "calor especifico", "dilatacao"]),
     ("Natureza-Fisica", "Eletricidade", ["corrente eletrica", "tensao eletrica", "resistor", "lei de ohm", "circuito eletrico", "potencia eletrica"]),
-    ("Natureza-Fisica", "Ondulatoria e Som", ["onda", "frequencia", "comprimento de onda", "ressonancia", "efeito doppler"]),
+    ("Natureza-Fisica", "Ondulatoria e Som", ["onda sonora", "comprimento de onda", "ressonancia acustica", "efeito doppler", "frequencia da onda", "velocidade do som"]),
     ("Natureza-Fisica", "Optica", ["optica", "lente", "espelho concavo", "espelho convexo", "refracao", "reflexao"]),
     # Química
     ("Natureza-Quimica", "Atomistica e Tabela Periodica", ["modelo atomico", "tabela periodica", "numero atomico", "configuracao eletronica", "distribuicao eletronica"]),
@@ -95,14 +103,15 @@ TOPICS: List[Tuple[str, str, List[str]]] = [
     ("Natureza-Quimica", "Acidos Bases e pH", ["acido e base", "ph", "neutralizacao", "indicador acido"]),
     ("Natureza-Quimica", "Termoquimica", ["termoquimica", "entalpia", "reacao exotermica", "reacao endotermica"]),
     ("Natureza-Quimica", "Eletroquimica", ["eletroquimica", "pilha", "eletrolise", "oxidacao e reducao"]),
-    ("Natureza-Quimica", "Quimica Organica", ["quimica organica", "hidrocarboneto", "alcano", "alceno", "alcool", "cetona", "ester", "polimero"]),
+    ("Natureza-Quimica", "Quimica Organica", ["quimica organica", "hidrocarboneto", "alcano", "alceno", "alcool etilico", "etanol", "cetona", "polimero plastico", "funcao organica"]),
     # Biologia
     ("Natureza-Biologia", "Citologia", ["celula", "membrana plasmatica", "mitocondria", "ribossomo", "nucleo celular"]),
     ("Natureza-Biologia", "Genetica", ["genetica", "mendel", "primeira lei de mendel", "segunda lei de mendel", "heredograma", "dna", "rna", "cromossomo"]),
     ("Natureza-Biologia", "Ecologia", ["ecologia", "ecossistema", "cadeia alimentar", "bioma", "ciclo da agua", "ciclo do carbono"]),
-    ("Natureza-Biologia", "Evolucao", ["evolucao", "darwin", "selecao natural", "lamarck"]),
+    ("Natureza-Biologia", "Evolucao", ["evolucao biologica", "darwin", "selecao natural", "lamarck", "evolucao das especies"]),
     ("Natureza-Biologia", "Fisiologia Humana", ["sistema digestorio", "sistema nervoso", "sistema circulatorio", "sistema respiratorio", "sistema imunologico", "hormonio"]),
     ("Natureza-Biologia", "Botanica e Zoologia", ["fotossintese", "respiracao celular", "angiosperma", "vertebrado", "invertebrado"]),
+    ("Natureza-Biologia", "Reproducao", ["inseminacao artificial", "fecundacao", "material genetico", "espermatozoide", "ovulo"]),
     # Linguagens
     ("Linguagens-Literatura", "Literatura Brasileira", ["literatura brasileira", "romantismo", "realismo brasileiro", "modernismo brasileiro", "machado de assis", "jose de alencar", "guimaraes rosa", "clarice lispector"]),
     ("Linguagens-Literatura", "Barroco e Arcadismo", ["barroco", "arcadismo", "gregorio de matos", "tomas antonio gonzaga"]),
@@ -170,6 +179,13 @@ def classify(text: str, fname: str) -> Tuple[str, str, int]:
         if score > best_score:
             best_score = score
             best = (area, assunto)
+    # Fallback: se tem transcrição e vem de pasta "Questão NN" ou "Q NN", é
+    # Matemática Geral (todo o repo é cursinho ENEM Mat; outras áreas já teriam
+    # pegado via keyword). Evita Outros pra questões reais com áudio OK.
+    if best[0] == "Outros" and len(text.strip()) > 50:
+        fname_n = normalize(fname)
+        if re.search(r"\bquest(ao|oes)\s*\d", fname_n) or re.search(r"\bq\d", fname_n):
+            return "Matematica", "Questoes ENEM - Matematica Geral", 1
     return best[0], best[1], best_score
 
 
