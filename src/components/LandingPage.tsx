@@ -469,8 +469,9 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </div>
           <nav className="hidden md:flex items-center gap-8 text-sm font-medium text-slate-500 dark:text-slate-400">
             <button type="button" onClick={() => scrollTo('features')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Recursos</button>
-            <button type="button" onClick={() => scrollTo('demo')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Demo</button>
+            <button type="button" onClick={() => scrollTo('como-funciona')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Como funciona</button>
             <button type="button" onClick={() => goTo('/repertorios')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Repertórios</button>
+            <button type="button" onClick={() => scrollTo('faq')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">FAQ</button>
             <button type="button" onClick={() => goTo('/planos')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Planos</button>
             <button type="button" onClick={goToAbout} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Sobre</button>
             <button type="button" onClick={() => goTo('/contato')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Contato</button>
@@ -589,6 +590,295 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
                 <p className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed">{feature.desc}</p>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Como funciona cada ferramenta (SEO + AdSense: conteúdo substancial original) ─ */}
+      <section id="como-funciona" className="py-20 md:py-28">
+        <div className="max-w-5xl mx-auto px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Como funciona cada ferramenta do ApexEnem</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              Entenda em detalhes o que você encontra na plataforma e como cada recurso foi desenhado para encurtar o caminho até sua nota ideal no ENEM.
+            </p>
+          </motion.div>
+
+          <div className="space-y-14">
+            <article className="grid md:grid-cols-5 gap-6 items-start">
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-extrabold tracking-tight mb-2">Correção de redação por IA</h3>
+                <p className="text-xs font-mono uppercase tracking-wider text-blue-600 dark:text-blue-400">Nota de 0 a 1000 em segundos</p>
+              </div>
+              <div className="md:col-span-3 space-y-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p>
+                  A correção segue a <strong>Cartilha do Participante do ENEM 2025</strong>: as cinco competências são avaliadas de forma independente, com nota 0, 40, 80, 120, 160 ou 200 cada uma, exatamente como a banca oficial faz. O corretor virtual aponta onde cada competência cedeu pontos e devolve o cálculo somado.
+                </p>
+                <p>
+                  Para cada competência você recebe um bloco de feedback explicando o que funcionou, o que precisa melhorar e exemplos concretos tirados do seu próprio texto. É possível enviar a redação digitada ou uma foto legível do manuscrito — o modelo transcreve e corrige na mesma passada.
+                </p>
+                <p>
+                  A plataforma também identifica padrões ao longo das suas redações: se você costuma errar coesão (Competência 4) ou falhar no detalhamento da proposta de intervenção (Competência 5), isso vira recomendação de estudo personalizada no seu painel.
+                </p>
+              </div>
+            </article>
+
+            <article className="grid md:grid-cols-5 gap-6 items-start">
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-extrabold tracking-tight mb-2">Simulados ENEM cronometrados</h3>
+                <p className="text-xs font-mono uppercase tracking-wider text-emerald-600 dark:text-emerald-400">Com cálculo TRI oficial</p>
+              </div>
+              <div className="md:col-span-3 space-y-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p>
+                  Monte simulados por área (Linguagens, Ciências Humanas, Ciências da Natureza e Matemática) ou faça o simulado completo. O cronômetro reproduz a divisão oficial do exame e, ao final, você recebe a nota pelo método <strong>Teoria de Resposta ao Item (TRI)</strong>, o mesmo cálculo usado pelo INEP, não apenas o percentual simples de acertos.
+                </p>
+                <p>
+                  Isso faz diferença: no ENEM, errar questões fáceis desvia sua estimativa pra baixo mais do que acertar questões difíceis. A estimativa TRI do ApexEnem considera a dificuldade real de cada item (parâmetros extraídos de edições anteriores do exame) e devolve uma proficiência próxima da que você veria no boletim oficial.
+                </p>
+                <p>
+                  Depois da prova, o relatório mostra tempo gasto por questão, taxa de acerto por tópico e um gráfico de evolução entre simulados. Erros entram automaticamente num banco pessoal de revisão.
+                </p>
+              </div>
+            </article>
+
+            <article className="grid md:grid-cols-5 gap-6 items-start">
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-extrabold tracking-tight mb-2">Questões ENEM inéditas por IA</h3>
+                <p className="text-xs font-mono uppercase tracking-wider text-purple-600 dark:text-purple-400">Com gabarito comentado</p>
+              </div>
+              <div className="md:col-span-3 space-y-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p>
+                  Gere questões no estilo ENEM sob demanda, com enunciado longo e contextualizado, cinco alternativas plausíveis e resposta correta não-óbvia. Você escolhe a área e o nível de dificuldade; a IA produz questões inéditas em segundos, cada uma acompanhada de uma explicação passo a passo do raciocínio.
+                </p>
+                <p>
+                  Isso resolve um problema real da preparação: provas antigas se esgotam rápido e revisar as mesmas questões várias vezes vicia o estudo. Com questões novas no estilo ENEM, você treina interpretação e análise sem decorar enunciados.
+                </p>
+                <p>
+                  A plataforma também disponibiliza o <strong>banco de questões reais</strong> de provas anteriores (via API aberta do INEP) para quem prefere praticar com itens que já apareceram no exame.
+                </p>
+              </div>
+            </article>
+
+            <article className="grid md:grid-cols-5 gap-6 items-start">
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-extrabold tracking-tight mb-2">Pesquisa de repertórios</h3>
+                <p className="text-xs font-mono uppercase tracking-wider text-amber-600 dark:text-amber-400">Ferramenta pública gratuita</p>
+              </div>
+              <div className="md:col-span-3 space-y-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p>
+                  Digite qualquer tema de redação do ENEM — por exemplo, <em>"Desafios para a valorização da saúde mental no Brasil"</em> — e receba uma lista curada de filmes, livros, séries, dados estatísticos, leis e conceitos filosóficos que podem enriquecer sua argumentação. A ferramenta prioriza obras populares cujo foco é efetivamente o tema pedido, não só menções superficiais.
+                </p>
+                <p>
+                  Cada sugestão vem com sinopse curta, autor/diretor, ano e links de onde encontrar a obra. Os títulos passam por verificação na Wikipédia antes de serem exibidos, o que elimina a tendência da IA de inventar nomes de filmes ou livros que não existem.
+                </p>
+                <p>
+                  É gratuito e não exige cadastro — basta acessar a página de repertórios diretamente.
+                </p>
+              </div>
+            </article>
+
+            <article className="grid md:grid-cols-5 gap-6 items-start">
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-extrabold tracking-tight mb-2">Aulas em texto e vídeo</h3>
+                <p className="text-xs font-mono uppercase tracking-wider text-rose-600 dark:text-rose-400">Conteúdo sob demanda</p>
+              </div>
+              <div className="md:col-span-3 space-y-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p>
+                  A aba de aulas tem duas trilhas: <strong>IA em texto</strong>, onde você escolhe uma área e recebe uma aula escrita completa com conceitos, exemplos práticos e três dicas aplicáveis ao ENEM; e <strong>videoaulas gravadas por professores</strong>, com produção em andamento.
+                </p>
+                <p>
+                  As aulas em texto são regeneradas a cada pedido, então você nunca estuda o mesmo conteúdo repetido — a IA varia o foco entre tópicos de uma mesma área (ex.: dentro de Matemática, uma aula pode cair em Progressão Geométrica, outra em Função Exponencial).
+                </p>
+              </div>
+            </article>
+
+            <article className="grid md:grid-cols-5 gap-6 items-start">
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-extrabold tracking-tight mb-2">Competição com amigos</h3>
+                <p className="text-xs font-mono uppercase tracking-wider text-indigo-600 dark:text-indigo-400">Salas privadas por código</p>
+              </div>
+              <div className="md:col-span-3 space-y-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p>
+                  Crie uma sala, compartilhe o código de seis letras com a sua turma e acompanhe o ranking em tempo real. Cada atividade — redação corrigida, simulado concluído, aula estudada, questão respondida — vale pontos de XP que sobem o seu lugar no quadro.
+                </p>
+                <p>
+                  É um empurrão motivacional que funciona: estudar em grupo com meta visível reduz procrastinação. A sala suporta de 5 a 50 membros e o dono pode remover participantes a qualquer momento.
+                </p>
+              </div>
+            </article>
+
+            <article className="grid md:grid-cols-5 gap-6 items-start">
+              <div className="md:col-span-2">
+                <h3 className="text-xl font-extrabold tracking-tight mb-2">Gamificação e carteira de moedas</h3>
+                <p className="text-xs font-mono uppercase tracking-wider text-cyan-600 dark:text-cyan-400">Reset semanal no plano Free</p>
+              </div>
+              <div className="md:col-span-3 space-y-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p>
+                  A plataforma usa um sistema leve de níveis, ofensiva diária (streak) e meta ENEM pra manter o engajamento. Toda ação completada rende XP, e o seu nível aparece no sidebar e nas salas de competição.
+                </p>
+                <p>
+                  As ações de IA (correção de redação, geração de aula, pesquisa de repertório) custam moedas da carteira. Quem está no plano Free recebe moedas semanalmente e pode ganhar extras assistindo a anúncios opcionais — o que mantém o acesso aos recursos de IA mesmo para quem não paga.
+                </p>
+              </div>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Metodologia (texto autoritário) ─ */}
+      <section id="metodologia" className="py-20 md:py-28 bg-slate-50/50 dark:bg-[#0f0a1e]/50">
+        <div className="max-w-4xl mx-auto px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="mb-10">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Metodologia: estudo guiado por dados</h2>
+            <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+              Nossa premissa é simples e tem evidência científica: o aluno aprende mais quando revisa exatamente aquilo em que erra, não quando repete o que já domina. O ApexEnem opera em cima dessa ideia.
+            </p>
+          </motion.div>
+
+          <div className="space-y-10">
+            <div>
+              <h3 className="text-lg font-extrabold mb-3">1. Diagnóstico contínuo</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Cada questão respondida, redação corrigida e simulado concluído gera dados: tempo gasto, taxa de acerto por tópico, padrões de erro recorrentes, nota por competência. Esses dados compõem o seu <strong>perfil TRI pessoal</strong>, que é o ponto de partida da próxima recomendação.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold mb-3">2. Priorização automática</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                A plataforma identifica os três tópicos onde você mais perde pontos e sugere, em ordem de impacto, o que estudar em seguida. A heurística considera tanto a frequência do tópico nas últimas edições do ENEM quanto a sua distância pessoal até dominá-lo — tempo de estudo bem alocado é tempo que vira nota.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold mb-3">3. Prática deliberada com feedback imediato</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                A pesquisa em educação chama isso de <em>deliberate practice</em>: você treina especificamente aquilo que precisa evoluir, com correção na hora. É a razão de a correção de redação devolver nota em segundos, a razão de as questões virem com explicação logo após a resposta e a razão de o relatório do simulado abrir um banco de revisão automático dos itens que você errou.
+              </p>
+            </div>
+            <div>
+              <h3 className="text-lg font-extrabold mb-3">4. Repetição espaçada</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Esquecer é natural. O ApexEnem reapresenta os conteúdos em intervalos crescentes (técnica conhecida como <em>spaced repetition</em>, popularizada por aplicativos como Anki) para fixar o aprendizado na memória de longo prazo em vez da memória de curto prazo que serve só pra prova da próxima semana.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── Guia prático: como estudar pra cada área ─ */}
+      <section id="guia-areas" className="py-20 md:py-28">
+        <div className="max-w-6xl mx-auto px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-14">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Como estudar cada área do ENEM</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+              Um guia direto, baseado nas edições recentes do exame, do que mais cai em cada uma das quatro áreas e como o ApexEnem ajuda você em cada uma.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-6">
+            <div className="p-6 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800">
+              <h3 className="text-lg font-extrabold mb-3">Linguagens, Códigos e suas Tecnologias</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                A prova mistura interpretação de texto, gramática contextualizada, literatura brasileira (modernismo é o movimento mais cobrado), figuras de linguagem e uma língua estrangeira (inglês ou espanhol). O segredo é ler diariamente — qualquer gênero — e treinar interpretação em vez de decorar regras.
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                <strong>Como usar o ApexEnem:</strong> gere aulas de interpretação de gênero textual e figuras de linguagem; faça simulados de Linguagens cronometrados; corrija redações com foco em Competência 2 (compreensão do tema) e Competência 4 (coesão).
+              </p>
+            </div>
+            <div className="p-6 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800">
+              <h3 className="text-lg font-extrabold mb-3">Ciências Humanas e suas Tecnologias</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                História do Brasil (sobretudo República Velha, Era Vargas e Ditadura Militar), geografia (demografia, urbanização e geopolítica), filosofia clássica e moderna, sociologia (Marx, Weber e Durkheim). As questões cobram leitura de gráficos, mapas e trechos de documentos oficiais.
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                <strong>Como usar o ApexEnem:</strong> use a pesquisa de repertórios ao preparar temas de redação de cunho social; estude com aulas em texto por período histórico; faça questões IA focadas em interpretação de dados.
+              </p>
+            </div>
+            <div className="p-6 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800">
+              <h3 className="text-lg font-extrabold mb-3">Ciências da Natureza e suas Tecnologias</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                Biologia (ecologia, genética e fisiologia humana lideram), química (estequiometria, química orgânica e eletroquímica) e física (cinemática, dinâmica, termodinâmica e eletricidade). Boa parte das questões parte de uma situação-problema do cotidiano ou da indústria — nunca é só cálculo.
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                <strong>Como usar o ApexEnem:</strong> intercale aulas em texto das três sub-áreas; faça simulados de Natureza para treinar o cansaço de interpretar enunciados longos; use o banco de questões reais pra ganhar familiaridade com o estilo do ENEM.
+              </p>
+            </div>
+            <div className="p-6 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800">
+              <h3 className="text-lg font-extrabold mb-3">Matemática e suas Tecnologias</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed mb-3">
+                A prova pesa interpretação de gráficos e tabelas, matemática financeira (porcentagem e juros), geometria plana e espacial, funções (afim, quadrática e exponencial), probabilidade, estatística básica e análise combinatória. Boa estratégia: dominar os 10 tópicos que caem todo ano.
+              </p>
+              <p className="text-xs text-slate-500 dark:text-slate-400">
+                <strong>Como usar o ApexEnem:</strong> treine aulas em texto por tópico; use o simulado de Matemática para controlar tempo (90 questões em 5h é apertado); gere questões inéditas para praticar interpretação sem decorar enunciados.
+              </p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* ─── FAQ (bom pra SEO estruturado e esclarecer dúvidas) ─ */}
+      <section id="faq" className="py-20 md:py-28 bg-slate-50/50 dark:bg-[#0f0a1e]/50">
+        <div className="max-w-3xl mx-auto px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Perguntas frequentes</h2>
+            <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Dúvidas comuns sobre o ApexEnem, como funciona e como começar.</p>
+          </motion.div>
+
+          <div className="space-y-5">
+            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
+              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">O ApexEnem é gratuito?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Sim. O plano Free dá acesso ao banco de questões reais do ENEM, à correção de redação por IA, aos simulados cronometrados, à geração de aulas em texto, à pesquisa de repertórios e às salas de competição. As ações que consomem IA usam uma carteira de moedas que recarrega semanalmente — e você pode ganhar moedas extras assistindo a anúncios opcionais. Planos pagos ampliam o limite de uso para quem precisa estudar em alto volume.
+              </p>
+            </details>
+
+            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
+              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">Preciso instalar algum aplicativo?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Não. O ApexEnem roda inteiro no navegador — Chrome, Edge, Firefox, Safari — tanto no computador quanto no celular. A interface é responsiva, então você pode começar uma redação no notebook e revisar depois no celular sem perder nada: tudo fica salvo na sua conta.
+              </p>
+            </details>
+
+            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
+              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">Quão confiável é a correção de redação por IA?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                A correção segue literalmente a Cartilha do Participante do ENEM 2025 e aplica as regras oficiais de pontuação por competência (0, 40, 80, 120, 160 ou 200). Nenhum corretor automático substitui 100% um corretor humano, mas o diagnóstico sobre competências e os pontos específicos a melhorar são precisos o suficiente para guiar seus estudos. Recomendamos usar como ferramenta de treino intensivo e, quando possível, buscar também um professor para feedback qualitativo nas redações finais.
+              </p>
+            </details>
+
+            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
+              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">A nota do simulado é parecida com a do ENEM real?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                A nota do simulado é calculada pelo método TRI (Teoria de Resposta ao Item), o mesmo que o INEP usa. Isso significa que a estimativa reflete não só quantas questões você acertou, mas quais — errar questões fáceis puxa a estimativa pra baixo. Em geral a nota do simulado fica dentro de uma margem de ±30 a 50 pontos em relação à que você faria no exame real.
+              </p>
+            </details>
+
+            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
+              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">Posso me cadastrar sendo menor de idade?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                A partir dos 13 anos, sim. Entre 13 e 17 anos é obrigatório informar o e-mail de um responsável legal e declarar o consentimento dele no momento do cadastro — exigência da LGPD (Art. 14) e do Estatuto Digital da Criança e do Adolescente (Lei nº 15.211/2025). O responsável recebe um e-mail com acesso a um painel para acompanhar a atividade do estudante.
+              </p>
+            </details>
+
+            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
+              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">Posso usar o ApexEnem para outros vestibulares além do ENEM?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                O conteúdo é construído com foco no ENEM — matriz de referência do INEP, estilo de questão contextualizada, cinco competências da redação — mas a maior parte do conhecimento se transfere para vestibulares como Fuvest, Unicamp, UERJ e PUC-Rio. A grande diferença fica em redação (bancas têm estilos próprios) e em questões discursivas, que o ENEM não cobra.
+              </p>
+            </details>
+
+            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
+              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">Meus dados estão seguros?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Tratamos todos os dados conforme a LGPD. Senhas são armazenadas com hash forte (jamais em texto plano), as sessões usam tokens de curta duração renovados automaticamente, e você pode ativar autenticação em duas etapas por aplicativo autenticador (Google Authenticator, Authy, 1Password). A qualquer momento você solicita a exclusão total da sua conta e dos dados associados pelas Configurações — direito ao esquecimento garantido pela lei.
+              </p>
+            </details>
+
+            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
+              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">O ApexEnem tem vínculo com o INEP ou com o MEC?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
+              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Não. O ApexEnem é um projeto independente, criado por uma pequena equipe de desenvolvedores e educadores. ENEM® é marca registrada do INEP e é usada aqui apenas em caráter descritivo, para indicar que a plataforma prepara para esse exame. Para informações oficiais, consulte sempre o site do INEP.
+              </p>
+            </details>
           </div>
         </div>
       </section>

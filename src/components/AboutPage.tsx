@@ -308,6 +308,47 @@ export default function AboutPage({
         </div>
       </section>
 
+      <section id="sobre-plataforma" className="py-20 md:py-28">
+        <div className="max-w-4xl mx-auto px-4">
+          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="mb-10">
+            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">O que você encontra na plataforma</h2>
+            <p className="text-slate-500 dark:text-slate-400 leading-relaxed">
+              Uma visão geral do que está disponível quando você cria sua conta no ApexEnem — todas as ferramentas foram pensadas para funcionar de forma integrada.
+            </p>
+          </motion.div>
+
+          <div className="space-y-6 text-sm leading-relaxed text-slate-600 dark:text-slate-300">
+            <p>
+              Ao entrar na plataforma, o <strong>painel principal</strong> mostra seu nível, ofensiva diária, meta ENEM e as três ações recomendadas para hoje — baseadas no seu histórico de erros e nos tópicos que mais caem no exame. É o ponto de partida de qualquer sessão de estudo.
+            </p>
+            <p>
+              A aba de <strong>correção de redação</strong> aceita texto digitado ou foto do manuscrito. Em segundos devolve a nota pelas cinco competências oficiais com explicação do que precisa melhorar em cada uma. O histórico guarda todas as redações corrigidas para você acompanhar a evolução.
+            </p>
+            <p>
+              A aba de <strong>simulados</strong> permite montar provas por área (Linguagens, Humanas, Natureza, Matemática) ou o simulado completo cronometrado. Ao finalizar, o relatório mostra a nota TRI, tempo gasto por questão, taxa de acerto por tópico e um gráfico de evolução entre simulados anteriores.
+            </p>
+            <p>
+              A aba de <strong>questões IA</strong> gera questões inéditas no estilo ENEM sob demanda, com cinco alternativas plausíveis e explicação passo a passo da resposta correta. Útil quando você já esgotou as provas antigas e quer treinar interpretação sem decorar enunciados.
+            </p>
+            <p>
+              A aba de <strong>aulas</strong> tem duas trilhas: aulas em texto geradas por IA sob demanda (você escolhe a área e recebe uma aula com conceitos, exemplos e três dicas aplicáveis) e videoaulas gravadas por professores, com produção em andamento.
+            </p>
+            <p>
+              A aba de <strong>repertórios</strong> (também disponível publicamente, sem cadastro) ajuda na redação: digite um tema do ENEM e receba uma lista de filmes, livros, séries, dados estatísticos, leis e conceitos filosóficos que podem embasar sua argumentação — todos com título verificado para evitar sugestões inventadas.
+            </p>
+            <p>
+              A aba de <strong>salas de competição</strong> deixa você criar uma sala, compartilhar o código com amigos e disputar o ranking de XP em tempo real. Cada atividade (redação, simulado, questão) soma pontos no placar da sala. Suporta de 5 a 50 membros.
+            </p>
+            <p>
+              Em <strong>configurações</strong>, você gerencia sua foto de perfil, ativa autenticação em duas etapas por aplicativo autenticador, acompanha sua carteira de moedas e, se quiser, solicita a exclusão total da conta e dos dados associados — direito garantido pela LGPD.
+            </p>
+            <p>
+              Fora da área logada, qualquer pessoa pode usar livremente a pesquisa de repertórios, ler as páginas de termos, privacidade e cookies, conhecer a equipe pela página de autores e entrar em contato pela página de contato.
+            </p>
+          </div>
+        </div>
+      </section>
+
       <section id="sobre-equipe" className="py-20 md:py-28 bg-slate-50/50 dark:bg-[#0f0a1e]/50">
         <div className="max-w-6xl mx-auto px-4">
           <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-16">
