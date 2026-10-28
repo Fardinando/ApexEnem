@@ -2,8 +2,6 @@ import React, { useEffect, useRef, useState } from 'react';
 import { getAdSenseClient, hasConsent } from '../lib/consent';
 
 const AD_UNIT_SLOTS: Record<string, string> = {
-  'blog-inline': '',
-  'blog-list-bottom': '',
   'repertoires-result': '',
   'landing-bottom': '',
 };

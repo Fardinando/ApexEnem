@@ -471,7 +471,6 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
             <button type="button" onClick={() => scrollTo('features')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Recursos</button>
             <button type="button" onClick={() => scrollTo('demo')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Demo</button>
             <button type="button" onClick={() => goTo('/repertorios')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Repertórios</button>
-            <button type="button" onClick={() => goTo('/blog')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Blog</button>
             <button type="button" onClick={() => goTo('/planos')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Planos</button>
             <button type="button" onClick={goToAbout} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Sobre</button>
             <button type="button" onClick={() => goTo('/contato')} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Contato</button>
@@ -633,7 +632,6 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
               ApexEnem © 2026 — Plataforma Educacional Adaptativa
             </div>
             <nav className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-slate-400">
-              <a href="/blog" onClick={(e) => { e.preventDefault(); goTo('/blog'); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Blog</a>
               <a href="/repertorios" onClick={(e) => { e.preventDefault(); goTo('/repertorios'); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Repertórios</a>
               <a href="/autores" onClick={(e) => { e.preventDefault(); goTo('/autores'); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Autores</a>
               <a href="/contato" onClick={(e) => { e.preventDefault(); goTo('/contato'); }} className="hover:text-blue-600 dark:hover:text-blue-400 transition cursor-pointer">Contato</a>

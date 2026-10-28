@@ -20,7 +20,6 @@ import RefundPolicyPage from './components/RefundPolicyPage';
 import DenunciarPage from './components/DenunciarPage';
 import ResetPasswordPage from './components/ResetPasswordPage';
 import ResponsavelPage from './components/ResponsavelPage';
-import BlogView from './components/BlogView';
 import AuthorsView from './components/AuthorsView';
 import ContactPage from './components/ContactPage';
 import RepertoiresView, { RepertoireSearch } from './components/RepertoiresView';
@@ -590,16 +589,6 @@ export default function App() {
     return (
       <>
         <ResponsavelPage />
-        <CookieConsentBanner />
-      </>
-    );
-  }
-
-  if (currentPath === '/blog' || currentPath.startsWith('/blog/')) {
-    const slug = currentPath.startsWith('/blog/') ? decodeURIComponent(currentPath.slice('/blog/'.length)) : undefined;
-    return (
-      <>
-        <BlogView slug={slug} />
         <CookieConsentBanner />
       </>
     );

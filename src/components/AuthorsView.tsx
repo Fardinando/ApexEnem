@@ -2,7 +2,6 @@ import React, { useEffect } from 'react';
 import { Link2, ArrowLeft } from 'lucide-react';
 import PublicLayout from './PublicLayout';
 import { AUTHORS, getAuthor, type Author } from '../data/authors';
-import { articlesByAuthor, formatDate } from '../data/blog';
 import { applySeo } from '../lib/seo';
 import { navigate } from '../lib/nav';
 
@@ -58,8 +57,6 @@ export default function AuthorsView({ slug }: { slug?: string }) {
       );
     }
 
-    const authorArticles = articlesByAuthor(author.slug);
-
     return (
       <PublicLayout crumbs={[{ label: 'Início', path: '/' }, { label: 'Autores', path: '/autores' }, { label: author.name }]}>
         <section className="max-w-3xl mx-auto px-4 pt-8 pb-6">
@@ -79,26 +76,6 @@ export default function AuthorsView({ slug }: { slug?: string }) {
                 </div>
               )}
             </div>
-          </div>
-
-          <div className="mt-10">
-            <h2 className="text-lg font-extrabold tracking-tight mb-4">
-              {authorArticles.length === 1 ? '1 artigo publicado' : `${authorArticles.length} artigos publicados`}
-            </h2>
-            {authorArticles.length === 0 ? (
-              <p className="text-sm text-slate-400">Nenhum artigo publicado ainda.</p>
-            ) : (
-              <ul className="space-y-4">
-                {authorArticles.map((a) => (
-                  <li key={a.slug}>
-                    <button type="button" onClick={() => navigate(`/blog/${a.slug}`)} className="block w-full text-left p-4 rounded-xl border border-slate-200 dark:border-slate-800 hover:border-blue-300 dark:hover:border-blue-700 transition cursor-pointer">
-                      <p className="text-[11px] text-slate-400 mb-1">{formatDate(a.date)} · {a.category}</p>
-                      <p className="text-sm font-bold hover:text-blue-600 transition">{a.title}</p>
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
           </div>
 
           <div className="mt-10">

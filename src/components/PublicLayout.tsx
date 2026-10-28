@@ -11,7 +11,6 @@ export interface Crumb {
 
 const NAV_LINKS: { label: string; path: string }[] = [
   { label: 'Início', path: '/' },
-  { label: 'Blog', path: '/blog' },
   { label: 'Repertórios', path: '/repertorios' },
   { label: 'Autores', path: '/autores' },
   { label: 'Sobre', path: '/sobre' },
@@ -131,7 +130,6 @@ export default function PublicLayout({
                 <li><button type="button" onClick={signup} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition cursor-pointer">Criar conta</button></li>
                 <li><button type="button" onClick={() => go('/planos')} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition cursor-pointer">Planos e preços</button></li>
                 <li><button type="button" onClick={() => go('/repertorios')} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition cursor-pointer">Pesquisa de repertórios</button></li>
-                <li><button type="button" onClick={() => go('/blog')} className="text-slate-500 dark:text-slate-400 hover:text-blue-600 transition cursor-pointer">Blog</button></li>
               </ul>
             </div>
             <div>

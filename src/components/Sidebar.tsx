@@ -9,7 +9,6 @@ import { getLevelFromXp, getLevelTitle, type GamificationStats } from '../lib/ga
 import { subscribeWallet, getCoins, getPlanId } from '../lib/coins';
 import { planHasTeacherAI } from '../config/plans';
 import Logo from './Logo';
-import AdPlaceholder from './AdPlaceholder';
 import RewardCoinsModal from './RewardCoinsModal';
 
 interface SidebarProps {
@@ -151,9 +150,6 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
               </button>
             </div>
 
-            <div className="mt-4 pt-3 border-t border-slate-200 dark:border-slate-800">
-              <AdPlaceholder slot="sidebar-mobile" format="banner" user={currentUser} />
-            </div>
           </div>
         </>
       )}
@@ -228,7 +224,6 @@ export default function Sidebar({ currentUser, activeTab, setActiveTab, onLogout
 
         {/* Desktop bottom */}
         <div className="space-y-3 pt-4 border-t border-slate-200 dark:border-slate-800">
-          <AdPlaceholder slot="sidebar-desktop" format="rectangle" user={currentUser} />
           <button type="button" onClick={() => { window.history.pushState({}, '', '/planos'); window.dispatchEvent(new Event('popstate')); }}
             className="w-full py-2.5 px-4 rounded-xl bg-gradient-to-r from-blue-600 to-purple-600 text-white text-[11px] font-bold flex items-center justify-center gap-2 transition hover:opacity-95 cursor-pointer">
             <Crown className="h-4 w-4" /> Planos & Moedas
