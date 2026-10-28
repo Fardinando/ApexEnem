@@ -158,7 +158,7 @@ a fila/rotação. O backend da Vercel conversa com ele por `RENDER_PROCESS_URL`.
    | `RESEND_API_KEY` | ver Passo 6 |
    | `EMAIL_FROM` | `ApexEnem <onboarding@resend.dev>` (teste) ou do seu domínio verificado |
    | `CONTACT_EMAIL` | e-mail que **você lê** para receber o formulário de contato |
-   | `VITE_ADSENSE_CLIENT` | `ca-pub-3858534603619694` (ver Passo 7) |
+   | `VITE_ADSENSE_CLIENT` | `ca-pub-8394211784034491` (ver Passo 7) |
    | `VITE_GA_ID` | `G-XXXXXXXXXX` (ver Passo 8) |
 
    **⚪ Opcionais**
@@ -233,7 +233,7 @@ Sem isso, os e-mails ficam apenas simulados no log.
 
 ## 7. 🟡 Google AdSense
 
-O arquivo `public/ads.txt` já está presente com o publisher `pub-3858534603619694`.
+O arquivo `public/ads.txt` já está presente com o publisher `pub-8394211784034491`.
 
 1. <https://adsense.google.com> → crie/entre na conta.
 2. **Sites → Add site** → `apexenem.vercel.app` e conclua a verificação.
