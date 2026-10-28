@@ -3,13 +3,20 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState } from 'react';
-import { BookOpen, Target, Sparkles, CheckCircle2, ChevronRight, ChevronLeft, Award } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { BookOpen, Target, Sparkles, CheckCircle2, ChevronRight, ChevronLeft, Award, GraduationCap, Plus, X } from 'lucide-react';
 import type { StudySerie } from '../types';
+import { CURSOS, universidadesParaCurso, getNotaCorte, getCurso, getUni } from '../data/notas-corte';
+
+export interface TargetCourse {
+  cursoId: string;
+  uniId: string;
+  nota: number;
+}
 
 interface OnboardingViewProps {
   currentUser: { name: string; email: string };
-  onCompleted: (data: { serie: string; targetScore: number; hardSubjects: string[] }) => void;
+  onCompleted: (data: { serie: string; targetScore: number; hardSubjects: string[]; targetCourses?: TargetCourse[] }) => void;
 }
 
 export default function OnboardingView({ currentUser, onCompleted }: OnboardingViewProps) {
@@ -18,6 +25,12 @@ export default function OnboardingView({ currentUser, onCompleted }: OnboardingV
   const [otherSerie, setOtherSerie] = useState('');
   const [targetScore, setTargetScore] = useState(750);
   const [hardSubjects, setHardSubjects] = useState<string[]>([]);
+  const [targetCourses, setTargetCourses] = useState<TargetCourse[]>([]);
+  // Pickers em aberto no step 4
+  const [pickerCurso, setPickerCurso] = useState<string>('');
+  const [pickerUni, setPickerUni] = useState<string>('');
+
+  const TOTAL_STEPS = 4;
 
   const seriesOptions = [
     { value: '9_fundamental' as StudySerie, label: '9º Ano Fundamental', desc: 'Iniciando o foco cedo' },
@@ -64,11 +77,38 @@ export default function OnboardingView({ currentUser, onCompleted }: OnboardingV
   };
 
   const handleFinish = () => {
+    // Se o aluno escolheu metas de curso, usa a nota mais alta entre elas como
+    // target_score (meta mais ambiciosa). Se não escolheu, mantém o slider.
+    const effectiveScore = targetCourses.length > 0
+      ? Math.max(targetScore, ...targetCourses.map((t) => Math.ceil(t.nota)))
+      : targetScore;
     onCompleted({
       serie: serie || 'outro',
-      targetScore,
+      targetScore: effectiveScore,
       hardSubjects,
+      targetCourses: targetCourses.length > 0 ? targetCourses : undefined,
     });
+  };
+
+  const unisDisponiveis = useMemo(() => (pickerCurso ? universidadesParaCurso(pickerCurso) : []), [pickerCurso]);
+  const notaPreview = pickerCurso && pickerUni ? getNotaCorte(pickerCurso, pickerUni) : null;
+
+  const adicionarMeta = () => {
+    if (!pickerCurso || !pickerUni || notaPreview === null) return;
+    // Evita duplicata
+    if (targetCourses.some((t) => t.cursoId === pickerCurso && t.uniId === pickerUni)) {
+      setPickerCurso('');
+      setPickerUni('');
+      return;
+    }
+    if (targetCourses.length >= 5) return;
+    setTargetCourses([...targetCourses, { cursoId: pickerCurso, uniId: pickerUni, nota: notaPreview }]);
+    setPickerCurso('');
+    setPickerUni('');
+  };
+
+  const removerMeta = (i: number) => {
+    setTargetCourses(targetCourses.filter((_, idx) => idx !== i));
   };
 
   const scoreCtx = getScoreContext(targetScore);
@@ -86,17 +126,17 @@ export default function OnboardingView({ currentUser, onCompleted }: OnboardingV
         <div className="relative z-10">
           <div className="flex justify-between items-center mb-3">
             <span className="text-[11px] font-mono uppercase tracking-wider text-[#777587]">
-              Passo {step} de 3
+              Passo {step} de {TOTAL_STEPS}
             </span>
             <span className="text-right text-xs font-semibold text-[#3525cd] dark:text-[#c3c0ff]">
-              {step === 1 ? 'Série Escolar' : step === 2 ? 'Meta de Pontuação' : 'Desafios Teóricos'}
+              {step === 1 ? 'Série Escolar' : step === 2 ? 'Meta de Pontuação' : step === 3 ? 'Desafios Teóricos' : 'Curso dos Sonhos'}
             </span>
           </div>
           {/* Progress track */}
           <div className="w-full bg-[#f0ecf9] dark:bg-[#0d0a21] h-2 rounded-full overflow-hidden">
             <div
               className="bg-gradient-to-r from-[#3525cd] to-[#712ae2] h-full rounded-full transition-all duration-500 ease-out"
-              style={{ width: `${(step / 3) * 100}%` }}
+              style={{ width: `${(step / TOTAL_STEPS) * 100}%` }}
             ></div>
           </div>
         </div>
@@ -285,6 +325,109 @@ export default function OnboardingView({ currentUser, onCompleted }: OnboardingV
             </div>
           )}
 
+          {/* STEP 4: CURSOS E UNIVERSIDADES DOS SONHOS */}
+          {step === 4 && (
+            <div className="space-y-5 animate-fade-in">
+              <div className="space-y-2 text-center md:text-left">
+                <div className="inline-flex p-2.5 bg-indigo-50 dark:bg-dark-bg text-[#3525cd] dark:text-[#c3c0ff] rounded-2xl mb-1">
+                  <GraduationCap className="h-6 w-6" />
+                </div>
+                <h2 className="text-2xl font-extrabold text-[#1b1b24] dark:text-[#f3effc]">
+                  Qual curso e universidade você quer alcançar?
+                </h2>
+                <p className="text-[#464555] dark:text-[#c7c4d8] text-sm leading-relaxed">
+                  Escolha até 5 metas. Vamos calcular a nota mínima que você precisa buscar e acompanhar sua distância até cada uma. Se preferir não decidir agora, clique em <strong>Pular</strong>.
+                </p>
+              </div>
+
+              {/* Picker */}
+              <div className="p-4 bg-[#fcf8ff] dark:bg-dark-bg border border-indigo-50 dark:border-indigo-950 rounded-2xl space-y-3">
+                <div className="grid sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#1b1b24] dark:text-[#f3effc] mb-1 block" htmlFor="onb-curso">Curso</label>
+                    <select
+                      id="onb-curso"
+                      value={pickerCurso}
+                      onChange={(e) => { setPickerCurso(e.target.value); setPickerUni(''); }}
+                      className="w-full px-3 py-2.5 bg-white dark:bg-dark-bg/50 border border-indigo-100 dark:border-indigo-900/40 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3525cd]/25 focus:border-[#3525cd] cursor-pointer"
+                    >
+                      <option value="">Selecione um curso…</option>
+                      {CURSOS.map((c) => (<option key={c.id} value={c.id}>{c.nome}</option>))}
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-[11px] font-semibold text-[#1b1b24] dark:text-[#f3effc] mb-1 block" htmlFor="onb-uni">Universidade</label>
+                    <select
+                      id="onb-uni"
+                      value={pickerUni}
+                      onChange={(e) => setPickerUni(e.target.value)}
+                      disabled={!pickerCurso}
+                      className="w-full px-3 py-2.5 bg-white dark:bg-dark-bg/50 border border-indigo-100 dark:border-indigo-900/40 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-[#3525cd]/25 focus:border-[#3525cd] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <option value="">{pickerCurso ? 'Selecione uma universidade…' : 'Escolha o curso primeiro'}</option>
+                      {unisDisponiveis.map((u) => (<option key={u.id} value={u.id}>{u.sigla} — {u.nome}</option>))}
+                    </select>
+                  </div>
+                </div>
+
+                {notaPreview !== null && (
+                  <div className="flex items-center justify-between p-3 bg-white dark:bg-dark-bg/60 border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
+                    <div>
+                      <p className="text-[10px] font-mono uppercase tracking-wider text-[#777587]">Nota mínima aproximada</p>
+                      <p className="text-xl font-display font-extrabold text-[#3525cd] dark:text-[#c3c0ff]">
+                        {notaPreview.toFixed(0)}<span className="text-xs text-[#777587] font-mono ml-1">/ 1000</span>
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={adicionarMeta}
+                      disabled={targetCourses.length >= 5}
+                      className="px-4 py-2 bg-[#3525cd] hover:bg-indigo-750 disabled:opacity-50 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Adicionar meta
+                    </button>
+                  </div>
+                )}
+
+                <p className="text-[10px] text-[#777587] leading-relaxed">
+                  Notas de referência do SISU (ampla concorrência, mediana das últimas 3 edições). Os cortes oscilam a cada ano — consulte <a href="https://sisu.mec.gov.br" target="_blank" rel="noopener noreferrer" className="text-[#3525cd] dark:text-[#c3c0ff] underline">sisu.mec.gov.br</a> antes de inscrever.
+                </p>
+              </div>
+
+              {/* Metas selecionadas */}
+              {targetCourses.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold text-[#1b1b24] dark:text-[#f3effc]">Suas metas ({targetCourses.length}/5):</p>
+                  <ul className="space-y-2">
+                    {targetCourses.map((t, i) => {
+                      const c = getCurso(t.cursoId);
+                      const u = getUni(t.uniId);
+                      return (
+                        <li key={`${t.cursoId}-${t.uniId}`} className="flex items-center justify-between gap-2 p-3 bg-white dark:bg-dark-bg/40 border border-indigo-100 dark:border-indigo-900/40 rounded-xl">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="shrink-0 h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-950/40 text-[#3525cd] dark:text-[#c3c0ff] flex items-center justify-center font-black text-[10px]">
+                              {u?.sigla.slice(0, 4)}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-sm font-semibold text-[#1b1b24] dark:text-[#f3effc] truncate">{c?.nome}</p>
+                              <p className="text-[11px] text-[#777587] truncate">{u?.sigla} ({u?.estado}) · corte ~{t.nota.toFixed(0)}</p>
+                            </div>
+                          </div>
+                          <button type="button" onClick={() => removerMeta(i)} className="shrink-0 p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg cursor-pointer" aria-label="Remover">
+                            <X className="h-4 w-4" />
+                          </button>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                  <div className="p-3 bg-emerald-50/75 border border-emerald-100 dark:bg-emerald-950/20 dark:border-emerald-900/40 rounded-xl text-xs text-emerald-800 dark:text-emerald-300">
+                    💡 Sua meta final será de <strong>{Math.max(targetScore, ...targetCourses.map(t => Math.ceil(t.nota)))} pontos</strong> — o maior entre sua meta pessoal e a nota de corte mais alta das suas escolhas.
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
         </div>
 
         {/* Wizard Controls Footer */}
@@ -303,27 +446,39 @@ export default function OnboardingView({ currentUser, onCompleted }: OnboardingV
             <div></div> // balance center spacing
           )}
 
-          {step < 3 ? (
-            <button
-              id="btn-onb-next"
-              type="button"
-              onClick={handleNext}
-              className="px-6 py-2.5 bg-[#3525cd] hover:bg-indigo-750 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition shadow-md shadow-indigo-100 dark:shadow-none"
-            >
-              <span>Continuar</span>
-              <ChevronRight className="h-4 w-4" />
-            </button>
-          ) : (
-            <button
-              id="btn-onb-finish"
-              type="button"
-              onClick={handleFinish}
-              className="px-6 py-2.5 bg-gradient-to-r from-[#21c55d] to-[#04a753] hover:opacity-90 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-green-100 dark:shadow-none"
-            >
-              <Award className="h-4 w-4" />
-              <span>Finalizar Onboarding</span>
-            </button>
-          )}
+          <div className="flex items-center gap-2">
+            {step === 4 && (
+              <button
+                id="btn-onb-skip"
+                type="button"
+                onClick={handleFinish}
+                className="px-4 py-2.5 text-xs font-semibold text-[#777587] hover:text-[#1b1b24] dark:hover:text-white rounded-xl cursor-pointer transition"
+              >
+                Pular esta etapa
+              </button>
+            )}
+            {step < TOTAL_STEPS ? (
+              <button
+                id="btn-onb-next"
+                type="button"
+                onClick={handleNext}
+                className="px-6 py-2.5 bg-[#3525cd] hover:bg-indigo-750 text-white text-xs font-semibold rounded-xl flex items-center gap-1.5 transition shadow-md shadow-indigo-100 dark:shadow-none cursor-pointer"
+              >
+                <span>Continuar</span>
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            ) : (
+              <button
+                id="btn-onb-finish"
+                type="button"
+                onClick={handleFinish}
+                className="px-6 py-2.5 bg-gradient-to-r from-[#21c55d] to-[#04a753] hover:opacity-90 text-white text-xs font-bold rounded-xl flex items-center gap-1.5 transition shadow-lg shadow-green-100 dark:shadow-none cursor-pointer"
+              >
+                <Award className="h-4 w-4" />
+                <span>Finalizar</span>
+              </button>
+            )}
+          </div>
         </div>
 
       </div>

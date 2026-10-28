@@ -115,6 +115,9 @@ function readAgeFromProfile(): number | null {
 }
 
 export function loadAdSense() {
+  // O script adsbygoogle.js já é carregado estaticamente pelo <head> do
+  // index.html (exigência da verificação de propriedade AdSense). Aqui apenas
+  // configuramos flags antes de permitir o push de ad units.
   if (adsenseLoaded || !hasConsent('marketing')) return;
   const client = getAdSenseClient();
   if (!client) return;
@@ -122,27 +125,14 @@ export function loadAdSense() {
 
   const age = readAgeFromProfile();
   const isMinor = age !== null && age < 18;
-  const underAgeOfConsent = age !== null && age < 16;
-  const childDirected = age !== null && age < 13;
 
   (window as any).adsbygoogle = (window as any).adsbygoogle || [];
   if (isMinor || age === null) {
     // non-personalized ads por padrão quando idade desconhecida ou menor
+    // (ECA Digital + LGPD Art. 14 §3º: proibido perfilamento de menores)
     (window as any).adsbygoogle.requestNonPersonalizedAds = 1;
   }
   (window as any).adsbygoogle.pauseAdRequests = 0;
-  (window as any).adsbygoogle.push = (window as any).adsbygoogle.push || function (c: any) {
-    (window as any).adsbygoogle.length = ((window as any).adsbygoogle.length || 0) + 1;
-    return c;
-  };
-
-  const s = document.createElement('script');
-  s.async = true;
-  s.crossOrigin = 'anonymous';
-  s.src = `https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=${client}`;
-  if (underAgeOfConsent) s.setAttribute('data-tag-for-under-age-of-consent', '1');
-  if (childDirected) s.setAttribute('data-tag-for-child-directed-treatment', '1');
-  document.head.appendChild(s);
 }
 
 export function getAdSenseClient(): string | undefined {

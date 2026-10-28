@@ -292,7 +292,7 @@ export default function App() {
     }
   };
 
-  const handleOnboardingCompleted = async (data: { serie: string; targetScore: number; hardSubjects: string[] }) => {
+  const handleOnboardingCompleted = async (data: { serie: string; targetScore: number; hardSubjects: string[]; targetCourses?: { cursoId: string; uniId: string; nota: number }[] }) => {
     if (!session?.user) return;
     try {
       const updated = await upsertProfile({
@@ -304,15 +304,19 @@ export default function App() {
         serie: data.serie,
         target_score: data.targetScore,
         hard_subjects: data.hardSubjects,
+        target_courses: data.targetCourses || null,
       });
-      setProfile(updated || { serie: data.serie, target_score: data.targetScore, hard_subjects: data.hardSubjects });
+      setProfile(updated || { serie: data.serie, target_score: data.targetScore, hard_subjects: data.hardSubjects, target_courses: data.targetCourses });
       setRequireOnboarding(false);
 
+      const metasStr = data.targetCourses && data.targetCourses.length > 0
+        ? ` Metas: ${data.targetCourses.length} curso(s) selecionado(s).`
+        : '';
       const newLog: ActivityLog = {
         id: `act-${Date.now()}`,
         type: 'onboarding',
         title: 'Plano Adaptativo Personalizado',
-        description: `Série mapeada: ${data.serie}. Meta estabelecida: ${data.targetScore} pontos.`,
+        description: `Série mapeada: ${data.serie}. Meta estabelecida: ${data.targetScore} pontos.${metasStr}`,
         timeAgo: 'Agora mesmo',
         date: new Date().toISOString(),
       };
@@ -398,6 +402,7 @@ export default function App() {
         'target_score', 'hard_subjects', 'avatar',
         'total_xp', 'longest_streak', 'last_login_date',
         'birthdate', 'is_minor', 'parent_email', 'parent_consent_at', 'consent_version',
+        'target_courses',
       ]);
       const mapped: Record<string, any> = { id: session.user.id };
       for (const [k, v] of Object.entries(updated)) {
