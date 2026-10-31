@@ -233,7 +233,7 @@ const requireAuth = async (req: any, res: any, next: any) => {
     "/lesson", "/lesson-v2", "/chapter-lesson", "/questoes-ai", "/stats", "/simulado-explanation",
     "/pratica-questoes", "/classify-question", "/ai-task", "/beta-request",
     "/contact", "/denuncia", "/password-reset-request",
-    "/send-parental-notice", "/responsavel/dashboard"
+    "/send-parental-notice", "/responsavel/dashboard", "/parent/signup"
   ];
   const checkPath = req.path.startsWith("/api/") ? req.path : `/api${req.path}`;
     if (publicRoutes.includes(req.path) || publicRoutes.includes(checkPath) || req.path.startsWith("/questions/status/") || req.path.startsWith("/questions/status-batch") || req.path.startsWith("/ai-task/") || req.path.startsWith("/repertoires/status/") || req.path.startsWith("/status/")) return next();
@@ -2125,7 +2125,7 @@ app.post("/api/send-parental-notice",
     try { token = signParentToken(student_id); } catch {
       return res.status(500).json({ error: "Serviço de responsável indisponível." });
     }
-    const link = `${getBaseUrl()}/responsavel?s=${encodeURIComponent(student_id)}&t=${encodeURIComponent(token)}`;
+    const link = `${getBaseUrl()}/controleparental/${encodeURIComponent(student_id)}`;
     const html = `
 <!DOCTYPE html>
 <html lang="pt-BR"><body style="margin:0;padding:0;background:#f0eeff;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1b1b24">
@@ -2169,15 +2169,118 @@ app.post("/api/send-parental-notice",
   }
 );
 
+// ─── Painel do Responsável — Auth próprio ────────────────────────────────────
+// O pai cria uma conta separada no mesmo Supabase, mas o email dele PRECISA
+// coincidir com algum profiles.parent_email (ou seja, pelo menos um estudante
+// menor cadastrou aquele email como responsável durante o signup).
+
+/** Checa se este email está autorizado — algum estudante o tem como parent_email. */
+async function parentEmailAutorizado(email: string): Promise<boolean> {
+  if (!supabaseAdmin || !email) return false;
+  const { data, error } = await supabaseAdmin
+    .from("profiles")
+    .select("id", { count: "exact", head: true })
+    .ilike("parent_email", email.toLowerCase().trim())
+    .limit(1);
+  if (error) { console.warn("[parent] check error:", error.message); return false; }
+  // supabaseAdmin.select(..., {head:true,count:'exact'}) retorna data=[] e count no header
+  // Workaround: fazer um select normal pra garantir
+  const { data: rows } = await supabaseAdmin
+    .from("profiles")
+    .select("id")
+    .ilike("parent_email", email.toLowerCase().trim())
+    .limit(1);
+  return !!(rows && rows.length > 0);
+}
+
+// Signup separado para pais
+app.post("/api/parent/signup",
+  distributedRateLimit({ name: "parent-signup", max: 5, windowSec: 3600 }),
+  validateBody(z.object({
+    email: z.string().email(),
+    password: z.string().min(8).max(128),
+  })),
+  async (req, res) => {
+    if (!supabaseAdmin) return res.status(503).json({ error: "Serviço indisponível." });
+    const email = req.body.email.toLowerCase().trim();
+    const autorizado = await parentEmailAutorizado(email);
+    if (!autorizado) {
+      return res.status(403).json({
+        error: "Este e-mail não está cadastrado como responsável de nenhum estudante no ApexEnem. Peça ao(à) estudante para cadastrar seu e-mail como responsável legal durante o signup.",
+      });
+    }
+    const { error } = await supabaseAdmin.auth.admin.createUser({
+      email,
+      password: req.body.password,
+      email_confirm: true,
+      user_metadata: { role: 'parent', created_at: new Date().toISOString() },
+    });
+    if (error) {
+      if (error.message?.includes('already') || error.message?.includes('duplicate')) {
+        return res.status(409).json({ error: "Já existe uma conta com esse e-mail. Faça login." });
+      }
+      console.error("[parent-signup] failed:", error.message);
+      return res.status(500).json({ error: "Falha ao criar conta de responsável." });
+    }
+    return res.json({ ok: true });
+  }
+);
+
+// Lista os estudantes vinculados a este responsável (via parent_email).
+app.get("/api/parent/students", async (req, res) => {
+  if (!req.user || !req.userEmail) return res.status(401).json({ error: "Autenticação necessária." });
+  if (!supabaseAdmin) return res.status(503).json({ error: "Serviço indisponível." });
+  const { data: students, error } = await supabaseAdmin
+    .from("profiles")
+    .select("id, name, birthdate, serie, target_score, created_at, last_login_date, longest_streak, is_minor")
+    .ilike("parent_email", req.userEmail);
+  if (error) {
+    console.error("[parent-students] query failed:", error.message);
+    return res.status(500).json({ error: "Erro ao buscar estudantes." });
+  }
+  return res.json({ students: students || [] });
+});
+
+// Dashboard COMPLETO de um estudante específico (verificando ownership por email)
+app.get("/api/parent/student/:id", async (req, res) => {
+  if (!req.user || !req.userEmail) return res.status(401).json({ error: "Autenticação necessária." });
+  if (!supabaseAdmin) return res.status(503).json({ error: "Serviço indisponível." });
+  const studentId = req.params.id;
+
+  // Verifica que o email do responsável está vinculado a este estudante
+  const { data: student, error: errProfile } = await supabaseAdmin
+    .from("profiles")
+    .select("id, name, birthdate, parent_email, serie, target_score, created_at, last_login_date, longest_streak, target_courses, is_minor, hard_subjects, total_xp")
+    .eq("id", studentId)
+    .maybeSingle();
+
+  if (errProfile || !student) return res.status(404).json({ error: "Estudante não encontrado." });
+  if (!student.parent_email || student.parent_email.toLowerCase() !== req.userEmail.toLowerCase()) {
+    return res.status(403).json({ error: "Você não é o responsável legal deste estudante." });
+  }
+
+  const [logsRes, essaysRes, simRes] = await Promise.all([
+    supabaseAdmin.from("activity_logs").select("type,title,description,date").eq("user_id", studentId).order("date", { ascending: false }).limit(40),
+    supabaseAdmin.from("essay_corrections").select("score,title,created_at,competencies").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
+    supabaseAdmin.from("simulado_history").select("area,total,correct,created_at").eq("user_id", studentId).order("created_at", { ascending: false }).limit(20),
+  ]);
+  return res.json({
+    profile: student,
+    activity: logsRes.data || [],
+    essays: essaysRes.data || [],
+    simulados: simRes.data || [],
+  });
+});
+
+// Compat: endpoint legado que o botão de reenviar link ainda poderia chamar.
+// (O painel oficial agora é /controleparental/[id] + /api/parent/*)
 app.get("/api/responsavel/dashboard", async (req, res) => {
   const studentId = String(req.query.s || "");
   const token     = String(req.query.t || "");
   if (!studentId || !token || !verifyParentToken(studentId, token)) {
     return res.status(401).json({ error: "Link inválido ou expirado." });
   }
-  if (!supabaseAdmin) {
-    return res.status(503).json({ error: "Serviço indisponível." });
-  }
+  if (!supabaseAdmin) return res.status(503).json({ error: "Serviço indisponível." });
   const [profileRes, logsRes, essaysRes, simRes] = await Promise.all([
     supabaseAdmin.from("profiles").select("name,birthdate,parent_email,serie,target_score,created_at,last_login_date,longest_streak").eq("id", studentId).maybeSingle(),
     supabaseAdmin.from("activity_logs").select("type,title,date").eq("user_id", studentId).order("date", { ascending: false }).limit(20),

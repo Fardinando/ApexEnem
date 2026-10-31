@@ -21,6 +21,7 @@ import RefundPolicyPage from './components/RefundPolicyPage';
 import DenunciarPage from './components/DenunciarPage';
 import ResetPasswordPage from './components/ResetPasswordPage';
 import ResponsavelPage from './components/ResponsavelPage';
+import ControleParentalPage from './components/ControleParentalPage';
 import AuthorsView from './components/AuthorsView';
 import ContactPage from './components/ContactPage';
 import RepertoiresView, { RepertoireSearch } from './components/RepertoiresView';
@@ -142,8 +143,11 @@ export default function App() {
   }, [session?.user?.id, session?.access_token]);
 
   // Usuário logado em rota pública/de auth → redireciona pra / (dashboard).
+  // EXCEÇÃO: /controleparental/* é fluxo próprio do responsável — pode usar o
+  // mesmo navegador que o estudante usou pra logar, não deve ser redirecionado.
   useEffect(() => {
     if (!session?.user) return;
+    if (currentPath.startsWith('/controleparental/')) return;
     const PUBLIC_REDIRECT = new Set([
       '/login', '/signup',
       '/sobre', '/planos', '/repertorios', '/autores', '/contato',
@@ -617,6 +621,15 @@ export default function App() {
     return (
       <>
         <ResponsavelPage />
+        <CookieConsentBanner />
+      </>
+    );
+  }
+
+  if (currentPath.startsWith('/controleparental/')) {
+    return (
+      <>
+        <ControleParentalPage />
         <CookieConsentBanner />
       </>
     );
