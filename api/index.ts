@@ -904,48 +904,108 @@ app.post("/api/correct",
 
   const contentToEvaluate = text || "[O aluno enviou uma imagem contendo o manuscrito de redação para transcrição e correção direta.]";
 
-  const prompt = `Corretor oficial ENEM 2025. Avalie com precisão técnica.
+  const prompt = `Você é corretor oficial do ENEM. Siga RIGOROSAMENTE a Cartilha do Participante ENEM 2025, publicada pelo INEP. Pontue EXATAMENTE no nível descrito; não suba nem desça por simpatia ou rigor pessoal.
 
-REGRAS OBRIGATÓRIAS:
-- Cada competência recebe 0, 40, 80, 120, 160 ou 200.
-- 200 = NENHUM defeito detectável. Se você não consegue apontar um erro concreto, a nota É 200.
-- 160 = 1 único ponto fraco específico e identificável (ex: 1 repertório genérico, 1 coesão redundante).
-- 120 = 2+ defeitos OU 1 problema sério que prejudica a compreensão.
-- 80 = problema grave que compromete a clareza.
-- 40 = quase não atende o critério.
-- 0 = ausente.
+Tema proposto: "${title || "Sem título"}"
 
-IMPORTANTE: Redações com texto coeso, vocabulário variado, proposta detalhada com 5 elementos e repertório produtivo devem receber 200 em todas as competências. Não desconte detalhes triviais — avalie como banca do ENEM real, não como professor exigente.
-
-Tema: "${title || "Sem título"}"
-
-Redação:
+Redação do estudante:
 """
 ${contentToEvaluate}
 """
 
-NOTAS POR COMPETÊNCIA:
-C1 - Domínio da escrita formal (ausência de erros ortográficos, acentuação, concordância, regência, pontuação)
-C2 - Compreensão do tema e逄ao de argumentação (desenvolvimento do tema, repertório sociocultural produtivo)
-C3 - Organização dos argumentos (estrutura do texto, uso de conectivos, autoria, progressão de ideias)
-C4 - Coesão textual (articulação entre parágrafos, uso de operadores argumentativos, sequenciação)
-C5 - Proposta de intervenção (5 elementos: AGENTE + AÇÃO + MEIO + EFEITO + DETALHAMENTO)
+ESCALA GERAL: cada competência recebe EXATAMENTE um destes seis valores: 0, 40, 80, 120, 160 ou 200. Nota final = soma das cinco competências (de 0 a 1000).
 
-Retorne APENAS este JSON exato:
+═══════════════════════════════════════════════════════════
+DESCRITORES OFICIAIS DA CARTILHA ENEM 2025 (reproduzidos)
+═══════════════════════════════════════════════════════════
+
+► COMPETÊNCIA 1 — Demonstrar domínio da modalidade escrita formal da Língua Portuguesa.
+ 200 (nível 5): Demonstra EXCELENTE domínio da modalidade escrita formal e de escolha de registro. Desvios gramaticais ou de convenções da escrita só são aceitos como excepcionalidade e quando não caracterizam reincidência.
+ 160 (nível 4): BOM domínio, com POUCOS desvios gramaticais e de convenções da escrita.
+ 120 (nível 3): Domínio MEDIANO, com ALGUNS desvios gramaticais e de convenções.
+ 80 (nível 2): Domínio INSUFICIENTE, com MUITOS desvios.
+ 40 (nível 1): Domínio PRECÁRIO, de forma sistemática, com diversificados e frequentes desvios.
+ 0 (nível 0): Demonstra DESCONHECIMENTO da modalidade escrita formal.
+
+► COMPETÊNCIA 2 — Compreender a proposta de redação e aplicar conceitos de várias áreas para desenvolver o tema, dentro dos limites estruturais do texto dissertativo-argumentativo em prosa.
+ 200: Desenvolve o tema por argumentação CONSISTENTE, com repertório sociocultural PRODUTIVO (legitimamente usado para enriquecer a argumentação), e apresenta EXCELENTE domínio do texto dissertativo-argumentativo.
+ 160: Argumentação consistente e BOM domínio do dissertativo-argumentativo, com proposição, argumentação e conclusão.
+ 120: Argumentação PREVISÍVEL, domínio MEDIANO, com proposição, argumentação e conclusão.
+ 80: Desenvolve o tema por CÓPIA dos textos motivadores OU domínio INSUFICIENTE do dissertativo-argumentativo (não atende à estrutura proposição-argumentação-conclusão).
+ 40: TANGENCIAMENTO do tema OU traços CONSTANTES de outros tipos textuais (narrativo, injuntivo, descritivo).
+ 0: FUGA ao tema OU não atendimento ao tipo textual dissertativo-argumentativo. Isso acarreta nota zero também em C3, C4 e C5 (regra oficial de nulidade em cascata).
+
+► COMPETÊNCIA 3 — Selecionar, relacionar, organizar e interpretar informações, fatos, opiniões e argumentos em defesa de um ponto de vista.
+ 200: Apresenta informações, fatos e opiniões relacionados ao tema de forma CONSISTENTE e ORGANIZADA, configurando AUTORIA, em defesa de um ponto de vista.
+ 160: Apresenta de forma ORGANIZADA, com INDÍCIOS de autoria.
+ 120: Apresenta informações LIMITADAS aos argumentos dos textos motivadores, POUCO ORGANIZADAS.
+ 80: Apresenta informações DESORGANIZADAS ou CONTRADITÓRIAS, limitadas aos textos motivadores.
+ 40: Informações POUCO relacionadas ao tema ou INCOERENTES, sem defesa de ponto de vista.
+ 0: Informações NÃO relacionadas ao tema, sem defesa de ponto de vista.
+
+► COMPETÊNCIA 4 — Demonstrar conhecimento dos mecanismos linguísticos necessários para a construção da argumentação (coesão).
+ 200: Articula BEM as partes do texto e apresenta repertório DIVERSIFICADO de recursos coesivos.
+ 160: Articula com POUCAS inadequações, repertório DIVERSIFICADO.
+ 120: Articula de forma MEDIANA, com inadequações, repertório POUCO DIVERSIFICADO.
+ 80: Articula de forma INSUFICIENTE, com MUITAS inadequações, repertório LIMITADO (ex: só "e", "mas", "porque", "então").
+ 40: Articula de forma PRECÁRIA.
+ 0: NÃO articula as informações.
+
+► COMPETÊNCIA 5 — Elaborar proposta de intervenção para o problema abordado, respeitando os direitos humanos.
+ CINCO ELEMENTOS da proposta (contados individualmente):
+  1. AGENTE   — quem executa (ex: Ministério da Educação, escolas públicas, família)
+  2. AÇÃO     — o que fazer (ex: criar programas de monitoria)
+  3. MODO/MEIO — como (ex: por meio de parcerias com universidades)
+  4. EFEITO/FINALIDADE — pra quê (ex: reduzir a evasão escolar)
+  5. DETALHAMENTO — especifica/aprofunda um dos quatro elementos acima
+ 200: Proposta MUITO BEM elaborada, DETALHADA, relacionada ao tema e articulada à discussão. Apresenta OS CINCO elementos.
+ 160: Proposta BEM elaborada, articulada à discussão. Apresenta QUATRO elementos.
+ 120: Proposta MEDIANAMENTE elaborada. Apresenta TRÊS elementos.
+ 80: Proposta INSUFICIENTE ou não articulada à discussão. Apresenta DOIS elementos.
+ 40: Proposta VAGA, PRECÁRIA ou só ao assunto. Apresenta UM elemento.
+ 0: Não apresenta proposta OU proposta não relacionada ao tema/assunto OU proposta que DESRESPEITA os direitos humanos (nota zero obrigatória — regra oficial).
+
+═══════════════════════════════════════════════════════════
+REGRAS DE NOTA ZERO AUTOMÁTICA (nulidade)
+═══════════════════════════════════════════════════════════
+A redação recebe NOTA ZERO em todas as competências se:
+• FUGA total ao tema
+• NÃO ATENDIMENTO ao tipo textual dissertativo-argumentativo
+• Texto com ATÉ 7 LINHAS (texto insuficiente, considerando ~15 palavras/linha)
+• CÓPIA de trechos dos textos motivadores (nas partes copiadas, descontam-se de C1 a C5)
+• IMPROPÉRIOS, desenhos ou outras formas de desrespeito
+• Parte deliberadamente DESCONECTADA do tema
+• EM BRANCO
+
+Em C5, violação a DIREITOS HUMANOS zera APENAS C5 (não zera as outras).
+
+═══════════════════════════════════════════════════════════
+INSTRUÇÕES DE AVALIAÇÃO
+═══════════════════════════════════════════════════════════
+1. Leia a redação por inteiro antes de pontuar.
+2. Para cada competência, identifique em qual DESCRITOR a redação melhor se encaixa, levando os critérios ao pé da letra.
+3. Em C5, CONTE OS ELEMENTOS presentes (de 0 a 5). Isso basicamente determina a nota.
+4. Em C2, verifique APROVEITAMENTO do tema vs. tangenciamento vs. fuga.
+5. Em C1 e C4, conte número de desvios e julgue "poucos/alguns/muitos".
+6. Verifique as regras de nulidade antes de somar.
+7. No feedback de cada competência: cite 1 trecho da redação como exemplo + diga concretamente o que elevaria pra próximo nível. Seja específico, nunca genérico.
+8. Em "strengths" liste 3 pontos positivos reais. Em "weaknesses" liste 3 pontos a melhorar.
+9. O feedback geral (1 parágrafo) deve resumir desempenho e indicar o próximo passo de estudo.
+
+Retorne APENAS este JSON (sem markdown, sem explicações antes ou depois):
 {
-  "score": 900,
-  "generalFeedback": "...",
+  "score": 0,
+  "generalFeedback": "parágrafo único resumindo o desempenho e indicando prioridade de estudo",
   "competencies": [
-    {"id": 1, "name": "Domínio da Escrita Formal", "description": "...", "score": 200, "feedback": "..."},
-    {"id": 2, "name": "Compreensão da Tema", "description": "...", "score": 200, "feedback": "..."},
-    {"id": 3, "name": "Organização dos Argumentos", "description": "...", "score": 200, "feedback": "..."},
-    {"id": 4, "name": "Coesão Textual", "description": "...", "score": 200, "feedback": "..."},
-    {"id": 5, "name": "Proposta de Intervenção", "description": "...", "score": 200, "feedback": "..."}
+    {"id": 1, "name": "Domínio da Escrita Formal", "description": "C1 — modalidade escrita formal da Língua Portuguesa", "score": 0, "feedback": "..."},
+    {"id": 2, "name": "Compreensão do Tema", "description": "C2 — tipo textual dissertativo-argumentativo + repertório", "score": 0, "feedback": "..."},
+    {"id": 3, "name": "Organização dos Argumentos", "description": "C3 — seleção, relação e organização de argumentos", "score": 0, "feedback": "..."},
+    {"id": 4, "name": "Coesão Textual", "description": "C4 — mecanismos linguísticos de coesão", "score": 0, "feedback": "..."},
+    {"id": 5, "name": "Proposta de Intervenção", "description": "C5 — proposta com Agente+Ação+Meio+Efeito+Detalhamento, respeitando direitos humanos", "score": 0, "feedback": "..."}
   ],
-  "strengths": ["..."],
-  "weaknesses": ["..."]
-}
-Apenas JSON puro, sem markdown.`;
+  "strengths": ["positivo 1", "positivo 2", "positivo 3"],
+  "weaknesses": ["a melhorar 1", "a melhorar 2", "a melhorar 3"]
+}`;
 
   try {
     const raw = await callAI({

@@ -581,23 +581,26 @@ export default function RedacaoView({ onAddCorrection, essayCorrections }: Redac
           {!isLoading && activeCorrection && (
             <div className="bg-white dark:bg-[#1e293b] rounded-3xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-6" id="correction-results-view">
               
-              {/* Main Score Header Card */}
-              <div className="bg-gradient-to-r from-blue-750 via-blue-600 to-indigo-600 text-white p-6 rounded-2xl relative overflow-hidden flex flex-col md:flex-row justify-between items-center gap-4">
-                
-                <div className="absolute right-[-20px] top-[-20px] opacity-10">
+              {/* Main Score Header Card — wrap: título longo quebra linha,
+                   box da nota desce se não couber ao lado. */}
+              <div className="bg-gradient-to-r from-blue-750 via-blue-600 to-indigo-600 text-white p-4 sm:p-6 rounded-2xl relative overflow-hidden flex flex-wrap justify-between items-center gap-4">
+
+                <div className="absolute right-[-20px] top-[-20px] opacity-10 pointer-events-none">
                   <Target className="h-32 w-32 translate-x-10 translate-y-5" />
                 </div>
 
-                <div className="text-center md:text-left space-y-1 relative z-10">
-                  <span className="text-[10px] font-mono text-blue-100 uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded">Nota Final do Professor</span>
-                  <h3 className="font-display font-extrabold text-base md:text-lg truncate">{activeCorrection.title}</h3>
-                  <p className="text-xs text-blue-50 flex items-center justify-center md:justify-start gap-1">
+                <div className="min-w-0 flex-1 basis-full md:basis-auto text-center md:text-left space-y-1 relative z-10">
+                  <span className="text-[10px] font-mono text-blue-100 uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded inline-block">Nota Final do Professor</span>
+                  <h3 className="font-display font-extrabold text-base md:text-lg break-words whitespace-normal leading-snug">
+                    {activeCorrection.title}
+                  </h3>
+                  <p className="text-xs text-blue-50 flex items-center justify-center md:justify-start gap-1 flex-wrap">
                     <span>Avaliado em {activeCorrection.date}</span>
                   </p>
                 </div>
 
-                <div className="text-center bg-white/10 px-5 py-3 rounded-2xl border border-white/20 backdrop-blur-sm relative z-10">
-                  <span className="text-4xl lg:text-5xl font-display font-black tracking-tighter">
+                <div className="shrink-0 mx-auto md:mx-0 text-center bg-white/10 px-5 py-3 rounded-2xl border border-white/20 backdrop-blur-sm relative z-10">
+                  <span className="text-4xl lg:text-5xl font-display font-black tracking-tighter block">
                     {activeCorrection.score}
                   </span>
                   <span className="text-xs text-blue-200 block mt-1">/ 1000 pts</span>
