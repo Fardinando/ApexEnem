@@ -23,26 +23,44 @@ export interface PlanDef {
 
 /** Moedas concedidas por mês em cada plano (PRO/Apex). */
 export const MONTHLY_COINS: Record<PlanId, number> = {
-  free: 10,
+  free: 15,
   pro: 600,
   apex: 2000,
 };
 
-/** No plano Free, o saldo "zera" para este valor no início de cada semana. */
-export const WEEKLY_RESET_COINS = 10;
-
-/** Custo em moedas de cada funcionalidade de IA (0 = livre). */
+/**
+ * Preço (em moedas) de cada operação de IA.
+ * Lógica de precificação:
+ *   • 1 moeda ≈ 1 centavo de receita de anúncio no Brasil (CPM AdSense/Adsterra)
+ *   • lucro mínimo almejado por operação: 100% (preço = 2× custo real estimado)
+ *   • valores inteiros (não precisam ser múltiplos de 5 — essa regra vale só pros rewarded ads)
+ */
 export const COIN_COSTS = {
-  essayCorrection: 10,
-  aiQuestion: 10,
-  studyPlan: 10,
-  teacherPlan: 10,
+  essayCorrection: 13, // correção pesada, tokens altos (prompt completo da cartilha + redação)
+  aiQuestion: 3,       // gera 1 questão estilo ENEM
+  studyPlan: 7,        // plano de estudo adaptativo
+  teacherPlan: 11,     // plano de aula completo do Professor IA
+  lesson: 7,           // aula gerada por IA (texto completo)
+  repertoires: 5,      // pesquisa de repertórios para redação
+  chat: 2,             // dúvida curta com o Cabrito
 } as const;
 
 export type CoinFeature = keyof typeof COIN_COSTS;
 
-/** Moedas ganhas por assistir a um anúncio recompensado. */
-export const REWARDED_COINS = 20;
+/**
+ * Moedas ganhas por assistir a um anúncio recompensado.
+ * Regra: múltiplos de 5. Base: receita rewarded (~2 centavos) permite devolver
+ * ~5 moedas ao usuário mantendo 100% de margem (receita 2 - custo 1 = 1 centavo).
+ */
+export const REWARDED_COINS = 5;
+
+/**
+ * No plano Free, o saldo "zera" para este valor no início de cada semana.
+ * Regra: preço de uma correção de redação arredondado pra cima pro múltiplo de 5.
+ * essayCorrection = 13 → próximo múltiplo de 5 pra cima = 15.
+ * (Importar aqui direto, nunca hardcode: se mudar o preço de correção, muda o reset.)
+ */
+export const WEEKLY_RESET_COINS = Math.ceil(13 / 5) * 5; // = 15
 
 /** No plano Free, o saldo de moedas pode ser recarregado assistindo anúncios. */
 export const ADS_TO_COINS_PLANS: PlanId[] = ['free'];

@@ -4,6 +4,10 @@ import PublicLayout from './PublicLayout';
 import AdSlot from './AdSlot';
 import { applySeo } from '../lib/seo';
 import { navigate } from '../lib/nav';
+import { supabase } from '../lib/supabase';
+import { useCoinGate } from '../lib/useCoinGate';
+import { addCoins, getFeatureCost } from '../lib/coins';
+import CoinGateModal from './CoinGateModal';
 
 interface RepertoireItem {
   title: string;
@@ -90,11 +94,18 @@ export function RepertoireSearch({ embedded = false }: { embedded?: boolean }) {
   const [categories, setCategories] = useState<RepertoireCategory[] | null>(null);
   const [usedTheme, setUsedTheme] = useState('');
 
+  const coinGate = useCoinGate();
+
   const search = async (value: string) => {
     const q = value.trim();
     if (q.length < 4) {
       setError('Digite um tema com pelo menos 4 caracteres.');
       return;
+    }
+    // Cobra moedas só se usuário estiver logado — a página pública fica aberta.
+    const { data: { session } } = await supabase.auth.getSession();
+    if (session?.user) {
+      if (!coinGate.trySpend('repertoires')) return;
     }
     setLoading(true);
     setError(null);
@@ -108,16 +119,19 @@ export function RepertoireSearch({ embedded = false }: { embedded?: boolean }) {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
+        if (session?.user) addCoins(getFeatureCost('repertoires'), 'Reembolso: falha na pesquisa');
         setError(data.error || 'Não foi possível buscar repertórios agora. Tente novamente.');
         return;
       }
       if (data.pending && data.cura) {
         const result = await pollRepertoires(data.cura);
         if (!result) {
+          if (session?.user) addCoins(getFeatureCost('repertoires'), 'Reembolso: pesquisa demorou demais');
           setError('A busca demorou mais que o esperado. Tente novamente.');
           return;
         }
         if (result.error) {
+          if (session?.user) addCoins(getFeatureCost('repertoires'), 'Reembolso: erro na pesquisa');
           setError(result.error);
           return;
         }
@@ -126,6 +140,7 @@ export function RepertoireSearch({ embedded = false }: { embedded?: boolean }) {
       }
       setCategories(Array.isArray(data.categories) ? data.categories : []);
     } catch {
+      if (session?.user) addCoins(getFeatureCost('repertoires'), 'Reembolso: falha de conexão');
       setError('Falha de conexão. Verifique sua internet e tente novamente.');
     } finally {
       setLoading(false);
@@ -283,6 +298,8 @@ export function RepertoireSearch({ embedded = false }: { embedded?: boolean }) {
           </button>
         </div>
       )}
+
+      <CoinGateModal open={!!coinGate.gate} cost={coinGate.gate?.cost ?? 0} feature="pesquisa de repertórios" onClose={coinGate.closeGate} />
     </section>
   );
 }

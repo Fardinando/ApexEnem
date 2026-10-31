@@ -1,5 +1,8 @@
 import React, { useState } from 'react';
 import { PlayCircle, Sparkles, Loader2, Clock, Lightbulb, Film, Lock } from 'lucide-react';
+import { useCoinGate } from '../lib/useCoinGate';
+import { addCoins, getFeatureCost } from '../lib/coins';
+import CoinGateModal from './CoinGateModal';
 
 interface AulasViewProps {
   currentUser: { name: string; id?: string };
@@ -56,13 +59,16 @@ function AulasIA() {
   const [lesson, setLesson] = useState<Lesson | null>(null);
   const [loading, setLoading] = useState(false);
   const [erro, setErro] = useState<string | null>(null);
+  const coinGate = useCoinGate();
 
   const gerar = async () => {
+    if (!coinGate.trySpend('lesson')) return;
     setLoading(true);
     setErro(null);
     setLesson(null);
     const l = await fetchLesson(area);
     if (!l) {
+      addCoins(getFeatureCost('lesson'), 'Reembolso: falha ao gerar aula');
       setErro('Não conseguimos gerar a aula agora. Tente novamente em instantes.');
     } else {
       setLesson(l);
@@ -139,6 +145,8 @@ function AulasIA() {
           )}
         </article>
       )}
+
+      <CoinGateModal open={!!coinGate.gate} cost={coinGate.gate?.cost ?? 0} feature="aulas por IA" onClose={coinGate.closeGate} />
     </div>
   );
 }
