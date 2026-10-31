@@ -9,6 +9,7 @@ DROP POLICY IF EXISTS "insert_beta" ON public.beta_requests;
 
 -- INSERT público (até via anon) continua, mas SELECT só pelo service_role (que
 -- bypassa RLS). O backend lê via supabaseAdmin se precisar.
+DROP POLICY IF EXISTS "beta_requests_insert" ON public.beta_requests;
 CREATE POLICY "beta_requests_insert" ON public.beta_requests
   FOR INSERT TO authenticated, anon WITH CHECK (true);
 
@@ -16,6 +17,7 @@ CREATE POLICY "beta_requests_insert" ON public.beta_requests
 -- (backend) ignora RLS. Isso é intencional.
 --
 -- Se depois quiser que o próprio solicitante veja seu pedido, descomente:
+DROP POLICY IF EXISTS "beta_requests_read_own" ON public.beta_requests;
 -- CREATE POLICY "beta_requests_read_own" ON public.beta_requests
 --   FOR SELECT TO authenticated USING (email = auth.jwt() ->> 'email');
 
@@ -52,14 +54,17 @@ DROP POLICY IF EXISTS "progress_select" ON public."ApexEnem_progress";
 DROP POLICY IF EXISTS "progress_insert" ON public."ApexEnem_progress";
 DROP POLICY IF EXISTS "progress_update" ON public."ApexEnem_progress";
 
+DROP POLICY IF EXISTS "progress_select" ON public."ApexEnem_progress";
 CREATE POLICY "progress_select" ON public."ApexEnem_progress"
   FOR SELECT TO authenticated
   USING (email = (auth.jwt() ->> 'email'));
 
+DROP POLICY IF EXISTS "progress_insert" ON public."ApexEnem_progress";
 CREATE POLICY "progress_insert" ON public."ApexEnem_progress"
   FOR INSERT TO authenticated
   WITH CHECK (email = (auth.jwt() ->> 'email'));
 
+DROP POLICY IF EXISTS "progress_update" ON public."ApexEnem_progress";
 CREATE POLICY "progress_update" ON public."ApexEnem_progress"
   FOR UPDATE TO authenticated
   USING (email = (auth.jwt() ->> 'email'));
