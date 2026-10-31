@@ -65,14 +65,11 @@ export default function App() {
   const [simuladosHistory, setSimuladosHistory] = useState<{ scorePercent: number; date: string; subject: string }[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [wrongAnswers, setWrongAnswers] = useState<WrongAnswer[]>([]);
-  const [totalXp, setTotalXp] = useState(() => {
-    const saved = localStorage.getItem('ApexEnem_total_xp');
-    return saved ? parseInt(saved, 10) : 0;
-  });
-  const [longestStreak, setLongestStreak] = useState(() => {
-    const saved = localStorage.getItem('ApexEnem_longest_streak');
-    return saved ? parseInt(saved, 10) : 0;
-  });
+  // XP e longest streak começam zerados; o valor correto vem do profile logo
+  // após o login. Não lemos localStorage no init pra não herdar XP residual
+  // de uma conta anterior neste navegador.
+  const [totalXp, setTotalXp] = useState(0);
+  const [longestStreak, setLongestStreak] = useState(0);
   const [triProfile, setTriProfile] = useState<TriProfile>(EMPTY_TRI_PROFILE);
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
 
@@ -116,6 +113,15 @@ export default function App() {
         setSession(s);
       } else if (event === 'SIGNED_OUT') {
         setSession(null);
+        // Limpa cache local para que o próximo usuário não herde XP/streak/
+        // idade residuais da conta anterior neste navegador.
+        try {
+          localStorage.removeItem('ApexEnem_total_xp');
+          localStorage.removeItem('ApexEnem_longest_streak');
+          localStorage.removeItem('ApexEnem_user_birthdate');
+        } catch { /* noop */ }
+        setTotalXp(0);
+        setLongestStreak(0);
       }
     });
 
@@ -133,6 +139,20 @@ export default function App() {
       setWalletAuthToken(null);
     }
   }, [session?.user?.id, session?.access_token]);
+
+  // Usuário logado em rota pública/de auth → redireciona pra / (dashboard).
+  useEffect(() => {
+    if (!session?.user) return;
+    const PUBLIC_REDIRECT = new Set([
+      '/login', '/signup',
+      '/sobre', '/planos', '/repertorios', '/autores', '/contato',
+    ]);
+    const isAuthorPage = currentPath.startsWith('/autor/');
+    if (PUBLIC_REDIRECT.has(currentPath) || isAuthorPage) {
+      window.history.replaceState({}, '', '/');
+      setCurrentPath('/');
+    }
+  }, [session?.user?.id, currentPath]);
 
   useEffect(() => {
     if (!session?.user) {
@@ -162,17 +182,16 @@ export default function App() {
           try { localStorage.removeItem('ApexEnem_user_birthdate'); } catch { /* noop */ }
         }
 
-        // Sync XP/streak from server to localStorage if server has data
-        const localXp = parseInt(localStorage.getItem('ApexEnem_total_xp') || '0', 10);
-        const localStreak = parseInt(localStorage.getItem('ApexEnem_longest_streak') || '0', 10);
-        if (p?.total_xp && p.total_xp > localXp) {
-          setTotalXp(p.total_xp);
-          localStorage.setItem('ApexEnem_total_xp', String(p.total_xp));
-        }
-        if (p?.longest_streak && p.longest_streak > localStreak) {
-          setLongestStreak(p.longest_streak);
-          localStorage.setItem('ApexEnem_longest_streak', String(p.longest_streak));
-        }
+        // Sincroniza XP/streak COM O PROFILE (source of truth). Evita bug de o
+        // user novo herdar XP residual do localStorage de outra conta.
+        const serverXp = Number(p?.total_xp) || 0;
+        const serverStreak = Number(p?.longest_streak) || 0;
+        setTotalXp(serverXp);
+        setLongestStreak(serverStreak);
+        try {
+          localStorage.setItem('ApexEnem_total_xp', String(serverXp));
+          localStorage.setItem('ApexEnem_longest_streak', String(serverStreak));
+        } catch { /* noop */ }
 
         // Calculate and update streak
         if (p) {

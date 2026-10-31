@@ -115,24 +115,31 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
       }
       return;
     }
-    // Se o usuário tem 2FA ativa (AAL2 required), Supabase retorna AAL1 e exige
-    // challenge/verify antes de considerar autenticado.
+    // 2FA: sempre lista factors e força challenge se houver algum TOTP verified.
+    // (Mais robusto do que confiar só em getAuthenticatorAssuranceLevel, que em
+    // alguns casos retorna aal2 como nextLevel só depois de refresh de sessão.)
     try {
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      if (aal?.currentLevel === 'aal1' && aal?.nextLevel === 'aal2') {
-        const { data: fs } = await supabase.auth.mfa.listFactors();
-        const first = (fs?.totp || []).find((f: any) => f.status === 'verified');
-        if (first) {
-          const ch = await supabase.auth.mfa.challenge({ factorId: first.id });
-          if (!ch.error) {
-            setMfaFactorId(first.id);
-            setMfaChallengeId(ch.data.id);
-            setStep('mfa');
-            return;
-          }
+      const { data: fs, error: fsErr } = await supabase.auth.mfa.listFactors();
+      if (fsErr) console.warn('[mfa] listFactors error:', fsErr.message);
+      const first = (fs?.totp || []).find((f: any) => f.status === 'verified');
+      if (first) {
+        const ch = await supabase.auth.mfa.challenge({ factorId: first.id });
+        if (ch.error) {
+          console.warn('[mfa] challenge error:', ch.error.message);
+          // Em caso de falha de challenge, DERRUBA a sessão em vez de deixar
+          // passar sem o segundo fator (fail-closed por segurança).
+          await supabase.auth.signOut();
+          setErrorMessage('Não foi possível iniciar a verificação em duas etapas. Tente de novo.');
+          return;
         }
+        setMfaFactorId(first.id);
+        setMfaChallengeId(ch.data.id);
+        setStep('mfa');
+        return;
       }
-    } catch { /* se MFA checar falhar, segue fluxo normal */ }
+    } catch (err: any) {
+      console.warn('[mfa] check failed:', err?.message);
+    }
     const params = new URLSearchParams(window.location.search);
     const redirectTo = params.get('redirect_to');
     if (redirectTo) {
