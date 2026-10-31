@@ -1272,53 +1272,94 @@ app.post("/api/openrouter-chat",
 });
 
 app.post("/api/lesson", async (req, res) => {
-  const { area, level, weakTopics, topicIndex } = req.body;
+  const { area, level, weakTopics, wrongAnswers, topicIndex, serie } = req.body;
   if (!area) return res.status(400).json({ error: "area is required" });
 
-  const topicNum = typeof topicIndex === 'number' ? topicIndex : Math.floor(Math.random() * 100);
+  const topicNum = typeof topicIndex === 'number' ? topicIndex : Math.floor(Math.random() * 500);
 
-  const systemPrompt = `Você é o Cabrito 🐐, tutor inteligente e encorajador do ENEM. Gere uma aula completa e detalhada sobre um tópico específico dentro da área "${area}" para o ENEM.
+  // Monta contexto de personalização a partir dos pontos fracos do aluno
+  const weakList = Array.isArray(weakTopics) ? weakTopics.filter(Boolean).slice(0, 10) : [];
+  const wrongList = Array.isArray(wrongAnswers)
+    ? wrongAnswers.filter((w: any) => w && w.subject).slice(-15).map((w: any) => `${w.subject}${w.topic ? ` → ${w.topic}` : ''}`)
+    : [];
+  const personalizacao = (weakList.length > 0 || wrongList.length > 0)
+    ? `\n\nPERSONALIZAÇÃO (ataque esses pontos fracos reais do aluno):\n${weakList.length > 0 ? `- Matérias que o aluno marcou como difíceis: ${weakList.join(', ')}` : ''}\n${wrongList.length > 0 ? `- Erros recentes do aluno:\n  • ${wrongList.join('\n  • ')}` : ''}\nSe algum desses erros for da área ${area}, foque a aula EXATAMENTE no tópico onde ele mais erra. Explique o conceito do zero, mostre onde a confusão costuma acontecer e dê exercício resolvido com passo a passo.`
+    : '';
+  const serieHint = serie ? `\nSérie do aluno: ${serie} (ajuste a profundidade e as referências à realidade escolar dele).` : '';
 
-Nível de dificuldade: ${level || 5}/10 (1=fundamental, 10=avançado cursinho).
-Tópico sorteado #: ${topicNum} (use para variar o conteúdo — cada número gera um tema diferente dentro da área).
+  const systemPrompt = `Você é o Cabrito 🐐, professor particular do ApexEnem. Sua missão é entregar aulas LONGAS, PROFUNDAS e PERSONALIZADAS para a aprovação no ENEM.
 
-Regras:
-- O conteúdo deve ter EXATAMENTE 5 a 7 blocos de texto, cada um com 2-4 frases didáticas
-- Cada bloco deve ser um conceito distinto e progressivo
-- Ao final, gere 3 dicas práticas para o ENEM
-- Use linguagem acessível mas técnica o suficiente para o ENEM
-- Inclua exemplos práticos e contextualizações reais
-- NÃO repita tópicos óbvios — aprofunde-se em nuances que caem no ENEM
-- Foque em conteúdo que realmente cai nas provas
+Nível de dificuldade solicitado: ${level || 6}/10.
+Área: ${area}.
+Semente de tema #${topicNum} (use pra variar — o mesmo aluno pode pedir várias aulas e nenhuma pode se repetir).${serieHint}${personalizacao}
 
-Para a área "${area}", sugira tópicos variados como:
-- Redação: tipos de tese, conectivos avançados, repertórios, proposta de intervenção
-- Linguagens: interpretação de gêneros, figuras de linguagem, gramática contextual, literatura brasileira
-- Humanas: movimentos sociais, geopolítica, filósofos, historia do Brasil
-- Natureza: bioquímica, termodinâmica, química orgânica, genética molecular
-- Matemática: funções trigonométricas, combinatória, geometria analítica, estatística`;
+ESTILO E QUALIDADE:
+- Linguagem acessível, calorosa, direta, com toque didático (como um ótimo professor particular — não é um resumo seco de livro).
+- Técnica o suficiente pra ENEM: use termos corretos, mas sempre explicando antes.
+- Contextualize com situações reais do Brasil contemporâneo (dados, exemplos regionais, cultura, cotidiano) sempre que fizer sentido.
+- Nunca fale genérico ("estude bastante", "é importante praticar") — fale específico.
+- Vá fundo em UM tópico. Não espalhe. Melhor cobrir bem Função Quadrática do que passar por 5 funções superficialmente.
 
-  const userPrompt = `Gere uma aula ENEM sobre um tópico diversificado da área "${area}" (tópico #${topicNum}). Retorne APENAS o JSON, sem markdown:
+ESTRUTURA EXIGIDA (JSON com estas chaves):
+- title (string, chamativo)
+- subtitle (string curta, pré-visualiza o conteúdo)
+- intro (string, 2–3 parágrafos explicando por que esse tópico cai no ENEM, qual a confusão clássica, o que o aluno vai sair sabendo)
+- content (array de 8 a 12 blocos, cada bloco um objeto { "heading": "...", "body": "..." }; o body tem 3–6 frases densas, pode usar exemplos numéricos, fórmulas em texto, perguntas retóricas)
+- examples (array de 2 a 4 exercícios resolvidos no estilo ENEM; cada objeto { "statement": "enunciado contextualizado", "solution": "resolução passo a passo em várias linhas", "answer": "letra ou resultado final" })
+- commonMistakes (array de 3 a 5 strings — erros clássicos que caem no ENEM e como evitar cada um)
+- quickReview (array de 5 a 8 strings — bullets de revisão curta, perfeitos pra decorar na véspera)
+- tips (array de 3 a 5 strings — dicas estratégicas específicas pra esse tópico no dia da prova)
+- nextSteps (array de 2 a 4 strings — o que o aluno deve estudar depois, nome de tópico específico)
+
+IMPORTANTE: Volume de texto importa — não entregue aulas curtas. Uma aula bem feita tem 1500–2500 palavras no total.`;
+
+  const userPrompt = `Gere a aula sobre ${area}, variação #${topicNum}. Retorne APENAS o JSON (sem crases, sem markdown, sem texto antes ou depois):
 
 {
-  "title": "Título chamativo da aula",
-  "subtitle": "Subtítulo explicativo curto",
-  "content": ["bloco 1", "bloco 2", "bloco 3", "bloco 4", "bloco 5"],
-  "tips": ["dica 1", "dica 2", "dica 3"]
+  "title": "...",
+  "subtitle": "...",
+  "intro": "...",
+  "content": [
+    {"heading": "...", "body": "..."},
+    ...
+  ],
+  "examples": [
+    {"statement": "...", "solution": "...", "answer": "..."},
+    ...
+  ],
+  "commonMistakes": ["..."],
+  "quickReview": ["..."],
+  "tips": ["..."],
+  "nextSteps": ["..."]
 }`;
 
   try {
-    const raw = await callAI({ systemPrompt, userPrompt, maxTokens: 4096, temperature: 0.85, timeout: 25000 });
+    const raw = await callAI({ systemPrompt, userPrompt, maxTokens: 8192, temperature: 0.85, timeout: 45000, type: 'lesson' });
 
     const cleaned = raw.replace(/```json/g, '').replace(/```/g, '').trim();
-    let lesson = null;
+    let lesson: any = null;
     try { lesson = JSON.parse(cleaned); } catch {
       const match = cleaned.match(/\{[\s\S]*\}/);
       if (match) try { lesson = JSON.parse(match[0]); } catch {}
     }
 
+    // Normaliza: aceita content como array de strings (formato legado) convertendo em {heading, body}
+    if (lesson && Array.isArray(lesson.content) && lesson.content.length > 0 && typeof lesson.content[0] === 'string') {
+      lesson.content = lesson.content.map((s: string, i: number) => ({ heading: `Parte ${i + 1}`, body: s }));
+    }
+
     if (lesson && lesson.title && Array.isArray(lesson.content) && lesson.content.length >= 3) {
-      return res.json(lesson);
+      return res.json({
+        title: lesson.title,
+        subtitle: lesson.subtitle || '',
+        intro: lesson.intro || '',
+        content: lesson.content,
+        examples: Array.isArray(lesson.examples) ? lesson.examples : [],
+        commonMistakes: Array.isArray(lesson.commonMistakes) ? lesson.commonMistakes : [],
+        quickReview: Array.isArray(lesson.quickReview) ? lesson.quickReview : [],
+        tips: Array.isArray(lesson.tips) ? lesson.tips : [],
+        nextSteps: Array.isArray(lesson.nextSteps) ? lesson.nextSteps : [],
+      });
     }
   } catch (err: any) {
     if (err?.message?.startsWith("PENDING:")) {
@@ -1326,22 +1367,7 @@ Para a área "${area}", sugira tópicos variados como:
     }
   }
 
-  return res.json({
-    title: `Aula de ${area}`,
-    subtitle: 'Conceitos essenciais para o ENEM',
-    content: [
-      `A área de ${area} é uma das mais importantes no ENEM. Cada prova traz questões que exigem não apenas memorização, mas interpretação profunda e aplicação prática.`,
-      `Para ir bem, é essencial dominar os conceitos fundamentais e entender como eles se conectam com situações reais. O ENEM valoriza a capacidade de relacionar conteúdos.`,
-      `Estude com consistência, resolva questões de provas anteriores e sempre revise seus pontos fracos. A prática regular é a chave para a aprovação.`,
-      `Não pule etapas: construa uma base sólida antes de avançar para tópicos complexos. Use resumos, mapas mentais e fichas de revisão.`,
-      `Lembre-se: o ENEM não cobra apenas fórmulas. Ele avalia sua capacidade de pensar criticamente e propor soluções para problemas reais da sociedade brasileira.`
-    ],
-    tips: [
-      'Resolva questões de provas anteriores do ENEM regularmente.',
-      'Revise seus erros e identifique padrões nos temas que erra.',
-      'Use o método de repetição espaçada para fixar o conteúdo.'
-    ]
-  });
+  return res.status(503).json({ error: "Não foi possível gerar a aula agora. Tente novamente em alguns segundos." });
 });
 
 app.post("/api/lesson-v2", async (req, res) => {
@@ -2589,33 +2615,78 @@ app.get("/api/salas", async (req, res) => {
   return res.json({ salas: (mine || []).map((m: any) => m.salas).filter(Boolean) });
 });
 
+// Helpers de semana (segunda-feira em UTC)
+function weekStartISO(d: Date = new Date()): string {
+  const u = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()));
+  const dow = u.getUTCDay(); // 0=dom,1=seg,...
+  const diff = (dow + 6) % 7;
+  u.setUTCDate(u.getUTCDate() - diff);
+  return u.toISOString().slice(0, 10);
+}
+
+// Reseta métricas semanais do membro se a semana virou
+async function resetWeeklyIfNeeded(membro: any): Promise<any> {
+  const cur = weekStartISO();
+  if (!membro || !membro.week_start || membro.week_start < cur) {
+    return { ...membro, week_start: cur, essay_max: 0, xp_week: 0, lessons_week: 0, video_minutes_week: 0 };
+  }
+  return membro;
+}
+
 app.get("/api/salas/:id", async (req, res) => {
   if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
   const salaId = req.params.id;
-  // confirma que o user é membro
   const { data: isMember } = await supabaseAdmin
     .from("sala_membros").select("sala_id").eq("sala_id", salaId).eq("user_id", req.user.id).maybeSingle();
   if (!isMember) return res.status(403).json({ error: "Você não é membro desta sala." });
   const { data: sala } = await supabaseAdmin.from("salas").select("*").eq("id", salaId).maybeSingle();
   if (!sala) return res.status(404).json({ error: "Sala não encontrada." });
-  const { data: membros } = await supabaseAdmin
-    .from("sala_membros").select("user_id, xp_sala, joined_at")
-    .eq("sala_id", salaId).order("xp_sala", { ascending: false });
-  // nomes dos membros
-  const ids = (membros || []).map((m: any) => m.user_id);
+  const { data: membrosRaw } = await supabaseAdmin
+    .from("sala_membros")
+    .select("user_id, xp_sala, joined_at, week_start, essay_max, xp_week, lessons_week, video_minutes_week")
+    .eq("sala_id", salaId);
+  // Força reset de semana lendo (DB trigger também faz, mas no SELECT não dispara — então aplicamos no server)
+  const cur = weekStartISO();
+  const membros = (membrosRaw || []).map((m: any) => ({
+    ...m,
+    week_start: m.week_start && m.week_start >= cur ? m.week_start : cur,
+    essay_max: m.week_start && m.week_start >= cur ? (m.essay_max || 0) : 0,
+    xp_week: m.week_start && m.week_start >= cur ? (m.xp_week || 0) : 0,
+    lessons_week: m.week_start && m.week_start >= cur ? (m.lessons_week || 0) : 0,
+    video_minutes_week: m.week_start && m.week_start >= cur ? (m.video_minutes_week || 0) : 0,
+  }));
+
+  const ids = membros.map((m: any) => m.user_id);
   const { data: profiles } = ids.length
     ? await supabaseAdmin.from("profiles").select("id, name").in("id", ids)
     : { data: [] };
   const nameMap: Record<string, string> = {};
   (profiles || []).forEach((p: any) => { nameMap[p.id] = p.name || 'Estudante'; });
-  const ranking = (membros || []).map((m: any, i: number) => ({
+
+  const build = (sorted: any[]) => sorted.map((m: any, i: number) => ({
     user_id: m.user_id,
     name: nameMap[m.user_id] || 'Estudante',
-    xp_sala: m.xp_sala,
+    xp_sala: m.xp_sala || 0,
+    essay_max: m.essay_max || 0,
+    xp_week: m.xp_week || 0,
+    lessons_week: m.lessons_week || 0,
+    video_minutes_week: m.video_minutes_week || 0,
     position: i + 1,
     is_me: m.user_id === req.user.id,
   }));
-  return res.json({ sala, ranking });
+
+  // Ranking principal: total XP (acumulado desde que entrou), igual antes
+  const rankingTotal = build([...membros].sort((a, b) => (b.xp_sala || 0) - (a.xp_sala || 0)));
+
+  // Categorias semanais
+  const weekly = {
+    essay: build([...membros].sort((a, b) => (b.essay_max || 0) - (a.essay_max || 0))),
+    xp: build([...membros].sort((a, b) => (b.xp_week || 0) - (a.xp_week || 0))),
+    lessons: build([...membros].sort((a, b) => (b.lessons_week || 0) - (a.lessons_week || 0))),
+    video: build([...membros].sort((a, b) => (b.video_minutes_week || 0) - (a.video_minutes_week || 0))),
+  };
+
+  return res.json({ sala, ranking: rankingTotal, weekly, week_start: cur });
 });
 
 app.post("/api/salas/:id/xp",
@@ -2625,11 +2696,65 @@ app.post("/api/salas/:id/xp",
     if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
     const salaId = req.params.id;
     const { data: cur } = await supabaseAdmin
-      .from("sala_membros").select("xp_sala").eq("sala_id", salaId).eq("user_id", req.user.id).maybeSingle();
+      .from("sala_membros").select("*").eq("sala_id", salaId).eq("user_id", req.user.id).maybeSingle();
     if (!cur) return res.status(403).json({ error: "Você não é membro desta sala." });
-    const novo = (cur.xp_sala || 0) + req.body.delta;
-    await supabaseAdmin.from("sala_membros").update({ xp_sala: novo }).eq("sala_id", salaId).eq("user_id", req.user.id);
-    return res.json({ xp_sala: novo });
+    const resetado = await resetWeeklyIfNeeded(cur);
+    const novoTotal = (resetado.xp_sala || 0) + req.body.delta;
+    const novoSemana = (resetado.xp_week || 0) + req.body.delta;
+    await supabaseAdmin.from("sala_membros").update({
+      xp_sala: novoTotal,
+      xp_week: novoSemana,
+      week_start: resetado.week_start,
+      essay_max: resetado.essay_max,
+      lessons_week: resetado.lessons_week,
+      video_minutes_week: resetado.video_minutes_week,
+    }).eq("sala_id", salaId).eq("user_id", req.user.id);
+    return res.json({ xp_sala: novoTotal, xp_week: novoSemana });
+  }
+);
+
+// Tracking semanal multi-categoria. Chamado por frontend após cada evento
+// relevante (redação corrigida, aula lida, vídeo assistido). Atualiza TODAS as
+// salas em que o aluno é membro.
+app.post("/api/salas/track",
+  distributedRateLimit({ name: "sala-track", max: 500, windowSec: 3600 }),
+  validateBody(z.object({
+    kind: z.enum(['essay', 'lesson', 'video_minutes', 'xp']),
+    value: z.number().int().min(0).max(10000),
+  })),
+  async (req, res) => {
+    if (!supabaseAdmin || !req.user) return res.status(401).json({ error: "Autenticação necessária." });
+    const { kind, value } = req.body;
+    const { data: membros } = await supabaseAdmin
+      .from("sala_membros").select("*").eq("user_id", req.user.id);
+    if (!membros || membros.length === 0) return res.json({ ok: true, updated: 0 });
+
+    const atualizados = await Promise.all(membros.map(async (m: any) => {
+      const resetado = await resetWeeklyIfNeeded(m);
+      const update: any = {
+        week_start: resetado.week_start,
+        xp_sala: resetado.xp_sala || 0,
+        xp_week: resetado.xp_week || 0,
+        essay_max: resetado.essay_max || 0,
+        lessons_week: resetado.lessons_week || 0,
+        video_minutes_week: resetado.video_minutes_week || 0,
+      };
+      if (kind === 'essay') {
+        // Guarda a MAIOR nota de redação da semana
+        update.essay_max = Math.max(update.essay_max, value);
+      } else if (kind === 'lesson') {
+        update.lessons_week = update.lessons_week + Math.max(1, value || 1);
+      } else if (kind === 'video_minutes') {
+        update.video_minutes_week = update.video_minutes_week + value;
+      } else if (kind === 'xp') {
+        update.xp_week = update.xp_week + value;
+        update.xp_sala = update.xp_sala + value;
+      }
+      await supabaseAdmin.from("sala_membros").update(update)
+        .eq("sala_id", m.sala_id).eq("user_id", req.user.id);
+      return m.sala_id;
+    }));
+    return res.json({ ok: true, updated: atualizados.length });
   }
 );
 

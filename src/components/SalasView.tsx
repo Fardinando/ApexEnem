@@ -19,8 +19,19 @@ interface Ranking {
   user_id: string;
   name: string;
   xp_sala: number;
+  essay_max?: number;
+  xp_week?: number;
+  lessons_week?: number;
+  video_minutes_week?: number;
   position: number;
   is_me: boolean;
+}
+
+interface WeeklyRankings {
+  essay: Ranking[];
+  xp: Ranking[];
+  lessons: Ranking[];
+  video: Ranking[];
 }
 
 async function authFetch(url: string, init?: RequestInit) {
@@ -86,6 +97,7 @@ function MembroAvatar({ name, size = 'md' }: { name: string; size?: 'sm' | 'md' 
 interface SalaDetalhe {
   sala: Sala;
   ranking: Ranking[];
+  weekly?: WeeklyRankings;
 }
 
 export default function SalasView({ currentUser }: { currentUser: { name: string; id?: string } }) {
@@ -161,7 +173,7 @@ export default function SalasView({ currentUser }: { currentUser: { name: string
       const r = await authFetch(`/api/salas/${id}`);
       const data = await r.json();
       if (r.ok) {
-        setModal({ sala: data.sala, ranking: data.ranking || [] });
+        setModal({ sala: data.sala, ranking: data.ranking || [], weekly: data.weekly });
         setDetalhes((d) => ({ ...d, [id]: { ranking: data.ranking || [], loaded: true } }));
       }
     } catch { /* noop */ }
@@ -379,6 +391,7 @@ export default function SalasView({ currentUser }: { currentUser: { name: string
           <ModalRanking
             sala={modal.sala}
             ranking={modal.ranking}
+            weekly={modal.weekly}
             currentUserId={currentUser.id}
             onClose={() => setModal(null)}
             onCopy={copiarCodigo}
@@ -415,10 +428,11 @@ function MiniStat({ icon: Icon, value, label }: { icon: any; value: string | num
 }
 
 function ModalRanking({
-  sala, ranking, currentUserId, onClose, onCopy, copied, onShare, onLeave,
+  sala, ranking, weekly, currentUserId, onClose, onCopy, copied, onShare, onLeave,
 }: {
   sala: Sala;
   ranking: Ranking[];
+  weekly?: WeeklyRankings;
   currentUserId?: string;
   onClose: () => void;
   onCopy: (code: string) => void;
@@ -426,6 +440,7 @@ function ModalRanking({
   onShare: () => void;
   onLeave: () => void;
 }) {
+  const [weekTab, setWeekTab] = useState<'xp' | 'essay' | 'lessons' | 'video'>('xp');
   const topXp = ranking[0]?.xp_sala || 0;
   const grad = pickGradient(sala.id);
   const dias = daysSince(sala.created_at);
@@ -517,6 +532,40 @@ function ModalRanking({
             </div>
           )}
 
+          {/* Competições semanais */}
+          {weekly && (
+            <section className="p-5 sm:p-7 border-t border-slate-200 dark:border-slate-800">
+              <h3 className="text-xs font-extrabold uppercase tracking-wider text-slate-500 dark:text-slate-400 mb-3 flex items-center gap-2">
+                <Flame className="h-3.5 w-3.5 text-amber-500" aria-hidden="true" /> Competições desta semana
+              </h3>
+              <p className="text-[10px] text-slate-400 mb-4">Reseta toda segunda-feira 00h UTC.</p>
+
+              <div className="flex gap-1 p-1 bg-slate-100 dark:bg-[#0f172a] rounded-xl mb-4 overflow-x-auto">
+                {([
+                  ['xp', 'Mais XP'],
+                  ['essay', 'Maior nota de redação'],
+                  ['lessons', 'Mais aulas'],
+                  ['video', 'Mais tempo em vídeo'],
+                ] as const).map(([k, label]) => (
+                  <button
+                    key={k}
+                    type="button"
+                    onClick={() => setWeekTab(k)}
+                    className={`whitespace-nowrap px-3 py-1.5 text-[11px] font-bold rounded-lg transition cursor-pointer ${
+                      weekTab === k
+                        ? 'bg-white dark:bg-[#1e293b] text-blue-600 dark:text-white shadow-sm'
+                        : 'text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+
+              <WeekRanking list={weekly[weekTab] || []} metric={weekTab} />
+            </section>
+          )}
+
           {/* Insights */}
           <section className="p-5 sm:p-7 grid sm:grid-cols-3 gap-3">
             <InsightCard icon={TrendingUp} label="XP médio por membro" value={avgXp.toLocaleString('pt-BR')} />
@@ -538,6 +587,56 @@ function ModalRanking({
         </footer>
       </div>
     </div>
+  );
+}
+
+function metricLabel(kind: 'xp' | 'essay' | 'lessons' | 'video'): string {
+  switch (kind) {
+    case 'xp': return 'XP';
+    case 'essay': return 'nota';
+    case 'lessons': return 'aulas';
+    case 'video': return 'min';
+  }
+}
+
+function metricValue(r: Ranking, kind: 'xp' | 'essay' | 'lessons' | 'video'): number {
+  switch (kind) {
+    case 'xp': return r.xp_week || 0;
+    case 'essay': return r.essay_max || 0;
+    case 'lessons': return r.lessons_week || 0;
+    case 'video': return r.video_minutes_week || 0;
+  }
+}
+
+function WeekRanking({ list, metric }: { list: Ranking[]; metric: 'xp' | 'essay' | 'lessons' | 'video' }) {
+  const sorted = [...list].sort((a, b) => metricValue(b, metric) - metricValue(a, metric));
+  const unit = metricLabel(metric);
+  if (sorted.length === 0 || sorted.every((r) => metricValue(r, metric) === 0)) {
+    return <p className="text-xs text-slate-500 text-center py-5">Ninguém pontuou nesta categoria ainda. Seja o primeiro! 🚀</p>;
+  }
+  const top = metricValue(sorted[0], metric) || 1;
+  return (
+    <ol className="space-y-2">
+      {sorted.map((r, i) => {
+        const v = metricValue(r, metric);
+        const pct = Math.min(100, Math.round((v / top) * 100));
+        return (
+          <li key={r.user_id} className={`relative p-3 rounded-xl overflow-hidden ${r.is_me ? 'bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40' : 'bg-slate-50 dark:bg-[#0f172a]'}`}>
+            <div aria-hidden="true" className="absolute inset-y-0 left-0 bg-gradient-to-r from-amber-400/15 to-amber-400/5 dark:from-amber-500/20 dark:to-amber-500/10" style={{ width: `${pct}%` }} />
+            <div className="relative flex items-center gap-3">
+              <span className="shrink-0 w-7 text-center font-black text-sm text-slate-400">{i + 1}º</span>
+              <MembroAvatar name={r.name} size="sm" />
+              <div className="flex-1 min-w-0">
+                <p className={`text-sm font-bold truncate ${r.is_me ? 'text-blue-700 dark:text-blue-300' : ''}`}>{r.name}{r.is_me && <span className="ml-1 text-[9px] font-mono text-blue-500">VOCÊ</span>}</p>
+              </div>
+              <span className="font-black text-sm text-slate-700 dark:text-slate-200 shrink-0 whitespace-nowrap">
+                {v.toLocaleString('pt-BR')} {unit}
+              </span>
+            </div>
+          </li>
+        );
+      })}
+    </ol>
   );
 }
 

@@ -6,6 +6,7 @@ import { computeTriProfile, EMPTY_TRI_PROFILE } from './lib/tri';
 import { saveQuestionResponses, fetchQuestionResponses } from './lib/supabase';
 import { calculateStreak, XP_REWARDS, getUnlockedAchievements, getAllAchievements, computeGamificationStats, type GamificationStats } from './lib/gamification';
 import { loadSpecialAds } from './lib/ads';
+import { trackEssayScore, trackXpWeekly } from './lib/salasTracking';
 import AuthView from './components/AuthView';
 import OnboardingView from './components/OnboardingView';
 import Sidebar from './components/Sidebar';
@@ -365,6 +366,9 @@ export default function App() {
       setTotalXp(newXp);
       localStorage.setItem('ApexEnem_total_xp', String(newXp));
       await upsertProfile({ id: session.user.id, total_xp: newXp });
+      // Tracking semanal pras salas: maior nota de redação da semana + XP ganho
+      trackEssayScore(newCorr.score || 0);
+      trackXpWeekly(xpEarned);
     } catch (err) {
       console.error("Failed to save correction:", err);
     }
@@ -734,7 +738,7 @@ export default function App() {
             />
           )}
           {activeTab === 'aulas' && (
-            <AulasView currentUser={currentUser as any} />
+            <AulasView currentUser={currentUser as any} wrongAnswers={wrongAnswers} />
           )}
           {activeTab === 'salas' && (
             <SalasView currentUser={currentUser as any} />
