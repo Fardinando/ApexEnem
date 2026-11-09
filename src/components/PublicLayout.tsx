@@ -158,6 +158,9 @@ export default function PublicLayout({
             <p className="text-center text-[10px] max-w-xl leading-relaxed">
               ApexEnem é um projeto independente, sem vínculo com o INEP ou com o Ministério da Educação. ENEM® é marca registrada do INEP, usada aqui apenas em caráter descritivo.
             </p>
+            <p className="text-center text-[10px] max-w-xl leading-relaxed text-slate-400">
+              Operado por Fernando Anderson Sousa (pessoa física) • Contato institucional e comercial: <a href="mailto:contato@apexenem.com.br" className="underline hover:text-blue-600">contato@apexenem.com.br</a> • Encarregado de Dados (LGPD Art. 41): <a href="mailto:dpo@apexenem.com.br" className="underline hover:text-blue-600">dpo@apexenem.com.br</a>
+            </p>
             <button type="button" onClick={() => go('/denunciar')} className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
               Denunciar conteúdo
             </button>

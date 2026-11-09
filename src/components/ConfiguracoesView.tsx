@@ -487,7 +487,31 @@ export default function ConfiguracoesView({
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3 pt-1" id="danger-actions-grid">
-            
+
+            {/* LGPD Art. 18 — baixar dados pessoais */}
+            <button
+              id="btn-settings-export-data"
+              type="button"
+              onClick={async () => {
+                try {
+                  const { data: { session } } = await (await import('../lib/supabase')).supabase.auth.getSession();
+                  const token = session?.access_token;
+                  const r = await fetch('/api/user-data-export', { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+                  if (!r.ok) { alert('Não foi possível exportar agora. Tente novamente em instantes.'); return; }
+                  const blob = await r.blob();
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = `apexenem-meus-dados-${new Date().toISOString().slice(0,10)}.json`;
+                  document.body.appendChild(a); a.click(); a.remove();
+                  URL.revokeObjectURL(url);
+                } catch { alert('Erro ao baixar seus dados.'); }
+              }}
+              className="py-3 px-4 col-span-1 md:col-span-2 rounded-xl border border-blue-200 text-xs font-bold text-blue-700 hover:bg-blue-50 flex items-center justify-center gap-2 transition cursor-pointer dark:border-blue-900 dark:hover:bg-blue-950/20 dark:text-blue-400"
+            >
+              <span>Baixar meus dados (LGPD Art. 18)</span>
+            </button>
+
             {/* Clear Data Button - opens reset modal */}
             <button
               id="btn-settings-clear-data"

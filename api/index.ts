@@ -34,12 +34,22 @@ function renderHeaders(extra: Record<string, string> = {}): Record<string, strin
   return { ...h, ...extra };
 }
 
+// Bot mitigation (achado GoCache): limite global + limites por rota sensível.
 const apiLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 30,
+  max: 20,
   standardHeaders: true,
   legacyHeaders: false,
   message: { error: "Muitas requisições. Tente novamente em 1 minuto." }
+});
+
+// Endpoints sensíveis (signup, password reset, denuncia, parent): limite duro.
+const sensitiveLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 5,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Muitas tentativas. Aguarde 15 minutos e tente novamente." }
 });
 
 // ─── Rate limit "distribuído" (Upstash Redis REST opcional) ───────────────────
@@ -521,6 +531,7 @@ async function assertModelIsFree(modelName: string): Promise<void> {
 
 
 app.post("/api/beta-request",
+  distributedRateLimit({ name: "beta-request", max: 3, windowSec: 3600 }),
   validateBody(z.object({
     name: z.string().trim().min(1).max(200),
     email: z.string().email(),
@@ -2668,6 +2679,47 @@ app.post("/api/delete-account",
 
   return res.json({ success: true });
 });
+
+// ─── LGPD Art. 18: exportação de dados do próprio usuário ────────────────────
+app.get("/api/user-data-export",
+  distributedRateLimit({ name: "data-export", max: 5, windowSec: 3600 }),
+  async (req: any, res) => {
+    if (!supabaseAdmin) return res.status(500).json({ error: "Serviço indisponível." });
+    const userId = req.user?.id;
+    const email = req.userEmail;
+    if (!userId) return res.status(401).json({ error: "Não autenticado." });
+
+    const pick = async (table: string, col: string) => {
+      try {
+        const { data } = await supabaseAdmin.from(table).select("*").eq(col, col === "email" ? email : userId);
+        return data || [];
+      } catch { return []; }
+    };
+
+    const [profile, essays, simulados, logs, questions, wallet] = await Promise.all([
+      pick("profiles", "id"),
+      pick("essay_corrections", "user_id"),
+      pick("simulado_history", "user_id"),
+      pick("activity_logs", "user_id"),
+      pick("question_responses", "user_id"),
+      pick("wallets", "user_id"),
+    ]);
+
+    const payload = {
+      exported_at: new Date().toISOString(),
+      user: { id: userId, email },
+      base_legal: "LGPD Art. 18, II (acesso aos dados)",
+      profile,
+      essay_corrections: essays,
+      simulado_history: simulados,
+      activity_logs: logs,
+      question_responses: questions,
+      wallet,
+    };
+    res.setHeader("Content-Type", "application/json; charset=utf-8");
+    res.setHeader("Content-Disposition", `attachment; filename="apexenem-meus-dados-${new Date().toISOString().slice(0,10)}.json"`);
+    return res.send(JSON.stringify(payload, null, 2));
+  });
 
 // ─── Salas (competição com amigos) ───────────────────────────────────────────
 function genRoomCode(): string {
