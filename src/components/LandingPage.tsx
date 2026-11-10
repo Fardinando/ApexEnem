@@ -496,25 +496,22 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </motion.div>
 
           <motion.h1 initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.1 }} className="text-4xl md:text-6xl lg:text-7xl font-extrabold tracking-tight leading-tight mb-6">
-            Alcance seu{' '}
-            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">ápice</span>
-            {' '}no ENEM
+            Suba sua nota no ENEM estudando só{' '}
+            <span className="bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">o que você erra</span>
+            {' '}— grátis.
           </motion.h1>
 
           <motion.p initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.2 }} className="text-lg md:text-xl text-slate-500 dark:text-slate-400 max-w-2xl mx-auto mb-10 leading-relaxed">
-            Correção de redações por IA, simulados personalizados, questões inéditas no estilo ENEM e acompanhamento completo da sua evolução — tudo gratuito.
+            Correção de redação por 10 IAs, simulados com cálculo TRI oficial e um plano que corrige sua rota a cada questão. <strong className="text-slate-700 dark:text-slate-200">Sem mensalidade, sem cartão.</strong>
           </motion.p>
 
-          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }} className="flex flex-col sm:flex-row items-center justify-center gap-4">
-            <button type="button" onClick={onSignup} className="px-8 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition shadow-lg shadow-blue-200/50 dark:shadow-none flex items-center gap-2 cursor-pointer">
-              Criar Conta Grátis <ArrowRight className="h-4 w-4" />
+          <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6, delay: 0.3 }} className="flex flex-col items-center justify-center gap-3">
+            <button type="button" onClick={onSignup} className="px-10 py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold text-base rounded-xl transition shadow-lg shadow-blue-200/50 dark:shadow-none flex items-center gap-2 cursor-pointer">
+              Corrigir minha primeira redação grátis <ArrowRight className="h-5 w-5" />
             </button>
-            <button type="button" onClick={onStart} className="px-8 py-3.5 border border-slate-200 dark:border-slate-700 hover:border-blue-400 text-slate-600 dark:text-slate-300 font-semibold text-sm rounded-xl transition flex items-center gap-2 cursor-pointer">
-              Já tenho conta → Entrar
-            </button>
-            <button type="button" onClick={() => scrollTo('features')} className="px-8 py-3.5 border border-slate-200 dark:border-slate-700 hover:border-blue-400 text-slate-600 dark:text-slate-300 font-semibold text-sm rounded-xl transition flex items-center gap-2 cursor-pointer">
-              Ver Recursos <ChevronDown className="h-4 w-4" />
-            </button>
+            <p className="text-xs text-slate-400 dark:text-slate-500">
+              Sem cartão. Sem período de teste. Grátis de verdade. · <button type="button" onClick={onStart} className="underline hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">Já tenho conta</button>
+            </p>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.5 }} className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
@@ -536,7 +533,27 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
         </div>
       </section>
 
-      {stats && stats.totalUsers > 0 && (
+      {/* Mecanismo único logo depois do hero — o diferencial em uma frase */}
+      <section className="py-14 md:py-16 border-y border-slate-100 dark:border-slate-800/50 bg-slate-50/60 dark:bg-[#0f0a1e]/40">
+        <div className="max-w-4xl mx-auto px-4 text-center">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-full text-[11px] font-semibold text-blue-700 dark:text-blue-400 mb-5">
+            <Sparkles className="h-3 w-3" /> O mecanismo
+          </div>
+          <h2 className="text-2xl md:text-3xl font-extrabold tracking-tight mb-4 leading-tight">
+            Diferente de cursinho que serve a mesma aula pra todo mundo, o ApexEnem usa <span className="text-blue-600 dark:text-blue-400">TRI + IA</span> pra te dar só o que falta — nunca o que você já domina.
+          </h2>
+          <p className="text-sm md:text-base text-slate-500 dark:text-slate-400 max-w-2xl mx-auto leading-relaxed">
+            Cada questão respondida, redação corrigida e simulado concluído alimenta o seu perfil TRI pessoal. A plataforma prioriza os três tópicos onde você mais perde pontos, pratica com feedback imediato (<em>deliberate practice</em>) e te reapresenta o conteúdo em intervalos crescentes (<em>spaced repetition</em>).
+          </p>
+          <button type="button" onClick={() => scrollTo('metodologia')} className="mt-5 text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline cursor-pointer">
+            Ver a metodologia completa ↓
+          </button>
+        </div>
+      </section>
+
+      {/* Prova social por volume só volta quando passar de 100 alunos.
+          Até lá: autoridade + demo + transparência vencem contador baixo. */}
+      {stats && stats.totalUsers >= 100 && (
         <section className="py-12 border-y border-slate-100 dark:border-slate-800/50 bg-white dark:bg-[#0a0814]">
           <div className="max-w-4xl mx-auto px-4 flex flex-col items-center gap-3">
             <div className="flex items-center gap-3">
@@ -545,10 +562,10 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
               </div>
               <div className="text-center">
                 <p className="text-4xl md:text-5xl font-extrabold tracking-tight bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                  {stats.totalUsers.toLocaleString('pt-BR')}
+                  +{stats.totalUsers.toLocaleString('pt-BR')}
                 </p>
                 <p className="text-sm text-slate-500 dark:text-slate-400 font-medium mt-1">
-                  {stats.totalUsers === 1 ? 'aluno cadastrado' : 'alunos cadastrados'}
+                  estudantes já usam o ApexEnem
                 </p>
               </div>
             </div>
@@ -883,15 +900,48 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
         </div>
       </section>
 
-      <section id="map-section" className="py-20 md:py-28">
-        <div className="max-w-6xl mx-auto px-4">
-          <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Estudantes de Todo o Brasil</h2>
-            <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Explore nossa comunidade por região, estado e cidade. Selecione sua localização para encontrar colegas próximos.</p>
-          </motion.div>
-          <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
-            <CascataMap />
-          </motion.div>
+      {/* Mapa só volta quando houver densidade suficiente pra não mostrar zeros. */}
+      {stats && stats.totalUsers >= 100 && (
+        <section id="map-section" className="py-20 md:py-28">
+          <div className="max-w-6xl mx-auto px-4">
+            <motion.div initial={{ opacity: 0, y: 20 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.5 }} className="text-center mb-12">
+              <h2 className="text-3xl md:text-4xl font-extrabold tracking-tight mb-4">Estudantes de Todo o Brasil</h2>
+              <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto">Explore nossa comunidade por região, estado e cidade.</p>
+            </motion.div>
+            <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
+              <CascataMap />
+            </motion.div>
+          </div>
+        </section>
+      )}
+
+      {/* Três objeções críticas antes do CTA final (FAQ inline) */}
+      <section className="py-16 md:py-20">
+        <div className="max-w-3xl mx-auto px-4 space-y-4">
+          <details className="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b]/40 p-5">
+            <summary className="cursor-pointer font-bold text-sm md:text-base text-slate-800 dark:text-slate-100 list-none flex justify-between items-center">
+              É gratuito mesmo? Qual a pegadinha? <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              É. Correção de redação, simulado, questões por IA e repertórios ficam gratuitos usando moedas que você ganha diariamente, respondendo questões ou vendo um anúncio opcional. Sem cartão no cadastro. Existe um plano pago com moedas ilimitadas, mas ele é opcional — e a maioria dos alunos nunca precisa dele.
+            </p>
+          </details>
+          <details className="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b]/40 p-5">
+            <summary className="cursor-pointer font-bold text-sm md:text-base text-slate-800 dark:text-slate-100 list-none flex justify-between items-center">
+              A nota do simulado é parecida com a do ENEM real? <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Sim. Calculamos pela Teoria de Resposta ao Item (TRI), o mesmo método do INEP, usando parâmetros de dificuldade das edições anteriores. Não é só % de acertos — errar questões fáceis desvia sua estimativa pra baixo, como no exame de verdade.
+            </p>
+          </details>
+          <details className="group rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-[#1e293b]/40 p-5">
+            <summary className="cursor-pointer font-bold text-sm md:text-base text-slate-800 dark:text-slate-100 list-none flex justify-between items-center">
+              A correção por IA é confiável? <ChevronDown className="h-4 w-4 transition-transform group-open:rotate-180" />
+            </summary>
+            <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+              Cada redação passa por 10 IAs independentes seguindo a Cartilha do Participante do ENEM 2025 — as cinco competências são avaliadas separadamente, com as mesmas regras de nulidade e os mesmos cortes (0, 40, 80, 120, 160, 200). Não substitui um professor humano experiente, mas devolve feedback em segundos, 24/7, e os padrões de erro ao longo das redações viram recomendação de estudo no seu painel.
+            </p>
+          </details>
         </div>
       </section>
 
@@ -899,14 +949,17 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
         <div className="max-w-4xl mx-auto px-4 text-center">
           <motion.div initial={{ opacity: 0, y: 30 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ duration: 0.6 }}>
             <h2 className="text-3xl md:text-5xl font-extrabold tracking-tight mb-6">Pronto para alcançar seu ápice?</h2>
-            <p className="text-lg text-white/80 max-w-xl mx-auto mb-10 leading-relaxed">
-              Junte-se a centenas de estudantes que já estão usando a plataforma para transformar seus estudos e garantir a vaga na universidade dos sonhos.
+            <p className="text-lg text-white/80 max-w-xl mx-auto mb-4 leading-relaxed">
+              Crie sua conta e envie sua primeira redação em menos de 2 minutos. Sem cartão. Sem período de teste.
             </p>
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-              <motion.button whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.95 }} type="button" onClick={onSignup} className="px-10 py-4 bg-white text-blue-700 font-bold text-sm rounded-xl transition shadow-xl hover:shadow-2xl flex items-center gap-2 cursor-pointer">
-                Criar Conta Grátis <ArrowRight className="h-4 w-4" />
+            <p className="text-sm text-white/60 mb-10">
+              Se não gostar, apaga a conta em 2 cliques pelas próprias Configurações.
+            </p>
+            <div className="flex flex-col items-center justify-center gap-3">
+              <motion.button whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }} type="button" onClick={onSignup} className="px-10 py-4 bg-white text-blue-700 font-bold text-base rounded-xl transition shadow-xl hover:shadow-2xl flex items-center gap-2 cursor-pointer">
+                Corrigir minha primeira redação grátis <ArrowRight className="h-5 w-5" />
               </motion.button>
-              <button type="button" onClick={onStart} className="px-8 py-4 border border-white/30 text-white font-semibold text-sm rounded-xl hover:bg-white/10 transition cursor-pointer">
+              <button type="button" onClick={onStart} className="text-sm text-white/80 underline hover:text-white transition cursor-pointer">
                 Já tenho conta
               </button>
             </div>
@@ -938,6 +991,17 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </div>
         </div>
       </footer>
+
+      {/* Sticky CTA mobile — some pra fora da dobra do hero */}
+      <div className="md:hidden fixed bottom-0 inset-x-0 z-40 p-3 bg-white/95 dark:bg-[#0a0814]/95 backdrop-blur-lg border-t border-slate-200 dark:border-slate-800 shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+        <button
+          type="button"
+          onClick={onSignup}
+          className="w-full px-6 py-3.5 bg-blue-600 hover:bg-blue-700 text-white font-bold text-sm rounded-xl transition flex items-center justify-center gap-2 cursor-pointer"
+        >
+          Corrigir minha redação grátis <ArrowRight className="h-4 w-4" />
+        </button>
+      </div>
     </div>
   );
 }
