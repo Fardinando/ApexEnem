@@ -512,6 +512,10 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
             <p className="text-xs text-slate-400 dark:text-slate-500">
               Sem cartão. Sem período de teste. Grátis de verdade. · <button type="button" onClick={onStart} className="underline hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">Já tenho conta</button>
             </p>
+            <p className="text-[11px] md:text-xs text-slate-400 dark:text-slate-500 mt-6 max-w-lg mx-auto leading-relaxed">
+              <span className="line-through opacity-60">Cursinho preparatório: R$ 200–800/mês. Correção com professor particular: R$ 40–80 por redação.</span><br/>
+              <strong className="text-slate-600 dark:text-slate-300">Aqui: ilimitado, grátis.</strong>
+            </p>
           </motion.div>
 
           <motion.div initial={{ opacity: 0, y: 40 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.7, delay: 0.5 }} className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 max-w-3xl mx-auto">
@@ -533,9 +537,12 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
         </div>
       </section>
 
-      {/* Mecanismo único logo depois do hero — o diferencial em uma frase */}
+      {/* Agitação curta + mecanismo único logo depois do hero */}
       <section className="py-14 md:py-16 border-y border-slate-100 dark:border-slate-800/50 bg-slate-50/60 dark:bg-[#0f0a1e]/40">
         <div className="max-w-4xl mx-auto px-4 text-center">
+          <p className="text-base md:text-lg text-slate-600 dark:text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed">
+            Você estuda horas por dia e a nota não sobe. Refaz as mesmas provas antigas. Sua redação volta sem feedback útil. E o ENEM está cada vez mais perto.
+          </p>
           <div className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-900/40 rounded-full text-[11px] font-semibold text-blue-700 dark:text-blue-400 mb-5">
             <Sparkles className="h-3 w-3" /> O mecanismo
           </div>
@@ -842,30 +849,9 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
 
           <div className="space-y-5">
             <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
-              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">O ApexEnem é gratuito?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
-              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                Sim. O plano Free dá acesso ao banco de questões reais do ENEM, à correção de redação por IA, aos simulados cronometrados, à geração de aulas em texto, à pesquisa de repertórios e às salas de competição. As ações que consomem IA usam uma carteira de moedas que recarrega semanalmente — e você pode ganhar moedas extras assistindo a anúncios opcionais. Planos pagos ampliam o limite de uso para quem precisa estudar em alto volume.
-              </p>
-            </details>
-
-            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
               <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">Preciso instalar algum aplicativo?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
               <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
                 Não. O ApexEnem roda inteiro no navegador — Chrome, Edge, Firefox, Safari — tanto no computador quanto no celular. A interface é responsiva, então você pode começar uma redação no notebook e revisar depois no celular sem perder nada: tudo fica salvo na sua conta.
-              </p>
-            </details>
-
-            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
-              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">Quão confiável é a correção de redação por IA?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
-              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                A correção segue literalmente a Cartilha do Participante do ENEM 2025 e aplica as regras oficiais de pontuação por competência (0, 40, 80, 120, 160 ou 200). Nenhum corretor automático substitui 100% um corretor humano, mas o diagnóstico sobre competências e os pontos específicos a melhorar são precisos o suficiente para guiar seus estudos. Recomendamos usar como ferramenta de treino intensivo e, quando possível, buscar também um professor para feedback qualitativo nas redações finais.
-              </p>
-            </details>
-
-            <details className="group p-5 rounded-2xl bg-white dark:bg-[#1e293b] border border-slate-200 dark:border-slate-800 cursor-pointer">
-              <summary className="font-bold text-sm cursor-pointer flex items-center justify-between gap-3">A nota do simulado é parecida com a do ENEM real?<span className="text-blue-600 group-open:rotate-45 transition-transform text-xl leading-none">+</span></summary>
-              <p className="mt-3 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                A nota do simulado é calculada pelo método TRI (Teoria de Resposta ao Item), o mesmo que o INEP usa. Isso significa que a estimativa reflete não só quantas questões você acertou, mas quais — errar questões fáceis puxa a estimativa pra baixo. Em geral a nota do simulado fica dentro de uma margem de ±30 a 50 pontos em relação à que você faria no exame real.
               </p>
             </details>
 
@@ -914,6 +900,31 @@ export default function LandingPage({ onStart, onSignup }: { onStart: () => void
           </div>
         </section>
       )}
+
+      {/* Autoridade do criador — o rosto por trás do projeto */}
+      <section className="py-14 md:py-16 border-y border-slate-100 dark:border-slate-800/50">
+        <div className="max-w-3xl mx-auto px-4">
+          <div className="flex flex-col md:flex-row items-start gap-6">
+            <div className="w-16 h-16 md:w-20 md:h-20 rounded-2xl bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-black text-2xl md:text-3xl shrink-0">
+              F
+            </div>
+            <div className="flex-1">
+              <p className="text-xs font-mono uppercase tracking-wider text-blue-600 dark:text-blue-400 mb-2">Quem construiu</p>
+              <h3 className="text-xl md:text-2xl font-extrabold tracking-tight mb-3">Fernando Anderson Sousa</h3>
+              <p className="text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                Desenvolvedor full-stack, criador do ApexEnem e da MarmitaCode. O projeto nasceu da frustração de ver estudantes bons travarem no ENEM por falta de feedback rápido na redação e por estudarem sempre as mesmas provas antigas — enquanto a tecnologia pra resolver isso já existe. Toda linha de código da plataforma foi escrita com um objetivo único: encurtar o caminho entre erro e correção, porque é aí que a nota realmente sobe.
+              </p>
+              <div className="flex flex-wrap items-center gap-x-5 gap-y-2 mt-4 text-xs text-slate-500 dark:text-slate-400">
+                <span>Projeto independente</span>
+                <span>•</span>
+                <span>Em beta aberto desde 2026</span>
+                <span>•</span>
+                <button type="button" onClick={goToAbout} className="underline hover:text-blue-600 dark:hover:text-blue-400 cursor-pointer">Conheça a história →</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
 
       {/* Três objeções críticas antes do CTA final (FAQ inline) */}
       <section className="py-16 md:py-20">
