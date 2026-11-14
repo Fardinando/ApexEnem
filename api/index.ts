@@ -2056,6 +2056,43 @@ END $$;`;
   }
 }
 
+// ─── LGPD Arts. 15/16: retenção automática via cron do Vercel ────────────────
+// Chamado diariamente pelo cron de /api/retention em vercel.json.
+// Protegido pelo header x-vercel-cron (presente apenas em chamadas de cron real)
+// ou por CRON_SECRET quando configurada em env.
+app.get("/api/retention", async (req, res) => {
+  const cronHeader = req.headers["x-vercel-cron"];
+  const cronSecret = process.env.CRON_SECRET;
+  const authHeader = req.headers.authorization;
+  const ok = cronHeader === "1" || (cronSecret && authHeader === `Bearer ${cronSecret}`);
+  if (!ok) return res.status(401).json({ error: "unauthorized" });
+  if (!supabaseAdmin) return res.json({ status: "supabase_not_configured" });
+
+  const now = new Date();
+  const cutoff90d = new Date(now.getTime() - 90 * 86400 * 1000).toISOString();
+  const cutoff365d = new Date(now.getTime() - 365 * 86400 * 1000).toISOString();
+
+  const results: Record<string, any> = {};
+  try {
+    const { count: aiTasks } = await supabaseAdmin
+      .from("ai_tasks")
+      .delete({ count: "exact" })
+      .lt("created_at", cutoff90d);
+    results.ai_tasks_deleted = aiTasks ?? 0;
+  } catch (e: any) { results.ai_tasks_error = e.message; }
+
+  try {
+    const { count: logs } = await supabaseAdmin
+      .from("activity_logs")
+      .delete({ count: "exact" })
+      .lt("created_at", cutoff365d);
+    results.activity_logs_deleted = logs ?? 0;
+  } catch (e: any) { results.activity_logs_error = e.message; }
+
+  console.log("[retention] cleanup run:", results);
+  return res.json({ at: now.toISOString(), ...results });
+});
+
 app.get("/api/supabase/keep-alive", async (req, res) => {
   if (!supabaseAdmin) {
     return res.json({ status: "supabase_not_configured" });

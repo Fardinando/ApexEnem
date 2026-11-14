@@ -37,6 +37,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
   const [loading, setLoading] = useState(false);
   const [captchaToken, setCaptchaToken] = useState('');
   const [acceptedTerms, setAcceptedTerms] = useState(false);
+  const [optInMarketing, setOptInMarketing] = useState(false);
 
   const [region, setRegion] = useState<RegionBR>('Sudeste');
   const [state, setState] = useState('');
@@ -271,6 +272,7 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
           parent_email: isMinor ? parentEmail.toLowerCase().trim() : null,
           parent_consent_at: isMinor ? new Date().toISOString() : null,
           consent_version: '2026-10-26-eca-digital',
+          marketing_consent_at: optInMarketing ? new Date().toISOString() : null,
         },
         captchaToken: captchaToken || undefined,
       },
@@ -534,6 +536,19 @@ export default function AuthView({ onSuccess, defaultTab, onBack }: AuthViewProp
                             Política de Privacidade
                           </a>{' '}
                           do ApexEnem.
+                        </label>
+                      </div>
+                      {/* LGPD Art. 8º §4º: consentimento de marketing separado, opcional e desmarcado */}
+                      <div className="flex items-start gap-2.5 p-3 bg-slate-50/50 dark:bg-[#0f172a]/60 border border-dashed border-slate-200 dark:border-slate-800 rounded-xl">
+                        <input
+                          id="opt-in-marketing"
+                          type="checkbox"
+                          checked={optInMarketing}
+                          onChange={(e) => setOptInMarketing(e.target.checked)}
+                          className="mt-0.5 w-4 h-4 accent-blue-600 cursor-pointer shrink-0"
+                        />
+                        <label htmlFor="opt-in-marketing" className="text-xs text-slate-500 dark:text-slate-400 leading-relaxed cursor-pointer">
+                          <span className="text-slate-600 dark:text-slate-300 font-medium">Opcional:</span> quero receber dicas de estudo, novidades da plataforma e materiais gratuitos por e-mail. Posso cancelar a qualquer momento pelo link em todo e-mail.
                         </label>
                       </div>
                     </>
